@@ -58,6 +58,7 @@ import {
 import { isOptionalColumn } from "./rules.ts";
 import {
   columnDefinition,
+  columnDefinitionFor,
   createTableBody,
   defaultExpression,
   isNotNullFor,
@@ -108,23 +109,28 @@ describe("every user-data table exists", () => {
 describe("every column a requirement asks for is declared", () => {
   const rows = SHIPPED;
 
+  // **`columnDefinitionFor`, not `createTableBody` + `columnDefinition`**
+  // (T2-306a). A column that arrives in a later `alter table … add column` is
+  // as present as one the table was born with, and the previous form could
+  // only see the `create table`. Every pending entry in `contract.ts` is a
+  // column being added to a table that already exists — `profiles.handle`
+  // (T2-402) and `vehicles.cover_photo_path` (T2-306) both — and an applied
+  // migration is history that must not be edited (T2-301 tried and reverted
+  // it), so `alter table` is the only route they have. Left as it was, these
+  // sweeps would have stayed red after the column shipped, with no legitimate
+  // way to green.
   it.each(rows)("%s.%s exists (%s)", (table, column) => {
-    const body = createTableBody(migrationSql(), table);
-    expect(body).not.toBeNull();
-    expect(columnDefinition(body ?? "", column)).not.toBeNull();
+    expect(columnDefinitionFor(migrationSql(), table, column)).not.toBeNull();
   });
 
   it.fails.each(PENDING)("%s.%s exists (%s)", (table, column) => {
-    const body = createTableBody(migrationSql(), table);
-    expect(body).not.toBeNull();
-    expect(columnDefinition(body ?? "", column)).not.toBeNull();
+    expect(columnDefinitionFor(migrationSql(), table, column)).not.toBeNull();
   });
 
   it.each(rows.filter(([, , , column]) => column.type !== undefined))(
     "%s.%s has the type the requirement implies (%s)",
     (table, column, _requirement, contract) => {
-      const body = createTableBody(migrationSql(), table);
-      const definition = columnDefinition(body ?? "", column);
+      const definition = columnDefinitionFor(migrationSql(), table, column);
 
       expect(definition).not.toBeNull();
       expect(definition?.definition ?? "").toMatch(contract.type as RegExp);
@@ -134,8 +140,7 @@ describe("every column a requirement asks for is declared", () => {
   it.fails.each(PENDING.filter(([, , , column]) => column.type !== undefined))(
     "%s.%s has the type the requirement implies (%s)",
     (table, column, _requirement, contract) => {
-      const body = createTableBody(migrationSql(), table);
-      const definition = columnDefinition(body ?? "", column);
+      const definition = columnDefinitionFor(migrationSql(), table, column);
 
       expect(definition).not.toBeNull();
       expect(definition?.definition ?? "").toMatch(contract.type as RegExp);

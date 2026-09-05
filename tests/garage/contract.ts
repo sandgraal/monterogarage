@@ -205,6 +205,77 @@ export const USER_TABLES: readonly TableContract[] = [
         absenceDefaultAllowed: true,
       },
       {
+        /**
+         * GAR-01′'s **cover photo** (owner-approved addition, 2026-09-02) —
+         * declared by T2-306a [TEST], shipped by T2-306 [PLATFORM].
+         *
+         * > A user SHALL be able to designate one uploaded photo as the
+         * > vehicle's **cover photo** … Removing the designated cover photo
+         * > SHALL leave the vehicle with no cover rather than silently
+         * > promoting another one; a vehicle with photos but no cover renders
+         * > the same placeholder image used when the vehicle has no photos.
+         *
+         * ## Why a path, and not an index or a flag on a photos table
+         *
+         * `cover_photo_index int` was the first idea and is wrong for a
+         * reason that only shows up later: an index into an array a client
+         * writes means nothing after a removal. Delete the second of three
+         * photos and index 2 now names a different truck's front bumper —
+         * silently, with no write anywhere that a reviewer could look at. The
+         * bug is not that the index is stale; it is that a stale index is
+         * *indistinguishable from a fresh one*. A path is checkable: either
+         * the array contains it or it does not.
+         *
+         * `vehicle_photos.is_cover boolean` — a row per photo, one flagged —
+         * is the shape that would be right if a photos *table* existed. None
+         * does, `src/lib/garage/photos.ts` argues why, and inventing one here
+         * would be a schema decision this task has no mandate for
+         * (AGENTS.md: changing a schema is never a drive-by edit). It would
+         * also need its own partial unique index to stop two covers, which is
+         * more machinery than one nullable column.
+         *
+         * ## Nullable, and with **no default**
+         *
+         * Three states have to be tellable apart and only one of them is
+         * "zero": no photos at all, photos but no cover chosen, and a cover
+         * chosen. GAR-01′ renders the first two identically (the placeholder)
+         * and that is a *rendering* decision — it must not become a storage
+         * one, because "the owner has not chosen yet" and "the owner removed
+         * the cover they had" are the same null, while "the owner chose photo
+         * 2" is not, and a default would erase the difference at insert time.
+         *
+         * No default for the harder half of the same reason: a default that
+         * named `photo_paths[1]` would be the silent promotion the
+         * requirement forbids, expressed as DDL, applied to every vehicle
+         * ever created, invisible in any diff after this one.
+         *
+         * ## Membership is a property of the database, not a habit of a page
+         *
+         * The task line is explicit that "a cover path naming a photo the
+         * vehicle does not have is a defect, not a user error to accept
+         * silently". A dangling cover is not a rendering nuisance — it is a
+         * request for an object under some *other* vehicle's prefix, made on
+         * the owner's behalf, which the bucket policies will refuse and which
+         * nothing in the page can distinguish from a photo that failed to
+         * load. So the relation between this column and `photo_paths` is
+         * enforced where both columns live. `cover-photo.test.ts` grades that
+         * enforcement two ways — that it exists in the DDL, and that a live
+         * stack actually refuses.
+         *
+         * ## The name is this file's decision, renegotiable in one line
+         *
+         * Exactly as for every other name here: T2-306a has to name something
+         * for the graders to be concrete. If T2-306 prefers `cover_path`,
+         * that is a one-line conversation with the conductor. What is **not**
+         * negotiable is the behaviour graded around it.
+         */
+        name: "cover_photo_path",
+        requirement:
+          "GAR-01′ (one designated cover photo, cleared rather than dangling)",
+        type: /text|varchar|character varying/,
+        pending: "T2-306",
+      },
+      {
         name: "is_showcase_public",
         requirement: "SHR-01 + SHR-02 (showcase page, off by default)",
         type: /bool/,
@@ -687,6 +758,31 @@ export const SHARE_FLAG_COLUMNS: readonly {
       pending: table.pending ?? column.pending,
     }))
 );
+
+/* -------------------------------------------------------------------------
+ * GAR-01′ — the cover-photo designation (declared by T2-306a [TEST])
+ * ---------------------------------------------------------------------- */
+
+/**
+ * The column that names a vehicle's cover photo, resolved by name in the SQL
+ * rules of `cover-photo.test.ts` **and** declared as a column contract above.
+ *
+ * Named once for the same reason `SHARE_TOKEN_HASH_COLUMN` is: nothing but a
+ * test would otherwise make the two the same string, and a rename on one side
+ * would leave the rules looking for a column the schema does not have and
+ * reporting the absence of an enforcement that is right there — which reads as
+ * a grader defect and gets the rule turned off rather than fixed.
+ */
+export const COVER_PHOTO_COLUMN = "cover_photo_path";
+
+/**
+ * The column a cover designation must be a member of.
+ *
+ * The membership rule is a claim about **two** columns, and a rule that hard
+ * coded one of them and read the other from the contract could go quietly
+ * half-stale. Both come from here.
+ */
+export const COVER_PHOTO_SOURCE_COLUMN = "photo_paths";
 
 /* -------------------------------------------------------------------------
  * Storage

@@ -82,7 +82,7 @@ import {
   createTableBody,
   createdTables,
   createdViews,
-  columnDefinition,
+  columnDefinitionFor,
   columnDefinitions,
   defaultExpression,
   enablesRls,
@@ -701,6 +701,11 @@ export function bucketPrivacyIssues(
  * and it is a better model for the reference arrays — an empty array *is* "no
  * references", with none of the null-versus-empty ambiguity (T2-201 review,
  * F8).
+ *
+ * Reads the **end-state** definition (T2-306a): a column that arrives in a
+ * later `alter table … add column` is exactly as optional as one declared in
+ * the `create table`, and a sweep that could not see it would report every
+ * such column as non-optional forever.
  */
 export function isOptionalColumn(
   normalized: string,
@@ -708,8 +713,7 @@ export function isOptionalColumn(
   column: string,
   allowAbsenceDefault: boolean
 ): boolean {
-  const body = createTableBody(normalized, table);
-  const definition = columnDefinition(body ?? "", column);
+  const definition = columnDefinitionFor(normalized, table, column);
   if (!definition) return false;
   const notNull = /\bnot null\b/.test(definition.definition);
   if (!notNull) return true;

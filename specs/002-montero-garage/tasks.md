@@ -573,7 +573,7 @@ Vercel is an owner action inside T2-102 (the task prepares the exact records).
   already fixed elsewhere first. Activates T2-305a graders. Depends: T2-305a
   merged. *(GAR-06′)*
 
-- [ ] **T2-306a [TEST]** Graders for the cover-photo designation (GAR-01′):
+- [x] **T2-306a [TEST]** Graders for the cover-photo designation (GAR-01′):
   a nullable `vehicles.cover_photo_path` column (or equivalent) naming one entry already
   present in `vehicles.photo_paths` as the cover; the value SHALL be validated as
   membership in that same array (a cover path naming a photo the vehicle
@@ -584,6 +584,77 @@ Vercel is an owner action inside T2-102 (the task prepares the exact records).
   between two tabs is the concrete case to grade for; setting a cover SHALL
   be independent of upload order (the Nth photo added, not just the most
   recent or the first, can become the cover). Depends: T2-301. *(GAR-01′)*
+  <br>**33 `it.fails` marker lines across two files**, activated by deleting
+  exactly the `.fails` on each. `tests/garage/cover-photo.test.ts` — 21 (7
+  declaration, 14 live under `describe.skipIf`); `src/lib/garage/cover.test.ts`
+  — 12, all pure. Because four of them are `it.fails.each` tables the markers
+  produce **43 expected-failure cases**: 21 that run anywhere (7 + 14) and 22
+  live. Three more cases come free from the contract entry, in
+  `schema-shape.test.ts`'s pending sweeps. Local run with no Docker:
+  53 expected failures, 137 passed, 33 skipped, 0 errors across the three
+  touched test files.
+  <br>**Contract decisions, all argued in `tests/garage/contract.ts`:**
+  `vehicles.cover_photo_path text` — **nullable, and with no default**. A
+  *path*, not `cover_photo_index int`, because an index into a client-written
+  array names a different photo after any removal and a stale index is
+  indistinguishable from a fresh one; a path is checkable against
+  `photo_paths` and an index is not. Not `vehicle_photos.is_cover` either —
+  no photos table exists, `src/lib/garage/photos.ts` argues why, and creating
+  one is a schema decision this task had no mandate for. No default because
+  `default photo_paths[1]` is the silent promotion GAR-01′ forbids, spelled
+  as DDL and applied to every vehicle ever created.
+  <br>**Two enforcements, and both routes are accepted.** Membership: a
+  `check` constraint relating the two columns **or** a trigger that `raise`s —
+  demanding one would fail a schema that chose the other for no reason a
+  requirement can name. Clearing: a **`before update`** trigger on
+  `public.vehicles` that assigns `cover_photo_path` and assigns it only
+  `null`. `before` is graded because here the mechanism *is* the behaviour —
+  an `after` trigger cannot change the row, so the membership constraint has
+  already refused the removal GAR-01′ says must succeed. The trigger's
+  function is found by **following `execute function`**, never by name
+  (T2-301a's F1).
+  <br>**A seam you must fill: `src/lib/garage/cover.ts`.** Two exported
+  symbols, both throwing `not implemented: T2-306` today —
+  `resolveCoverPath(vehicle)` (the shared render helper T2-306's own line asks
+  for, so T2-402 needs no second implementation; returns `null` for *no
+  photos*, *no designation*, and *a designation the vehicle does not have*,
+  and never falls back to `photo_paths[0]`) and `coverPhotoWrite(path)` (the
+  patch body, graded to carry **exactly one key**). `CoverPhotoSource` is
+  declared structurally so a `VehicleRow` that gains the column is assignable
+  with no adapter.
+  <br>**Why the write shape is graded at all:** T2-304's lost-update race on
+  `vehicles.photo_paths` (open as T2-305) is one careless payload away from
+  coming back — a "set as cover" that transmitted the array it read a moment
+  ago would be the same bug on a surface where only one photo goes missing.
+  Three live `it.fails.each` tables run the two-tab interleaving three ways
+  (A→B, B→A, `Promise.all`), and one of them exists specifically to fail if
+  designating a cover loses a photo another tab added.
+  <br>**Harness change this needed: `columnDefinitionFor` in
+  `tests/garage/sql.ts`.** `createTableBody` reads one statement, so it could
+  only see columns a table was *born* with — and `public.vehicles` already
+  exists, so this column can only arrive by `alter table`, and an applied
+  migration is history (T2-301 tried editing one and reverted). Left alone,
+  `schema-shape.test.ts`'s pending sweeps would have stayed red after the
+  column shipped with no legitimate route to green. The new helper replays
+  `create table` + `add`/`drop column` + `set`/`drop not null` + `set`/`drop
+  default` in order; `isNotNullFor` and `isOptionalColumn` now read it too.
+  **`profiles.handle` (T2-402) gets the same fix for free.**
+  <br>**Verified, not assumed:** a scratch migration implementing the column,
+  the check constraint and a `before insert or update` trigger was applied to
+  the migrations directory and the suite re-run — all 10 marked declaration
+  graders flipped to green and **no other grader in the suite moved** (no
+  anon-privilege, definer-`search_path` or ungraded-table sweep fired). The
+  scratch file was deleted. Six rule-level mutations were also run one at a
+  time (membership always-clean; the `before` clause; `isNullAssignment`
+  always-true; the `set … =` assignment spelling; the `alter table` branch of
+  `checkExpressions`; the `drop column` branch of `columnDefinitionFor`) and
+  each turned the suite red on exactly the controls that name it.
+  <br>**Not graded, and deliberately:** Tier B could not be run locally (no
+  Docker on this machine), so the 22 live markers are skipped here and will
+  first execute in CI's informational `tier-b` job. No storage object is
+  uploaded by any of them — the designation is a claim about two columns, and
+  borrowing the bucket would make every cover grader depend on the storage
+  API being up.
 - [ ] **T2-306 [PLATFORM]** Cover-photo UI (owner-approved addition,
   2026-09-02): a "Set as cover" control per photo on the vehicle edit view,
   a "Remove cover" affordance, and rendering the designated cover — never

@@ -345,6 +345,127 @@ export function columnDefinition(
   return columnDefinitions(body).find((def) => def.name === column) ?? null;
 }
 
+/** Remove a `default …` clause from a column definition, leaving the rest. */
+function withoutDefault(definition: string): string {
+  const expr = defaultExpression(definition);
+  if (expr === null) return definition;
+  const escaped = expr.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return definition
+    .replace(new RegExp(`\\bdefault\\s+${escaped}`), " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * One column's definition **after every statement has run** — declared by
+ * T2-306a [TEST].
+ *
+ * ## Why this exists, and why `columnDefinition` alone was not enough
+ *
+ * A migration directory is a sequence, not a snapshot, and the only honest
+ * question to ask of it is what the database looks like at the *end*
+ * (`.claude/GRADER-PRINCIPLES.md`, "grade the end state, not the text" — the
+ * same principle `policies()`, `grants()` and `functions()` already apply by
+ * replaying their statements in order). `createTableBody` reads exactly one
+ * statement, so it can only see columns a table was **born with**.
+ *
+ * That was the whole truth while every user column arrived in T2-202's
+ * original `create table`. It stops being true the moment a task adds a
+ * column to a table that already exists — which is every pending column
+ * contract in this file. T2-306's `vehicles.cover_photo_path` cannot be added
+ * to a `create table` that has already been pushed: editing an applied
+ * migration changes what a *fresh* database gets and nothing about the one
+ * that exists, which T2-301 tried and reverted for exactly that reason. So it
+ * arrives as `alter table public.vehicles add column …`, and a sweep built on
+ * `createTableBody` would keep reporting it missing after it shipped — an
+ * expected failure with no legitimate route to green, which is the shape that
+ * gets a grader deleted instead of satisfied.
+ *
+ * ## What is replayed
+ *
+ * In statement order, and last-write-wins:
+ *
+ * - `create table …( col … )` — the starting definition, if any;
+ * - `alter table … add [column] [if not exists] col …` — replaces it;
+ * - `alter table … drop [column] [if exists] col` — **removes** it, so a
+ *   column added and later dropped reads as absent rather than present;
+ * - `alter table … alter [column] col set/drop not null`;
+ * - `alter table … alter [column] col set/drop default …`.
+ *
+ * Multi-action `alter table` statements are split on top-level commas, so
+ * `add column a text, add column b text` is two actions and not one
+ * unparsed blob.
+ *
+ * What is **not** replayed, stated rather than left to be discovered:
+ * `rename column` (no migration in this project has ever used one, and a
+ * rename that this returned a stale name for would be worse than one it
+ * refused to follow), `alter column type`, and table-level `add primary key`
+ * — {@link isNotNullFor} still reads those from the `create table` body only.
+ */
+export function columnDefinitionFor(
+  normalized: string,
+  table: string,
+  column: string
+): ColumnDefinition | null {
+  const body = createTableBody(normalized, table);
+  let current = body ? columnDefinition(body, column) : null;
+
+  const prefix = new RegExp(`^${alterTablePrefix(table)}\\s+`);
+  const added = new RegExp(
+    `^add (?:column )?(?:if not exists )?${column}\\b([\\s\\S]*)$`
+  );
+  const dropped = new RegExp(`^drop (?:column )?(?:if exists )?${column}\\b`);
+  const altered = new RegExp(`^alter (?:column )?${column}\\b([\\s\\S]*)$`);
+
+  for (const statement of statements(normalized)) {
+    const head = prefix.exec(statement);
+    if (!head) continue;
+
+    for (const action of splitTopLevelCommas(statement.slice(head[0].length))) {
+      const add = added.exec(action);
+      if (add) {
+        current = { name: column, definition: add[1].trim() };
+        continue;
+      }
+      if (dropped.test(action)) {
+        current = null;
+        continue;
+      }
+      const change = altered.exec(action);
+      if (!change || current === null) continue;
+
+      const verb = change[1].trim();
+      if (verb === "set not null") {
+        current = {
+          name: column,
+          definition: `${current.definition} not null`.trim(),
+        };
+      } else if (verb === "drop not null") {
+        current = {
+          name: column,
+          definition: current.definition
+            .replace(/\bnot null\b/g, " ")
+            .replace(/\s+/g, " ")
+            .trim(),
+        };
+      } else if (verb === "drop default") {
+        current = {
+          name: column,
+          definition: withoutDefault(current.definition),
+        };
+      } else if (verb.startsWith("set default ")) {
+        current = {
+          name: column,
+          definition:
+            `${withoutDefault(current.definition)} ` +
+            `default ${verb.slice("set default ".length).trim()}`.trim(),
+        };
+      }
+    }
+  }
+  return current;
+}
+
 /**
  * The `default …` expression of a column definition, or `null`.
  *
@@ -639,19 +760,25 @@ export function foreignKeyFor(
  * first version of this harness demanded the literal `not null` and therefore
  * failed a column spelled `id uuid primary key`, which is the spelling used in
  * its own sample DDL (T2-201 review, F6).
+ *
+ * Reads the **end-state** definition (T2-306a), so a column added or made
+ * not-null by a later `alter table` is judged on what it finally is rather
+ * than on what the `create table` said. The table-level `primary key (…)`
+ * sweep below still reads the `create table` body only — see
+ * {@link columnDefinitionFor} for what that replay does and does not cover.
  */
 export function isNotNullFor(
   normalized: string,
   table: string,
   column: string
 ): boolean {
-  const body = createTableBody(normalized, table);
-  if (!body) return false;
-  const definition = columnDefinition(body, column);
+  const definition = columnDefinitionFor(normalized, table, column);
   if (!definition) return false;
   if (/\bnot null\b/.test(definition.definition)) return true;
   if (/\bprimary key\b/.test(definition.definition)) return true;
 
+  const body = createTableBody(normalized, table);
+  if (!body) return false;
   for (const constraint of tableConstraints(body)) {
     const match = /primary key\s*\(([^)]*)\)/.exec(constraint);
     if (!match) continue;
