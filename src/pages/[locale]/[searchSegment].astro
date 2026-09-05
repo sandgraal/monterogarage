@@ -332,11 +332,9 @@ const typeOptions = (SEARCH_DOCUMENT_TYPES as readonly SearchDocumentType[])
               const href = docHref(doc.href);
               return (
                 <li class="search-result" data-type={doc.type}>
-                  <div class="search-result__head">
-                    <span class="search-result__type">
-                      {searchTypeLabel(strings, doc.type)}
-                    </span>
-                  </div>
+                  <span class="search-result__type">
+                    {searchTypeLabel(strings, doc.type)}
+                  </span>
                   <h2 class="search-result__title">
                     {href === null ? doc.title : <a href={href}>{doc.title}</a>}
                     {doc.subtitle !== null && (
@@ -360,11 +358,23 @@ const typeOptions = (SEARCH_DOCUMENT_TYPES as readonly SearchDocumentType[])
                   )}
                   {doc.extra.length > 0 && (
                     <p class="search-result__extra">
-                      {doc.extra.map((item) => (
-                        <span class="chip search-result__extra-item">
-                          {item}
-                        </span>
-                      ))}
+                      {/*
+                       * One chip holding every item, joined — not one chip
+                       * per alias/symptom. Perf fix (PR #106 follow-up,
+                       * SCF-06): a glossary term with several aliases or a
+                       * problem with several symptom bullets used to add one
+                       * `<span>` per item, and across 221 cards that was 655
+                       * extra elements — measurably real page weight, not
+                       * noise (see the commit message for the before/after
+                       * byte counts). The joined string still carries every
+                       * word a reader could search for (SRCH-02's alias
+                       * recall is unchanged: `buildSearchHaystack` reads
+                       * this element's `textContent`, which still contains
+                       * every alias), it is simply one node instead of many.
+                       */}
+                      <span class="chip search-result__extra-item">
+                        {doc.extra.join(" · ")}
+                      </span>
                     </p>
                   )}
                 </li>
@@ -614,11 +624,8 @@ const typeOptions = (SEARCH_DOCUMENT_TYPES as readonly SearchDocumentType[])
     display: none;
   }
 
-  .search .search-result__head {
-    display: flex;
-  }
-
   .search .search-result__type {
+    display: block;
     font-size: 0.6875rem;
     font-weight: 700;
     letter-spacing: 1px;
