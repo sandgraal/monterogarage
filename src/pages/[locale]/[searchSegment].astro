@@ -515,24 +515,6 @@ const typeOptions = (SEARCH_DOCUMENT_TYPES as readonly SearchDocumentType[])
     max-width: 62ch;
   }
 
-  /*
-   * Laid out only when scripting is available — every other filtered listing
-   * on this site makes the same trade for the same reason (see the glossary
-   * and problems pages' own long notes): `[hidden]` loses to an author
-   * `display`, and revealing the toolbar after the script loads is a layout
-   * shift `BaseLayout`'s early `html.js` class avoids entirely.
-   */
-  .search .search__toolbar {
-    display: none;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    align-items: center;
-  }
-
-  :global(html.js) .search .search__toolbar {
-    display: flex;
-  }
-
   .search .search__input {
     position: relative;
     display: flex;
@@ -687,5 +669,43 @@ const typeOptions = (SEARCH_DOCUMENT_TYPES as readonly SearchDocumentType[])
     .search .search__intro h1 {
       font-size: 1.5rem;
     }
+  }
+</style>
+
+<style>
+  /*
+   * Code review finding (2026-09-05): this rule was originally inside the
+   * `is:global` block above, as `:global(html.js) .search .search__toolbar`.
+   * `:global()` is a *scoped-style* escape hatch — it has no meaning once the
+   * whole block is already `is:global`, so Astro passed the text through
+   * unchanged and browsers rejected the unknown `:global` pseudo-class
+   * outright, dropping the whole rule. The toolbar's `display: none` above
+   * then had nothing to override it, so the search box and type pills never
+   * rendered, with or without JavaScript, in either locale.
+   *
+   * The fix is this second, ordinary **scoped** `<style>` block, holding only
+   * the two rules that need `:global()` to mean something:
+   * `[problemsSegment].astro` proves the same pattern compiles correctly
+   * (`:global(html.js) .problems__toolbar` → `html.js
+   * .problems__toolbar[data-astro-cid-…]`) — verified for this page too, via
+   * a real Chromium instance's `document.styleSheets` and `getBoundingClientRect`
+   * showing the toolbar with a real, non-zero size once `html.js` is present.
+   *
+   * The big `is:global` block above stays global on purpose (same SCF-06
+   * page-weight reason `[glossarySegment].astro` documents): this page lists
+   * up to ~280 result cards, and a `data-astro-cid-…` attribute on every
+   * child of every card is real, measured page weight for no reader benefit.
+   * Only this one small, single-element rule needs real scoping so
+   * `:global()` inside it means what it says.
+   */
+  .search__toolbar {
+    display: none;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  :global(html.js) .search__toolbar {
+    display: flex;
   }
 </style>
