@@ -167,14 +167,37 @@ export function buildSearchHaystack(source: SearchHaystackSource): string {
  * (see that function's docs for why — this is not the same trade a naive
  * `title="…full text…"` attribute would make).
  *
- * 200 was chosen against this corpus, not picked round: glossary
- * definitions average ~225–247 characters (EN/ES) and mostly fit under this
- * length untouched, while `problems` entries' summaries — full paragraphs,
- * averaging **1170 characters in EN and 1284 in ES** — are the index's
- * single largest weight contributor by far, and this is where truncation
- * actually earns its keep.
+ * **150, not the first cut's 200** (second SCF-06 round: the first round
+ * cleared `/en/search/` at 91/90 but left `/es/buscar/` at 89/90, and CI's
+ * own noise band at that margin ran several points wide on repeat runs of
+ * the *same* commit — 90 by a hair is not the target, margin above the
+ * noise is). 200 was already generous relative to glossary definitions,
+ * which average ~225–247 characters (EN/ES) — meaning **most glossary
+ * entries were being truncated at 200 already**, not "mostly fitting
+ * under it" as the first cut's reasoning claimed; 150 is honest about
+ * that instead of asserting a headroom that was not really there.
+ * `problems` entries' summaries — full paragraphs, averaging **1170
+ * characters in EN and 1284 in ES** — stay the dominant weight
+ * contributor either way and are cut hard regardless of where exactly
+ * this constant sits.
  */
-export const SNIPPET_MAX_LENGTH = 200;
+export const SNIPPET_MAX_LENGTH = 150;
+
+/**
+ * The displayed length of a result card's joined "extra" chip — every
+ * alias (glossary) or symptom bullet (problems) the card carries, folded
+ * into one chip's text (`[searchSegment].astro`'s own `doc.extra.join(" · ")`
+ * before this fix; now that join is what {@link splitSnippet} receives).
+ *
+ * Deliberately shorter than {@link SNIPPET_MAX_LENGTH} and a separate
+ * constant rather than the same number reused: glossary aliases, joined,
+ * average only ~50 characters and top out (p90) around 121 across this
+ * corpus — a chip has no need for `SNIPPET_MAX_LENGTH`'s budget and almost
+ * never uses it. `problems` symptom lists average ~274–306 characters
+ * joined, comparable in shape to a short snippet, and are exactly where
+ * this earns the same keep the snippet cut does.
+ */
+export const EXTRA_MAX_LENGTH = 120;
 
 /** The two halves {@link splitSnippet} divides a snippet into. */
 export interface SnippetParts {

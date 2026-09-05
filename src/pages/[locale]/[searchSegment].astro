@@ -22,11 +22,13 @@
  * call and one more small `.map()` below; the matching logic in
  * `src/lib/search.ts` never changes (see that module's docstring).
  *
- * - **`procedures` is not indexed yet.** T502 has not given it a route to
- *   link a result to (`COLLECTION_ROUTE_SEGMENTS` has no `procedures` row),
- *   and a search result with nowhere to land is a worse answer than no
- *   result. The collection is empty today regardless; this is a forward
- *   note, not a workaround for a current failure.
+ * - **`procedures` is not indexed yet, even though T502 (merged since this
+ *   page first landed) gave it a route.** Adding it is exactly the one
+ *   adapter + one `getCollection` call this docstring describes and nothing
+ *   more — deliberately left for its own small change rather than folded
+ *   into an unrelated performance-fix branch. The collection is empty today
+ *   regardless (T504 authors the entries), so nothing is missing from a
+ *   reader's results in the meantime.
  * - **`garage` is deliberately never indexed.** 002 MIG-03 makes a user's
  *   garage entries private data behind Supabase RLS. This page is public and
  *   statically built; indexing garage entries would publish private records
@@ -117,6 +119,7 @@ import {
 import { formatCount, glossaryTermDomId } from "../../lib/glossary-filter";
 import { problemRoutePath } from "../../lib/problems";
 import {
+  EXTRA_MAX_LENGTH,
   SEARCH_DOCUMENT_TYPES,
   splitSnippet,
   type SearchDocument,
@@ -351,12 +354,21 @@ const typeOptions = (SEARCH_DOCUMENT_TYPES as readonly SearchDocumentType[])
                * (`splitSnippet`'s own docs walk through why — the first
                * version of this fix duplicated the whole snippet into a
                * `title` attribute, which made the page *larger*, not
-               * smaller). `hidden` renders inside a `.visually-hidden` span
+               * smaller). `hidden` renders inside a `display: none` span
                * below, so `element.textContent` — what
                * `buildSearchHaystack` reads — sees the complete original
                * text, while only `visible` costs any layout or paint.
+               *
+               * The `extra` chip gets the same treatment, joined first and
+               * then split at the shorter `EXTRA_MAX_LENGTH` — a chip never
+               * needed `SNIPPET_MAX_LENGTH`'s budget (see that constant's
+               * own docs for the corpus numbers behind both figures).
                */
               const snippet = splitSnippet(doc.snippet);
+              const extra = splitSnippet(
+                doc.extra.join(" · "),
+                EXTRA_MAX_LENGTH
+              );
               return (
                 <li class="search-result" data-type={doc.type}>
                   <span class="search-result__type">
@@ -374,7 +386,7 @@ const typeOptions = (SEARCH_DOCUMENT_TYPES as readonly SearchDocumentType[])
                     {snippet.visible}
                     {snippet.hidden !== "" && (
                       <span
-                        class="search-result__snippet-rest"
+                        class="search-result__hidden-rest"
                         aria-hidden="true"
                       >
                         {snippet.hidden}
@@ -408,9 +420,23 @@ const typeOptions = (SEARCH_DOCUMENT_TYPES as readonly SearchDocumentType[])
                        * recall is unchanged: `buildSearchHaystack` reads
                        * this element's `textContent`, which still contains
                        * every alias), it is simply one node instead of many.
+                       *
+                       * The joined chip is itself split-and-hidden past
+                       * `EXTRA_MAX_LENGTH`, the same treatment the snippet
+                       * gets and for the same reason (second SCF-06 round):
+                       * `problems`' symptom lists, joined, run long enough
+                       * to be worth cutting too.
                        */}
                       <span class="chip search-result__extra-item">
-                        {doc.extra.join(" · ")}
+                        {extra.visible}
+                        {extra.hidden !== "" && (
+                          <span
+                            class="search-result__hidden-rest"
+                            aria-hidden="true"
+                          >
+                            {extra.hidden}
+                          </span>
+                        )}
                       </span>
                     </p>
                   )}
@@ -725,7 +751,7 @@ const typeOptions = (SEARCH_DOCUMENT_TYPES as readonly SearchDocumentType[])
    * paint at all, however long the text inside it, which is the entire
    * point of splitting the snippet in the first place.
    */
-  .search .search-result__snippet-rest {
+  .search .search-result__hidden-rest {
     display: none;
   }
 
