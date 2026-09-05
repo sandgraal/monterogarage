@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   SEARCH_DOCUMENT_TYPES,
+  SNIPPET_MAX_LENGTH,
   buildSearchHaystack,
   countSearchMatches,
   isSearchDocumentType,
   matchesSearchFilter,
+  splitSnippet,
+  truncateSnippet,
   type SearchFilterCard,
   type SearchHaystackSource,
 } from "./search";
@@ -89,6 +92,122 @@ describe("buildSearchHaystack", () => {
   it("collapses internal whitespace the way normalizeForSearch always has", () => {
     const hay = buildSearchHaystack(source({ title: ["  Rin   trasero  "] }));
     expect(hay).toBe("rin trasero");
+  });
+});
+
+describe("truncateSnippet", () => {
+  it("returns text at or under the limit unchanged — no ellipsis added", () => {
+    expect(truncateSnippet("short text", 200)).toBe("short text");
+    // Exactly at the boundary: still unchanged, not a one-off truncation.
+    const exact = "x".repeat(200);
+    expect(truncateSnippet(exact, 200)).toBe(exact);
+  });
+
+  it("empty string is unchanged", () => {
+    expect(truncateSnippet("", 200)).toBe("");
+  });
+
+  it("cuts at the last word boundary and appends an ellipsis", () => {
+    const text =
+      "The transfer case chain stretches over time and the front axle " +
+      "stops engaging on demand, which the dash light usually flags first.";
+    const result = truncateSnippet(text, 60);
+    expect(result.endsWith("…")).toBe(true);
+    expect(result.length).toBeLessThanOrEqual(61); // 60 + the ellipsis char
+    // Everything before the ellipsis is a real, unbroken prefix of the
+    // original text — i.e. the cut landed on a word boundary, not mid-word.
+    const withoutEllipsis = result.slice(0, -1).trimEnd();
+    expect(text.startsWith(withoutEllipsis)).toBe(true);
+    expect(text[withoutEllipsis.length]).toBe(" ");
+  });
+
+  it("falls back to a hard cut when there is no word boundary near the limit", () => {
+    // One long run with no spaces anywhere near the cut point — searching
+    // for a boundary must not eat almost the whole budget.
+    const text = "a".repeat(300);
+    const result = truncateSnippet(text, 100);
+    expect(result).toBe(`${"a".repeat(100)}…`);
+  });
+
+  it("does not cut mid-word when a reasonable boundary exists just before the limit", () => {
+    const text = "abcdefghij klmnopqrst uvwxyzabcd efghijklmn";
+    // Limit (24) lands mid-"uvwxyzabcd"; the boundary at index 21 (after
+    // "klmnopqrst") is within the trailing-quarter search window
+    // (24 - floor(24/4) = 18 <= 21), so the cut backs up to that space
+    // instead of splitting "uvwxyzabcd" in half.
+    const result = truncateSnippet(text, 24);
+    expect(result).toBe("abcdefghij klmnopqrst…");
+  });
+
+  it("SNIPPET_MAX_LENGTH is used as the default limit", () => {
+    const text = "x".repeat(SNIPPET_MAX_LENGTH + 50);
+    const truncated = truncateSnippet(text);
+    expect(truncated.length).toBeLessThanOrEqual(SNIPPET_MAX_LENGTH + 1);
+    expect(truncated.endsWith("…")).toBe(true);
+  });
+
+  it("preserves accented Spanish characters intact at a cut point", () => {
+    // "camión" straddles a plausible cut point; the accented "ó" must
+    // survive whichever side of the cut it lands on, never split.
+    const text = "El camión necesita revisión completa del sistema de frenos.";
+    const result = truncateSnippet(text, 12);
+    // No U+FFFD replacement character and no lone combining mark: the
+    // string is well-formed either way.
+    expect(result).not.toContain("�");
+    expect([...result].every((ch) => !/\p{M}/u.test(ch))).toBe(true);
+  });
+});
+
+describe("splitSnippet", () => {
+  it("hidden is empty and visible is the whole text when nothing is cut", () => {
+    expect(splitSnippet("short text", 200)).toEqual({
+      visible: "short text",
+      hidden: "",
+    });
+  });
+
+  /**
+   * The property that makes this fix a genuine byte-weight win rather than
+   * the PR #106 near-miss it replaces (a `title` attribute carrying the
+   * *entire* snippet a second time, alongside the truncated display text —
+   * caught before merge, see `splitSnippet`'s own docs): `visible` (with its
+   * `…` removed) and `hidden` must be *complementary*, covering every
+   * character of the original exactly once between them, never overlapping
+   * and never dropping anything.
+   */
+  it("visible (minus its ellipsis) plus hidden reconstructs the original text exactly, with nothing overlapping or lost", () => {
+    const samples = [
+      "The transfer case chain stretches over time and the front axle stops engaging on demand, which the dash light usually flags first.",
+      "a".repeat(300),
+      "abcdefghij klmnopqrst uvwxyzabcd efghijklmn",
+      "El camión necesita revisión completa del sistema de frenos, y conviene revisarlo antes de un viaje largo por carretera.",
+      "",
+      "x".repeat(200), // exactly at the default limit
+    ];
+
+    for (const text of samples) {
+      const { visible, hidden } = splitSnippet(text, 40);
+      const visibleWithoutEllipsis = visible.endsWith("…")
+        ? visible.slice(0, -1)
+        : visible;
+      expect(visibleWithoutEllipsis + hidden).toBe(text);
+    }
+  });
+
+  it("hidden holds exactly what visible's ellipsis replaced — nothing more, nothing less", () => {
+    const text =
+      "The transfer case chain stretches over time and the front axle " +
+      "stops engaging on demand, which the dash light usually flags first.";
+    const { hidden } = splitSnippet(text, 60);
+    expect(hidden.length).toBeGreaterThan(0);
+    // hidden is a real suffix of the original text, not a re-truncated or
+    // re-normalized copy of it.
+    expect(text.endsWith(hidden)).toBe(true);
+  });
+
+  it("truncateSnippet returns exactly splitSnippet's visible half", () => {
+    const text = "x".repeat(300);
+    expect(truncateSnippet(text, 50)).toBe(splitSnippet(text, 50).visible);
   });
 });
 

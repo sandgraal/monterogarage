@@ -66,6 +66,20 @@
  * `[glossarySegment].astro` and `[problemsSegment].astro` already document at
  * length.
  *
+ * **The snippet is the one exception, and it is deliberate (PR #106,
+ * SCF-06):** `problems` entries' summaries average over a thousand
+ * characters, and across 221 cards that was the index's single largest
+ * weight contributor — measurably so on CI's Lighthouse budget, which
+ * `/es/buscar/` (whose `prose.es` runs longer than `prose.en` throughout this
+ * corpus) missed by more than `/en/search/` did for exactly that reason.
+ * `splitSnippet` (`src/lib/search.ts`) divides a long snippet into a short
+ * `visible` prefix and a `hidden` remainder rendered in a `display: none`
+ * span — see that function's own docs for why this, and not a `title`
+ * attribute carrying the whole snippet a second time, is the fix that
+ * actually reduces page weight. `element.textContent` still walks into the
+ * hidden span, so `buildSearchHaystack` sees the complete original snippet
+ * and no word is lost to search, only to the card's own display.
+ *
  * ## No vehicle-fitment filter here (deliberate scope cut)
  *
  * Every other listing page on this site layers FIT-03's dim-and-tag vehicle
@@ -104,6 +118,7 @@ import { formatCount, glossaryTermDomId } from "../../lib/glossary-filter";
 import { problemRoutePath } from "../../lib/problems";
 import {
   SEARCH_DOCUMENT_TYPES,
+  splitSnippet,
   type SearchDocument,
   type SearchDocumentType,
 } from "../../lib/search";
@@ -330,6 +345,18 @@ const typeOptions = (SEARCH_DOCUMENT_TYPES as readonly SearchDocumentType[])
           <ul class="search__list" data-search-list>
             {documents.map((doc) => {
               const href = docHref(doc.href);
+              /**
+               * SCF-06 follow-up (PR #106 review): `visible` and `hidden`
+               * are complementary, non-overlapping halves of `doc.snippet`
+               * (`splitSnippet`'s own docs walk through why — the first
+               * version of this fix duplicated the whole snippet into a
+               * `title` attribute, which made the page *larger*, not
+               * smaller). `hidden` renders inside a `.visually-hidden` span
+               * below, so `element.textContent` — what
+               * `buildSearchHaystack` reads — sees the complete original
+               * text, while only `visible` costs any layout or paint.
+               */
+              const snippet = splitSnippet(doc.snippet);
               return (
                 <li class="search-result" data-type={doc.type}>
                   <span class="search-result__type">
@@ -343,7 +370,17 @@ const typeOptions = (SEARCH_DOCUMENT_TYPES as readonly SearchDocumentType[])
                       </span>
                     )}
                   </h2>
-                  <p class="search-result__snippet">{doc.snippet}</p>
+                  <p class="search-result__snippet">
+                    {snippet.visible}
+                    {snippet.hidden !== "" && (
+                      <span
+                        class="search-result__snippet-rest"
+                        aria-hidden="true"
+                      >
+                        {snippet.hidden}
+                      </span>
+                    )}
+                  </p>
                   {(doc.badges.length > 0 || doc.codes.length > 0) && (
                     <p class="search-result__chips">
                       {doc.badges.map((badge) => (
@@ -415,6 +452,14 @@ const typeOptions = (SEARCH_DOCUMENT_TYPES as readonly SearchDocumentType[])
     const none = root.querySelector<HTMLElement>("[data-search-none]");
     if (!toolbar || !input || !count || !none) return;
 
+    /**
+     * Plain `textContent` — which is exactly why `.search-result__snippet`'s
+     * `display: none` remainder span (`splitSnippet`'s `hidden` half, see the
+     * server template's comment) works with no special-casing here:
+     * `textContent` walks into hidden descendants regardless of their CSS
+     * `display`, so a truncated card's full, untruncated snippet text is
+     * already part of what this reads.
+     */
     const textOf = (element: Element, selector: string): string[] =>
       [...element.querySelectorAll<HTMLElement>(selector)].map(
         (node) => node.textContent ?? ""
@@ -664,6 +709,24 @@ const typeOptions = (SEARCH_DOCUMENT_TYPES as readonly SearchDocumentType[])
     font-size: 0.875rem;
     line-height: 1.55;
     color: var(--muted-strong);
+  }
+
+  /*
+   * SCF-06 follow-up (PR #106 review): `splitSnippet`'s `hidden` half,
+   * present only so `element.textContent` — what the client script's
+   * `buildSearchHaystack` call reads — sees the complete original snippet
+   * (SRCH-01 recall). Deliberately `display: none`, not this page's
+   * `.visually-hidden` (the sr-only recipe used for the search box's own
+   * `<label>`): that recipe keeps content in the accessibility tree, which
+   * is right for a label nobody should lose but wrong here — this text is
+   * not meant to be read by anyone, sighted or not, only found by the
+   * search index, and `display: none` is both the correct semantics for
+   * that and the cheaper one: a `display: none` subtree costs no layout or
+   * paint at all, however long the text inside it, which is the entire
+   * point of splitting the snippet in the first place.
+   */
+  .search .search-result__snippet-rest {
+    display: none;
   }
 
   .search .search-result__chips,

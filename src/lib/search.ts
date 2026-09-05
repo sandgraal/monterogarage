@@ -159,6 +159,111 @@ export function buildSearchHaystack(source: SearchHaystackSource): string {
   );
 }
 
+/**
+ * The displayed length of a result card's snippet (SCF-06 follow-up,
+ * PR #106 review). `[searchSegment].astro` uses this to shorten what a card
+ * *shows*; {@link splitSnippet}'s `hidden` half keeps the rest of the text
+ * reachable to {@link buildSearchHaystack} at effectively no rendering cost
+ * (see that function's docs for why — this is not the same trade a naive
+ * `title="…full text…"` attribute would make).
+ *
+ * 200 was chosen against this corpus, not picked round: glossary
+ * definitions average ~225–247 characters (EN/ES) and mostly fit under this
+ * length untouched, while `problems` entries' summaries — full paragraphs,
+ * averaging **1170 characters in EN and 1284 in ES** — are the index's
+ * single largest weight contributor by far, and this is where truncation
+ * actually earns its keep.
+ */
+export const SNIPPET_MAX_LENGTH = 200;
+
+/** The two halves {@link splitSnippet} divides a snippet into. */
+export interface SnippetParts {
+  /** What the card shows — `text` unchanged, or a `…`-suffixed prefix. */
+  readonly visible: string;
+  /**
+   * Whatever `visible` cut off, verbatim — `""` when nothing was cut.
+   * `visible`'s content (with its trailing `…` removed) followed by `hidden`
+   * reconstructs `text` exactly; nothing is duplicated between the two.
+   */
+  readonly hidden: string;
+}
+
+/**
+ * Split `text` into a short, displayable `visible` prefix and a `hidden`
+ * remainder, breaking on the last word boundary at or before `maxLength`
+ * rather than mid-word. Text already at or under the limit is returned
+ * whole, as `{ visible: text, hidden: "" }` — no ellipsis added to a
+ * snippet that was never truncated.
+ *
+ * ## Why a hidden remainder and not a `title` attribute
+ *
+ * The first version of this fix put the *entire* untruncated snippet into a
+ * `title` attribute so search could still find it — which is exactly
+ * backwards for a page-weight fix: it left the shortened text on display
+ * *and added a second, full copy* of the same string as an attribute value,
+ * making the page larger, not smaller (caught before merge — see PR #106's
+ * history). The two `SnippetParts` are non-overlapping instead: concatenated
+ * they equal `text` exactly once, so nothing is stored twice.
+ *
+ * `[searchSegment].astro` renders `hidden` inside a `.visually-hidden` span
+ * (this page's existing sr-only recipe, already used for the search box's
+ * own `<label>`) rather than dropping it: a browser does essentially no
+ * layout or paint work for a clipped, one-line, off-screen span regardless
+ * of how much text is inside it, so the bulk of a long `problems` summary
+ * costs render time only while it is *visible* — but `element.textContent`
+ * still walks into hidden descendants, so {@link buildSearchHaystack}
+ * (which reads a card's rendered `textContent`) sees `visible + hidden`,
+ * i.e. the complete original snippet, and SRCH-01 recall is unaffected.
+ *
+ * The word-boundary search only looks within the trailing quarter of the
+ * budget (`maxLength / 4`): a `text` with no whitespace anywhere near the
+ * cut point (one very long word, or a language whose script does not use
+ * ASCII spaces) falls back to a hard cut rather than trimming away most of
+ * the budget hunting for a boundary that is not there.
+ *
+ * Safe on this corpus's Spanish text: accented Latin letters (`á`, `ñ`, …)
+ * are single UTF-16 code units in ordinary (non-decomposed) form, which is
+ * how every `prose.es` value in this repo is authored and how `.length` and
+ * string slicing count — so a cut point never lands inside one character,
+ * the way it could if the text had been NFD-decomposed first (see
+ * `src/lib/text.ts`'s own note on why `normalizeForSearch` decomposes and
+ * this function deliberately does not).
+ */
+export function splitSnippet(
+  text: string,
+  maxLength: number = SNIPPET_MAX_LENGTH
+): SnippetParts {
+  if (text.length <= maxLength) return { visible: text, hidden: "" };
+
+  const hardCut = text.slice(0, maxLength);
+  const boundary = hardCut.lastIndexOf(" ");
+  const minBoundary = maxLength - Math.floor(maxLength / 4);
+  const cutIndex = boundary >= minBoundary ? boundary : maxLength;
+
+  // `visibleRaw` and `hidden` are complementary slices of the same string at
+  // the same index (`text.slice(0, i) + text.slice(i) === text` for any
+  // `i`), so trimming only ever moves characters from one side to the
+  // other — it can never lose or duplicate one.
+  const visibleRaw = text.slice(0, cutIndex).trimEnd();
+  const hidden = text.slice(visibleRaw.length);
+
+  return { visible: `${visibleRaw}…`, hidden };
+}
+
+/**
+ * The `visible` half of {@link splitSnippet} on its own, for a caller that
+ * only wants what the card shows and does not need to render the hidden
+ * remainder (every existing caller before this one did, hence this stays a
+ * separate, smaller function rather than every call site destructuring the
+ * pair).
+ */
+export function truncateSnippet(
+  text: string,
+  maxLength: number = SNIPPET_MAX_LENGTH
+): string {
+  return splitSnippet(text, maxLength).visible;
+}
+
 /** One card's already-normalized filterable text, as the filter sees it. */
 export interface SearchFilterCard {
   readonly type: string;
