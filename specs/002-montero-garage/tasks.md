@@ -905,21 +905,39 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   machine); the changed Tier B lines sit inside `it.fails` markers that cannot
   execute until T2-404 activates them, and the Tier A/pure paths are covered by
   the battery.
-- [ ] **T2-402 [PLATFORM]** Showcase + work-log public pages: stable handle
-  URLs, per-vehicle toggles, per-record/per-field visibility, HANDOFF-DESIGN.md
-  chrome, hreflang. Activates T2-401. Depends: T2-401 merged, T2-303. *(SHR-02..04)*
+- [ ] **T2-402 [PLATFORM]** Showcase + work-log data model: stable handle
+  URLs, per-vehicle toggles, per-record/per-field visibility (cost-masking
+  parameterised by principal — see amendment below). Activates T2-401.
+  Depends: T2-401 merged, T2-303. *(SHR-02..04)*
   <br>**Amended 2026-08-31:** the per-record cost-masking logic must be
   **parameterised by principal**, not written once for "the public". T2-404
   needs the same masking for a different audience, and a second copy of a
   privacy rule is a second place for it to drift.
+  <br>**Amended 2026-09-05 (owner decision):** the public-facing pages
+  themselves (the anonymous read path, HANDOFF-DESIGN.md chrome, hreflang)
+  move to T2-404. There is no way to serve an anonymous reader under this
+  schema's security rules without either widening the `SHARE_READER_FUNCTIONS`
+  allow-list `tests/garage/share-instrument.test.ts` pins, or building a
+  second `security definer` RPC granted to `anon` alongside the one T2-404
+  already builds for a different audience. One reviewed reader, not two.
+  T2-402 ships everything up to page rendering — handles, visibility toggles,
+  cost-masking — on branch `feat/002-t2-402-public-showcase-pages`.
 
-- [ ] **T2-404 [PLATFORM]** Typed share grants: the `shares` table, create and
-  revoke RPCs (authenticated), the anon read RPCs, the Edge Function receipt
-  signer, and the accountless share page at a per-locale slug. Activates the
-  T2-401a and T2-401 grant graders. Depends: **T2-401a merged**, T2-401 merged,
-  T2-402. *(SHR-05..09)*
+- [ ] **T2-404 [PLATFORM]** Typed share grants + the public showcase/work-log
+  pages: the `shares` table, create and revoke RPCs (authenticated), the anon
+  read RPCs (serving both the share-token accountless page and T2-402's public
+  showcase/work-log pages through one reviewed reader), the Edge Function
+  receipt signer, the accountless share page at a per-locale slug, and the
+  showcase/work-log pages themselves (stable handle URLs, HANDOFF-DESIGN.md
+  chrome, hreflang). Activates the T2-401a and T2-401 grant graders, and
+  T2-402's public-pages graders. Depends: **T2-401a merged**, T2-401 merged,
+  T2-402 merged (handles/toggles/masking half). *(SHR-05..09, SHR-02..04)*
   <br>Kept out of T2-402 deliberately: this is a new trust boundary and it gets
   its own review rather than riding in behind the public pages.
+  <br>**Amended 2026-09-05 (owner decision):** absorbs T2-402's public
+  showcase/work-log page rendering — see T2-402's amendment above. The world
+  (no token) and a share-token holder are both principals with no
+  authenticated session; one anon-granted reader serves both, reviewed once.
   <br>*Architecture, decided 2026-08-31 — see 002 §10 and the plan record:*
   <br>— **`security definer` RPC granted to `anon`**, tables keep
   `revoke all ... from anon`. No new RLS policy is owner-unscoped, so
