@@ -1,0 +1,69 @@
+{
+  "id": "all-suspension-calza-de-levante",
+  "fitment": {
+    "gens": ["gen1", "gen2", "gen2-5", "gen3", "gen4"]
+  },
+  "system": "suspension",
+  "aliases": [
+    {
+      "term": "espaciador",
+      "locale": "es",
+      "countries": ["CR", "MX", "ES"],
+      "falseFriend": true
+    },
+    {
+      "term": "espaciadores",
+      "locale": "es",
+      "countries": ["CR", "MX", "ES"],
+      "falseFriend": true
+    },
+    {
+      "term": "spacer",
+      "locale": "en",
+      "countries": ["US", "AU"]
+    },
+    {
+      "term": "spacers",
+      "locale": "en",
+      "countries": ["US", "AU"]
+    },
+    {
+      "term": "spacer lift",
+      "locale": "en",
+      "countries": ["US"]
+    }
+  ],
+  "relatedTerms": [
+    "all-suspension-levante-de-suspension",
+    "all-suspension-amortiguador",
+    "all-suspension-resorte",
+    "all-suspension-alineamiento"
+  ],
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen3 Front Strut Top Hat Spacers, 6mm: how much height a thin spacer actually adds, and the warning that «large spacer lifts… will change the geometry of the suspension arc and can cause the upper control arm to hit the shock absorber at full droop»",
+      "url": "https://lusooverland.com/VS-LO-M3-FSS6",
+      "archiveUrl": "https://web.archive.org/web/20260905141606id_/https://lusooverland.com/VS-LO-M3-FSS6",
+      "accessed": "2026-09-05",
+      "kind": "vendor"
+    },
+    {
+      "title": "Gaval Parts 4x4 — «Kits de Suspensión Vs Kits de Levante con calzas»: the Spanish-language shop's own contrast, including «El rango del resorte no se cambia, el carro va a tener la misma articulación y el mismo performance y confort que la suspension original» and «Al agregar calzas sin cambiar amortiguadores, disminuye el recorrido de la suspensión»",
+      "url": "https://gavalparts.com/blogs/noticias/kits-de-suspension-vs-kits-de-levante-con-calzas",
+      "archiveUrl": "https://web.archive.org/web/20251009224213id_/https://gavalparts.com/blogs/noticias/kits-de-suspension-vs-kits-de-levante-con-calzas",
+      "accessed": "2026-09-05",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "lift spacer",
+      "summary": "A packer fitted above a strut or a coil spring that raises the body without changing the spring itself. It is the cheap, reversible half of a lift: the spring rate, the articulation and the load capacity stay exactly as they were, and what changes is where the suspension sits in its own arc. Sold in Costa Rica as a calza, and the word espaciador is also used locally for the very different part that moves a wheel outboard — check which one the counter means before you pay."
+    },
+    "es": {
+      "title": "calza de levante",
+      "summary": "La pieza que se monta encima del amortiguador o del resorte para subir la carrocería sin cambiar el resorte. Es la mitad barata y reversible de un levante: la dureza del resorte, la articulación y la capacidad de carga quedan igual que estaban, y lo que cambia es en qué punto de su propio recorrido trabaja la suspensión. En Costa Rica también se le dice espaciador, pero ojo: esa misma palabra se usa para la pieza —muy distinta— que separa el aro hacia afuera. Confirme en la repuestera de cuál de las dos le están hablando antes de pagar."
+    }
+  }
+}

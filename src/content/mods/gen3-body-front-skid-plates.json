@@ -1,0 +1,77 @@
+{
+  "id": "gen3-body-front-skid-plates",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    }
+  },
+  "system": "body",
+  "cost": {
+    "from": "moderate",
+    "to": "significant"
+  },
+  "difficulty": 2,
+  "requires": [],
+  "affects": [
+    {
+      "id": "the-plates-are-permanent-weight-on-the-front-springs",
+      "system": "suspension",
+      "impact": "needs-adjustment",
+      "ref": {
+        "collection": "mods",
+        "id": "gen3-suspension-lift-springs"
+      }
+    },
+    {
+      "id": "steel-bends-and-aluminium-gouges",
+      "system": "body",
+      "impact": "degrades"
+    }
+  ],
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen 3 Front 3 Skid Plates: «3mm Steel with Black Powder Coated finish or 6mm 5052 Marine-Grade Aluminum», the per-plate weights (steel front 13 lbs, oil pan 14 lbs, transmission 19 lbs; aluminium 9, 10 and 13 lbs), «No drilling, cutting, or permanent modifications to the vehicle are required», and the material trade-off in the supplier's own words — steel «Bends when impacted, can be hammered back into shape» against aluminium «30% Lighter than 3mm Steel», «Ultimate Rust/Corrosion Protection» but «Gouges more when impacted, harder to reshape»",
+      "url": "https://lusooverland.com/VA-LO-K-M3-3FX",
+      "archiveUrl": "https://web.archive.org/web/20260905141849id_/https://lusooverland.com/VA-LO-K-M3-3FX",
+      "accessed": "2026-09-05",
+      "kind": "vendor"
+    },
+    {
+      "title": "Luso Overland — MONTERO Gen3 Lovells Coil Springs: the duty ratings and their constant-load figures, and the stated minimum of «at least 75 lbs of added constant weight» below which the tallest springs are not recommended for the lighter 2001-2002 trim — the figure a set of plates is measured against",
+      "url": "https://lusooverland.com/2001-2006-mitsubishi-montero-gen3-coil-springs",
+      "archiveUrl": "https://web.archive.org/web/20250425022326id_/https://lusooverland.com/2001-2006-mitsubishi-montero-gen3-coil-springs",
+      "accessed": "2026-09-05",
+      "kind": "vendor"
+    },
+    {
+      "title": "Adventure Driven Design — Montero Gen 3 (2001-2006) armour listings, showing a second supplier offering both a steel skid plate set and an aluminium («Superleggera») alternative for the same truck",
+      "url": "https://shop.adventuredrivendesign.com/index.php?route=product/category&path=71_74",
+      "archiveUrl": "https://web.archive.org/web/20260316143832id_/https://shop.adventuredrivendesign.com/index.php?route=product/category&path=71_74",
+      "accessed": "2026-09-05",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Front skid plates: pick the material before you pick the brand",
+      "summary": "The front set for a Gen 3 covers three separate things — the front undercarriage, the oil pan and the transmission — and it is sold either in steel or in marine-grade aluminium. The supplier publishes the thickness of each material, the weight of each individual plate in both, and the percentage by which the aluminium set is lighter; all of those figures are in the first citation. It also states, in its own words, that steel bends when it is hit and can be hammered back, while aluminium gouges more and is harder to reshape. Neither of those is a defect: they are two different answers to the same impact, and which one you want depends on whether you can get to a workshop or have to keep driving.",
+      "tradeoffs": "Armour is the modification that most obviously does something and least obviously costs something, so be specific about the cost. It is permanent weight, all of it ahead of the front axle line, and the spring supplier cited below publishes a minimum figure of added constant weight at which its own recommendations change — a full steel set is in that territory before you have added anything else. It also puts a solid surface between you and everything you service from underneath, so budget the extra minutes on every oil change and keep the mounting hardware in mind at every service, because a plate you have to take off for an oil change is a plate whose fasteners live in the weather. And a plate protects the thing behind it, not the thing next to it: a set like this covers the undercarriage, the pan and the transmission and does nothing at all for the differentials, the fuel tank or the rocker panels. The one genuinely good news is reversibility — the supplier states that fitment needs no drilling, cutting or permanent modification, so the decision can be undone. Take the weight into account when you choose springs, and if you are running a lift, read this together with the linked suspension entry.",
+      "affectsNotes": {
+        "the-plates-are-permanent-weight-on-the-front-springs": "Every plate is constant weight the front springs now carry, and the spring supplier states a minimum quantity of added constant weight at which its recommendation for the lighter trim changes. Add the plate weights from the first citation to whatever else is going on the front of the truck before you order springs — the linked lift entry is where that decision gets made.",
+        "steel-bends-and-aluminium-gouges": "The supplier's own comparison says steel bends when impacted and can be hammered back into shape, while the aluminium set is around a third lighter and better against corrosion but gouges more and is harder to reshape. A plate that has taken a real hit is not the plate you bought either way — plan on inspecting the mounts after any impact hard enough to have been worth the armour."
+      }
+    },
+    "es": {
+      "title": "Protectores delanteros: escoja el material antes que la marca",
+      "summary": "El juego delantero para una Gen 3 cubre tres cosas distintas —los bajos delanteros, el cárter y la transmisión— y se vende en acero o en aluminio de grado marino. La casa publica el espesor de cada material, el peso de cada plancha por separado en los dos, y en qué porcentaje es más liviano el juego de aluminio; todas esas cifras están en la primera fuente. También dice, con sus propias palabras, que el acero se dobla al golpe y se puede volver a martillar, mientras que el aluminio se rasga más y cuesta más devolverlo a forma. Ninguna de las dos cosas es un defecto: son dos respuestas distintas al mismo golpe, y cuál quiere usted depende de si puede llegar a un taller o le toca seguir manejando.",
+      "tradeoffs": "El blindaje es la modificación que más obviamente hace algo y menos obviamente cuesta algo, así que seamos concretos con el costo. Es peso permanente, y todo por delante del eje delantero; la casa de resortes citada abajo publica una cantidad mínima de peso permanente agregado a partir de la cual cambian sus propias recomendaciones, y un juego completo de acero ya anda en ese rango antes de que usted le ponga cualquier otra cosa. Además mete una superficie sólida entre usted y todo lo que se atiende desde abajo: presupueste los minutos extra en cada cambio de aceite y tenga presente la tornillería de montaje en cada servicio, porque una plancha que hay que quitar para un cambio de aceite es una plancha cuyos tornillos viven a la intemperie. Y una plancha protege lo que tiene detrás, no lo que tiene al lado: un juego como este cubre los bajos, el cárter y la transmisión, y no hace absolutamente nada por los diferenciales, el tanque de combustible ni los costados. La buena noticia real es que se puede deshacer: la casa indica que el montaje no requiere perforar, cortar ni modificaciones permanentes. Tome en cuenta el peso al escoger resortes y, si anda con levante, lea esto junto con la entrada de suspensión enlazada.",
+      "affectsNotes": {
+        "the-plates-are-permanent-weight-on-the-front-springs": "Cada plancha es peso permanente que ahora cargan los resortes delanteros, y la casa de resortes indica una cantidad mínima de peso permanente agregado a partir de la cual cambia su recomendación para el acabado más liviano. Sume los pesos de las planchas de la primera fuente a todo lo demás que le vaya a montar adelante antes de pedir resortes; esa decisión se toma en la entrada de levante enlazada.",
+        "steel-bends-and-aluminium-gouges": "La comparación de la propia casa dice que el acero se dobla al golpe y se puede volver a martillar, y que el juego de aluminio es alrededor de un tercio más liviano y mejor contra la corrosión, pero se rasga más y cuesta más devolverlo a forma. Una plancha que se llevó un golpe de verdad ya no es la plancha que usted compró, en cualquiera de los dos materiales: cuente con revisar los soportes después de cualquier impacto lo bastante fuerte como para que el blindaje haya valido la pena."
+      }
+    }
+  }
+}

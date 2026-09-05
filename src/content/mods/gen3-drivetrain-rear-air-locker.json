@@ -1,0 +1,80 @@
+{
+  "id": "gen3-drivetrain-rear-air-locker",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    }
+  },
+  "system": "drivetrain",
+  "cost": {
+    "from": "significant",
+    "to": "major"
+  },
+  "difficulty": 5,
+  "requires": [],
+  "affects": [
+    {
+      "id": "while-it-is-locked-the-axle-resists-turning",
+      "system": "steering",
+      "impact": "degrades"
+    },
+    {
+      "id": "the-differential-comes-apart-to-fit-it",
+      "system": "drivetrain",
+      "impact": "needs-adjustment"
+    },
+    {
+      "id": "it-does-not-work-without-an-air-supply",
+      "system": "electrical",
+      "impact": "needs-adjustment"
+    },
+    {
+      "id": "the-front-differential-is-a-separate-and-narrower-question",
+      "system": "drivetrain",
+      "impact": "needs-adjustment"
+    }
+  ],
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "ARB 4x4 Accessories — Air Locker RD155 (Mitsubishi 9.5\", 33 spline, IRS): the rear application for Montero 1999-2006 across Base, XLS and Limited with the 3.5-3.8 V6, listed as suiting «All» ratios, with a 9.5 in ring gear and a 1.41 in shaft diameter; the mechanism, «When activated, the Air Locker prevents the internal differential gears from rotating and therefore prevents the axle shafts from turning independently of each other», and «When unlocked, it operates like a conventional open differential»; the kit contents («Air Locker differential, activation switch, solenoid valve, air line and bulkhead fitting») and «Air compressor required for operation (sold separately)»",
+      "url": "https://store.arbusa.com/air-locker-differential-mitsubishi-9-5-33-spl-irs-rd155/",
+      "archiveUrl": "https://web.archive.org/web/20260412173446id_/https://store.arbusa.com/air-locker-differential-mitsubishi-9-5-33-spl-irs-rd155/",
+      "accessed": "2026-09-05",
+      "kind": "vendor"
+    },
+    {
+      "title": "ARB 4x4 Accessories — Air Locker RD110 (Mitsubishi IFS, 28 spline), the front application for Montero and Montero Sport 1991-2006, with the two exclusions that decide whether it fits a given truck at all: «Some 28 spline axles have the smaller 7.25 in RG and will not accept RD110», and that it is for «IFS models only, will not fit Pajero/Montero 3000cc automatic»",
+      "url": "https://store.arbusa.com/air-locker-differential-mitsubishi-ifs-28-spl-rd110/",
+      "archiveUrl": "https://web.archive.org/web/20260118201458id_/https://store.arbusa.com/air-locker-differential-mitsubishi-ifs-28-spl-rd110/",
+      "accessed": "2026-09-05",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "A rear locker: the biggest traction gain, and the one that has to be switched off",
+      "summary": "A selectable rear locker is the single largest traction change available to this truck, and unlike a lift or a tire it does nothing at all until you ask it to. The manufacturer cited below describes the mechanism precisely: activated, it stops the differential gears turning and therefore stops the two rear axle shafts turning independently of each other; unlocked, it behaves like an ordinary open differential. The rear application for this generation is listed for the whole 1999-2006 span across the common trims and is stated to suit all factory ratios, so a locker and a ratio change are independent decisions. The kit as sold is a differential and its switching hardware; the air to operate it is a separate purchase, which the manufacturer says in as many words.",
+      "tradeoffs": "Everything good about a locker happens when it is engaged, and everything to be careful about happens for the same reason. With both rear wheels tied together the axle resists being steered, so it is a low-speed, off-pavement tool that you switch off before you are back on a road with grip — the manufacturer's own statement that the unit behaves like an open differential is explicitly about the unlocked state. It is also the deepest job in this list: the differential comes out and goes back in as a set-up job, which is a specialist's work with a specialist's tooling, and a set-up done badly is a whining, short-lived differential rather than a bad afternoon. Then there is the air: no compressor, no locker, and the compressor is its own install with its own current draw and its own mounting problem. The front is a separate and narrower question — the front application carries two explicit exclusions in the second citation, one about ring gear size on some 28-spline axles and one about a particular engine and transmission combination, so confirm your own axle before assuming a front locker is available to you. Weigh a locker against tires honestly: a locker helps when one wheel has no grip at all, and better tires help everywhere. Drivetrain work of this depth belongs with a qualified mechanic.",
+      "affectsNotes": {
+        "while-it-is-locked-the-axle-resists-turning": "The manufacturer's own description is that activation prevents the axle shafts from turning independently of each other — which is exactly what has to happen for the two wheels to fight a turn. Its claim that the unit does not affect on-road drivability is about the unlocked state, where it says the differential behaves conventionally. Engage it where there is no grip to give up, and unlock it before you are steering on a surface that has any.",
+        "the-differential-comes-apart-to-fit-it": "The kit is a replacement differential centre with switching hardware, not a bolt-on accessory: the differential has to come out, be set up and go back in. That is where most of the cost and all of the risk lives, and it is the reason this entry carries the highest difficulty on the page.",
+        "it-does-not-work-without-an-air-supply": "The manufacturer states that an air compressor is required for operation and is sold separately. Budget the compressor, its mounting, its wiring and its current draw as part of this modification rather than as a later accessory — an installed locker with no air is a very expensive open differential.",
+        "the-front-differential-is-a-separate-and-narrower-question": "The front application listed in the second citation excludes some 28-spline axles that use a smaller ring gear, and excludes one engine-and-transmission combination outright. Check what your truck actually has before planning a pair; the rear listing's broader coverage does not carry over to the front."
+      }
+    },
+    "es": {
+      "title": "Bloqueo trasero: la mayor ganancia de tracción, y la que hay que saber apagar",
+      "summary": "Un bloqueo del diferencial trasero seleccionable es el cambio de tracción más grande disponible para este vehículo y, a diferencia de un levante o una llanta, no hace absolutamente nada hasta que usted se lo pide. El fabricante citado abajo describe el mecanismo con precisión: activado, impide que giren los engranajes del diferencial y por lo tanto impide que los dos palieres traseros giren de forma independiente; desbloqueado, se comporta como un diferencial abierto corriente. La aplicación trasera para esta generación aparece listada para todo el rango 1999-2006 en los acabados comunes y se indica compatible con todas las relaciones de fábrica, así que el bloqueo y un cambio de relación son decisiones independientes. El juego que se vende es un diferencial y sus componentes de mando; el aire para operarlo es una compra aparte, y el fabricante lo dice con todas sus letras.",
+      "tradeoffs": "Todo lo bueno de un bloqueo pasa cuando está activado, y todo lo que hay que cuidar pasa por la misma razón. Con las dos ruedas traseras amarradas entre sí el eje se resiste a girar, así que es una herramienta de baja velocidad y fuera de asfalto que usted apaga antes de volver a una superficie con agarre; la afirmación del propio fabricante de que la unidad se comporta como un diferencial convencional se refiere explícitamente al estado desbloqueado. Es además el trabajo más profundo de esta lista: el diferencial sale y vuelve a entrar como una calibración completa, que es trabajo de especialista con herramienta de especialista, y una calibración mal hecha es un diferencial que zumba y dura poco, no una tarde perdida. Después está el aire: sin compresor no hay bloqueo, y el compresor es su propio montaje, con su propio consumo de corriente y su propio problema de anclaje. El delantero es una pregunta aparte y más estrecha: la aplicación delantera trae dos exclusiones explícitas en la segunda fuente, una sobre el tamaño de la corona en ciertos palieres de 28 estrías y otra sobre una combinación concreta de motor y caja, así que confirme su propio eje antes de dar por hecho que hay bloqueo delantero para usted. Compare el bloqueo contra las llantas con honestidad: el bloqueo ayuda cuando una rueda se quedó sin agarre del todo, y unas mejores llantas ayudan en todas partes. Un trabajo de tren motriz de esta profundidad es de mecánico calificado.",
+      "affectsNotes": {
+        "while-it-is-locked-the-axle-resists-turning": "La descripción del propio fabricante es que la activación impide que los palieres giren de forma independiente entre sí, que es exactamente lo que tiene que pasar para que las dos ruedas peleen contra una curva. Su afirmación de que la unidad no afecta el manejo en carretera se refiere al estado desbloqueado, donde dice que el diferencial trabaja de forma convencional. Actívelo donde no haya agarre que perder y desbloquéelo antes de estar dando dirección sobre una superficie que sí lo tenga.",
+        "the-differential-comes-apart-to-fit-it": "El juego es un centro de diferencial de reemplazo con componentes de mando, no un accesorio que se atornilla: el diferencial tiene que salir, calibrarse y volver a entrar. Ahí vive la mayor parte del costo y todo el riesgo, y es la razón por la que esta entrada lleva la dificultad más alta de la página.",
+        "it-does-not-work-without-an-air-supply": "El fabricante indica que se requiere un compresor de aire para su operación y que se vende por separado. Presupueste el compresor, su anclaje, su cableado y su consumo de corriente como parte de esta modificación y no como un accesorio para después: un bloqueo instalado sin aire es un diferencial abierto carísimo.",
+        "the-front-differential-is-a-separate-and-narrower-question": "La aplicación delantera listada en la segunda fuente excluye ciertos palieres de 28 estrías que usan una corona más pequeña, y excluye de plano una combinación de motor y caja. Revise qué trae su vehículo antes de planear el par; la cobertura más amplia del listado trasero no se traslada al delantero."
+      }
+    }
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "id": "gen3-body-roof-rack-and-roof-load",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    }
+  },
+  "system": "body",
+  "safetyCritical": true,
+  "cost": {
+    "from": "moderate",
+    "to": "significant"
+  },
+  "difficulty": 2,
+  "requires": [],
+  "affects": [
+    {
+      "id": "the-dynamic-limit-includes-the-rack-itself",
+      "system": "body",
+      "impact": "needs-adjustment"
+    },
+    {
+      "id": "roof-weight-comes-out-of-the-same-payload",
+      "system": "suspension",
+      "impact": "needs-adjustment"
+    }
+  ],
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Pajero Club of South Australia — «Pajero Generations 3 & 4: Roof Load Ratings/Limits»: a Generation 3 (NM/NP, 2000-2006) dynamic roof load of 100 kg for the roof system and cargo combined, attributed to the Mitsubishi owner's manual and Rhino-Rack fitting guides; a static figure of up to 250 kg attributed to Rhino-Rack only, with the club's own note that «Mitsubishi manuals do not publish static roof load ratings»",
+      "url": "https://pajeroclubsouthaustralia.com/2025/07/28/pajero-generations-3-4-roof-load-ratings-limits/",
+      "archiveUrl": "https://web.archive.org/web/20260905142523id_/https://pajeroclubsouthaustralia.com/2025/07/28/pajero-generations-3-4-roof-load-ratings-limits/",
+      "accessed": "2026-09-05",
+      "kind": "forum"
+    },
+    {
+      "title": "CarSpecs — 2003 Mitsubishi Montero Limited 4dr SUV 3.8L V6 4x4 auto: a curb weight of «4,784 lbs.» against a gross weight of «6,085 lbs.», the two figures whose difference is the whole payload budget a roof load is also spent out of",
+      "url": "https://www.carspecs.us/cars/2003/mitsubishi/montero/13201",
+      "archiveUrl": "https://web.archive.org/web/20260905142251id_/https://www.carspecs.us/cars/2003/mitsubishi/montero/13201",
+      "accessed": "2026-09-05",
+      "kind": "reference"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "A roof rack, and the two numbers that limit it",
+      "summary": "Two separate limits apply to anything you put on the roof, and the smaller one wins. The first is the vehicle's own dynamic roof load — the weight the roof may carry while the truck is moving, rack included — and the club article cited below gives that figure for this generation, alongside the much larger static figure that applies only when the vehicle is standing still and which the club is careful to attribute to a rack maker rather than to Mitsubishi. The second limit is whatever the rack you buy is rated for, which is a statement about the rack and never permission from the vehicle. Take the smaller number, subtract the rack's own weight from it, and what is left is the cargo you may actually carry up there.",
+      "tradeoffs": "A roof rack is the cheapest way to make a Montero look like it goes places and the most expensive place on the truck to put weight. The dynamic and static figures in the first citation are not two opinions about one number — the gap between them exists precisely because a moving vehicle loads its roof differently from a parked one, so a roof-top tent that is fine overnight can be over the limit on the road. The rack's own weight is charged against the vehicle limit before you have packed anything, and the weight you do pack is also spent out of the truck's total payload, which is the difference between the two weights in the second citation and is shared with the passengers, the fuel, the drawers and the second battery. There are costs that never appear in any table either: the truck is taller than a car park expects, the wind noise is permanent, and the fuel penalty is there at every speed. Load ratings are safety-critical. Weigh what you are putting up there, take the smaller of the two limits, and note that the figure below comes from an Australian club reading Australian documentation — if you cannot find your own market's owner's manual figure, ask a qualified shop rather than assuming the number transfers.",
+      "affectsNotes": {
+        "the-dynamic-limit-includes-the-rack-itself": "The club article cited below is explicit that the Generation 3 dynamic figure covers the roof system and the cargo together, so the rack's own weight — which the rack maker publishes — comes off the allowance before you load a single item. It also separates that dynamic figure from the far higher static one, which applies only to a stationary vehicle and which it attributes to the rack maker rather than to Mitsubishi.",
+        "roof-weight-comes-out-of-the-same-payload": "Whatever goes on the roof is also weight the springs carry, and it comes out of the same payload budget as the people and the fuel — the difference between the curb weight and the gross weight in the second citation. A roof load does not get its own separate allowance just because it sits above everything else."
+      }
+    },
+    "es": {
+      "title": "Una parrilla de techo y los dos números que la limitan",
+      "summary": "A todo lo que usted ponga en el techo le aplican dos límites distintos, y manda el más pequeño. El primero es la carga dinámica de techo del propio vehículo —el peso que el techo puede llevar con el carro en movimiento, parrilla incluida— y el artículo de club citado abajo da esa cifra para esta generación, junto con la cifra estática, mucho mayor, que solo aplica con el vehículo detenido y que el mismo club tiene el cuidado de atribuir a un fabricante de parrillas y no a Mitsubishi. El segundo límite es aquel para el que esté calificada la parrilla que usted compre, y eso es una afirmación sobre la parrilla, nunca un permiso del vehículo. Tome el número menor, réstele el peso de la propia parrilla, y lo que quede es la carga que usted realmente puede llevar allá arriba.",
+      "tradeoffs": "Una parrilla de techo es la forma más barata de que una Montero parezca que va a lugares, y el lugar más caro del carro para poner peso. Las cifras dinámica y estática de la primera fuente no son dos opiniones sobre un mismo número: la distancia entre ellas existe justamente porque un vehículo en movimiento carga el techo de otra manera que uno parqueado, así que una carpa de techo que pasa bien la noche puede ir sobrepasada en carretera. El peso de la propia parrilla se le descuenta al límite del vehículo antes de que usted empaque nada, y lo que sí empaque además se gasta de la capacidad total de carga del carro, que es la diferencia entre los dos pesos de la segunda fuente y que se comparte con los pasajeros, el combustible, las gavetas y la segunda batería. También hay costos que no aparecen en ninguna tabla: el carro queda más alto de lo que un parqueo espera, el ruido de viento es permanente, y el consumo sube a cualquier velocidad. Las capacidades de carga son asunto crítico de seguridad. Pese lo que va a subir, tome el menor de los dos límites, y tenga presente que la cifra de abajo viene de un club australiano leyendo documentación australiana: si no logra encontrar la cifra del manual de su propio mercado, pregunte en un taller calificado en lugar de asumir que el número se traslada.",
+      "affectsNotes": {
+        "the-dynamic-limit-includes-the-rack-itself": "El artículo de club citado abajo es explícito en que la cifra dinámica de la tercera generación cubre el sistema de techo y la carga en conjunto, así que el peso de la propia parrilla —que publica el fabricante de la parrilla— sale del margen antes de que usted suba un solo bulto. También separa esa cifra dinámica de la estática, mucho más alta, que solo aplica con el vehículo detenido y que atribuye al fabricante de parrillas y no a Mitsubishi.",
+        "roof-weight-comes-out-of-the-same-payload": "Todo lo que va en el techo es también peso que cargan los resortes, y sale del mismo presupuesto de carga que la gente y el combustible: la diferencia entre el peso en vacío y el peso bruto de la segunda fuente. La carga de techo no recibe un margen aparte solo por ir encima de todo lo demás."
+      }
+    }
+  }
+}
