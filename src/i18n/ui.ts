@@ -33,6 +33,7 @@ import type { CrossReferenceQuality } from "../schemas/parts";
 import type { ModImpact, ModReferenceCollection } from "../schemas/mods";
 import type { DriveType, GenerationId } from "../schemas/vehicles";
 import type { OptionalSelectionFacet } from "../lib/fitment";
+import type { SearchDocumentType } from "../lib/search";
 import {
   COMMUNITY_TYPE_BRAND_NAMES,
   LINK_KIND_BRAND_NAMES,
@@ -201,6 +202,17 @@ export type ModReferenceCollectionStrings = {
   ]: string;
 };
 
+/**
+ * One flat key per `SEARCH_DOCUMENT_TYPES` value (T702, SRCH-01) — the type
+ * badge on a search result card and the label on its type-facet pill. Derived
+ * from `src/lib/search.ts`'s own list, for the reason every mapped type here
+ * is: a collection joining the index without a translated name for its
+ * results is a type error, not a blank badge.
+ */
+export type SearchTypeStrings = {
+  readonly [Type in SearchDocumentType as `searchType.${Type}`]: string;
+};
+
 export interface UiStrings
   extends
     GlossarySystemStrings,
@@ -217,7 +229,8 @@ export interface UiStrings
     CostBandStrings,
     CrossReferenceQualityStrings,
     ModImpactStrings,
-    ModReferenceCollectionStrings {
+    ModReferenceCollectionStrings,
+    SearchTypeStrings {
   readonly siteTagline: string;
   readonly skipToContent: string;
   readonly navHome: string;
@@ -797,6 +810,21 @@ export interface UiStrings
    * `{count}` is `affects.length`, a figure computed at render time.
    */
   readonly modsAffectsCountTemplate: string;
+  /* Site-wide search — T702, SRCH-01, SRCH-02 */
+  readonly navSearch: string;
+  readonly searchHeading: string;
+  readonly searchIntro: string;
+  readonly searchInputLabel: string;
+  readonly searchInputPlaceholder: string;
+  /** `aria-label` for the type-pill group, same role as `glossaryFilterLabel`. */
+  readonly searchFilterTypeLabel: string;
+  /** The pill that clears a picked type, same role as `glossaryFilterAll`. */
+  readonly searchFilterTypeAll: string;
+  /** `{shown}` / `{total}`, computed and interpolated — see `glossaryCountTemplate`. */
+  readonly searchCountTemplate: string;
+  readonly searchNoResults: string;
+  /** Shown only if every indexed collection is empty — not the ordinary state. */
+  readonly searchEmpty: string;
 }
 
 const en: UiStrings = {
@@ -1304,6 +1332,22 @@ const en: UiStrings = {
   "costBand.moderate": "A normal parts-and-an-afternoon job",
   "costBand.significant": "A major component or a shop bill",
   "costBand.major": "A big share of what the truck is worth",
+
+  navSearch: "Search",
+  searchHeading: "Search",
+  searchIntro:
+    "Search problems, glossary terms and part numbers at once — including regional variants recorded in the glossary.",
+  searchInputLabel: "Search titles, symptoms, glossary terms and part numbers",
+  searchInputPlaceholder: "Search — brake pads, transfer case, MD976075…",
+  searchFilterTypeLabel: "Filter by result type",
+  searchFilterTypeAll: "All results",
+  searchCountTemplate: "{shown} of {total} results",
+  searchNoResults: "No results match that search.",
+  searchEmpty: "Nothing has been published yet.",
+  "searchType.glossary": "Glossary term",
+  "searchType.problems": "Problem",
+  "searchType.parts": "Part",
+  "searchType.mods": "Modification",
 };
 
 const es: UiStrings = {
@@ -1821,6 +1865,24 @@ const es: UiStrings = {
   "costBand.moderate": "Repuestos y una tarde de trabajo",
   "costBand.significant": "Una pieza mayor o una factura de taller",
   "costBand.major": "Buena parte de lo que vale el carro",
+
+  navSearch: "Buscar",
+  searchHeading: "Buscar",
+  searchIntro:
+    "Busque a la vez en problemas, términos del glosario y números de parte — incluidas las variantes regionales registradas en el glosario.",
+  searchInputLabel:
+    "Busque títulos, síntomas, términos del glosario y números de parte",
+  searchInputPlaceholder:
+    "Busque — pastillas de freno, caja de transferencia, MD976075…",
+  searchFilterTypeLabel: "Filtre por tipo de resultado",
+  searchFilterTypeAll: "Todos los resultados",
+  searchCountTemplate: "{shown} de {total} resultados",
+  searchNoResults: "Ningún resultado coincide con esa búsqueda.",
+  searchEmpty: "Todavía no se ha publicado nada.",
+  "searchType.glossary": "Término del glosario",
+  "searchType.problems": "Problema",
+  "searchType.parts": "Repuesto",
+  "searchType.mods": "Modificación",
 };
 
 export const ui: Record<Locale, UiStrings> = { en, es };
@@ -1996,6 +2058,17 @@ export function communityLinkKindLabel(
   return isTranslatableLinkKind(kind)
     ? strings[`communityLinkKind.${kind}`]
     : LINK_KIND_BRAND_NAMES[kind];
+}
+
+/**
+ * The label for a search result's type (T702) — the only supported way to
+ * read one, so the `searchType.` prefix exists in exactly one place.
+ */
+export function searchTypeLabel(
+  strings: UiStrings,
+  type: SearchDocumentType
+): string {
+  return strings[`searchType.${type}`];
 }
 
 /** Every locale's strings, for pages that are not scoped to one locale (404, root). */

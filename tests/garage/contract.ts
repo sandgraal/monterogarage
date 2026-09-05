@@ -1330,6 +1330,9 @@ export const RESERVED_HANDLES = [
   // `COLLECTION_ROUTE_SEGMENTS` rather than trusting it to stay complete.
   "mods",
   "modificaciones",
+  // T702's site-wide search page — same precedent as `mods` above.
+  "search",
+  "buscar",
 ] as const;
 
 /* -------------------------------------------------------------------------

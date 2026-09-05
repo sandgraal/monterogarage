@@ -46,6 +46,16 @@ const navItems = [
     label: strings.navCommunity,
   },
   /**
+   * T702 — the site-wide search page (SRCH-01). Placed after the content
+   * sections it searches across (problems, glossary, community) and before
+   * the account-flow items below, the same "reference first" ordering
+   * `navSignIn`'s own comment states for this list.
+   */
+  {
+    href: collectionRoutePath("search", locale),
+    label: strings.navSearch,
+  },
+  /**
    * 002 T2-301 — the garage. A signed-out visitor who follows it gets the
    * bilingual sign-in prompt rather than an error, which is the point: the
    * door has to be visible before anyone knows there is a room.
