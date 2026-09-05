@@ -107,6 +107,11 @@ const UNCONDITIONAL_PAGES = [
   // lays its toolbar out with `display: flex`, exactly like the parts index.
   { locale: "en", path: "/en/mods/" },
   { locale: "es", path: "/es/modificaciones/" },
+  // T702 — the site-wide search page carries a `[hidden]` element
+  // (`data-search-none`) and lays its toolbar out with `display: flex`,
+  // exactly like every other filtered listing above.
+  { locale: "en", path: "/en/search/" },
+  { locale: "es", path: "/es/buscar/" },
 ] as const;
 
 /**
