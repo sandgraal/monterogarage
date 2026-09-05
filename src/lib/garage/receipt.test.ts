@@ -76,6 +76,23 @@ describe("receiptIssue", () => {
     );
   });
 
+  // `constructor` and `__proto__` only: the lookup lower-cases before it
+  // indexes, so `toString` and `valueOf` become `tostring`/`valueof`, which are
+  // members of nothing and would make a vacuous grader.
+  it.each([["constructor"], ["__proto__"]])(
+    "refuses %s, which the prototype chain answers for (T2-305 review, F2)",
+    (name) => {
+      // Ordinary strings, and a `Content-Type` header can carry either. `in`
+      // answers `true` and the bracket lookup returns `Object` rather than
+      // `undefined`, so before the `Object.hasOwn` fix `receiptObjectPath` did
+      // not throw and built a name whose extension was a function's source.
+      expect(receiptIssue({ type: name, size: 10 })).toBe("unsupported-type");
+      expect(() =>
+        receiptObjectPath({ ownerId: OWNER, mimeType: name, randomId: "x" })
+      ).toThrow(/unsupported type/);
+    }
+  );
+
   it("refuses a file over the bucket's own limit", () => {
     expect(
       receiptIssue({ type: "image/png", size: MAX_RECEIPT_BYTES })

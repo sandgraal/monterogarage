@@ -53,6 +53,29 @@ describe("photoIssue", () => {
     expect(photoIssue({ type: "", size: 10 })).toBe("unsupported-type");
   });
 
+  // `constructor` and `__proto__` only: the lookup lower-cases before it
+  // indexes, so `toString` and `valueOf` become `tostring`/`valueof`, which are
+  // members of nothing and would make a vacuous grader.
+  it.each([["constructor"], ["__proto__"]])(
+    "refuses %s, which the prototype chain answers for (T2-305 review, F2)",
+    (name) => {
+      // Ordinary strings, and a `Content-Type` header can carry either.
+      // `"constructor" in PHOTO_MIME_EXTENSIONS` is `true` and the bracket
+      // lookup returns `Object`, not `undefined` — so before the `Object.hasOwn`
+      // fix `photoObjectPath` built a name whose extension was a function's
+      // source text.
+      expect(photoIssue({ type: name, size: 10 })).toBe("unsupported-type");
+      expect(() =>
+        photoObjectPath({
+          ownerId: OWNER,
+          vehicleId: VEHICLE,
+          mimeType: name,
+          randomId: "x",
+        })
+      ).toThrow(/unsupported type/);
+    }
+  );
+
   it("refuses a file over the size limit", () => {
     expect(photoIssue({ type: "image/png", size: MAX_PHOTO_BYTES })).toBeNull();
     expect(photoIssue({ type: "image/png", size: MAX_PHOTO_BYTES + 1 })).toBe(

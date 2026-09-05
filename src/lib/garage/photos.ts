@@ -99,10 +99,25 @@ export interface ChosenFile {
   readonly size: number;
 }
 
+/**
+ * The stored extension for a declared type, or `undefined`.
+ *
+ * `Object.hasOwn`, because both of the obvious spellings consult the prototype
+ * chain (T2-305 review, F2 — found in the media module, and this is the same
+ * idiom it was copied from). `"constructor"` is an ordinary string that a
+ * `Content-Type` header can carry: `in` answers `true` for it, and the bracket
+ * lookup returns `Object` rather than `undefined`, so a `=== undefined` guard
+ * does not fire and the "extension" becomes a function's source text.
+ */
+function photoExtension(mimeType: string): string | undefined {
+  const key = mimeType.toLowerCase();
+  return Object.hasOwn(PHOTO_MIME_EXTENSIONS, key)
+    ? PHOTO_MIME_EXTENSIONS[key]
+    : undefined;
+}
+
 export function photoIssue(file: ChosenFile): PhotoIssue | null {
-  if (!(file.type.toLowerCase() in PHOTO_MIME_EXTENSIONS)) {
-    return "unsupported-type";
-  }
+  if (photoExtension(file.type) === undefined) return "unsupported-type";
   if (file.size > MAX_PHOTO_BYTES) return "too-large";
   return null;
 }
@@ -153,7 +168,7 @@ export function photoObjectPath(input: {
   readonly mimeType: string;
   readonly randomId: string;
 }): string {
-  const extension = PHOTO_MIME_EXTENSIONS[input.mimeType.toLowerCase()];
+  const extension = photoExtension(input.mimeType);
   if (extension === undefined) {
     throw new Error(`refusing to store an unsupported type: ${input.mimeType}`);
   }

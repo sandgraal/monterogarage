@@ -633,6 +633,55 @@ Vercel is an owner action inside T2-102 (the task prepares the exact records).
   graders are activated and unexercised locally; CI's informational `tier-b`
   job is the first thing that will run them. Every Tier-A grader, the whole
   unit suite and `npm run verify` are green.
+  <br>**Review (no blocking findings; five Low/Informational, two fixed).**
+  <br>*F1 — a docstring claimed a guarantee the code did not implement.*
+  `record-media.ts` said `mediaPathBelongsTo` refuses to ask the storage API to
+  "sign or remove" a foreign path. It guards `removeRecordMedia`,
+  `deleteRecord` and `vehicleMediaPaths`; it does **not** guard
+  `signRecordMediaUrls`. Not a live exposure — the bucket policy pins
+  `(storage.foldername(name))[1]` to `auth.uid()`, so signing another owner's
+  object is refused at the point it is asked for — and `signReceiptUrls` /
+  `signPhotoUrls` have the identical unguarded shape. Fixed as documentation:
+  the module docstring now names the three guarded call sites, names signing as
+  deliberately unguarded, and says why (a refused signature is a player that
+  does not render; a delete on an invented name is irreversible). Adding a
+  fourth, differently-shaped sign path to prove what the database already
+  proves would have left the other two looking careless by comparison.
+  <br>*F2 — `in` and a bare bracket lookup walk the prototype chain.* Fixed in
+  all three sibling modules (`record-media.ts`, and the pre-existing copies in
+  `photos.ts` and `receipt.ts`) via one `Object.hasOwn` accessor each, so the
+  next lookup added cannot get it wrong. **The sharper half was not in
+  `mediaIssue`:** `mediaObjectPath` / `photoObjectPath` / `receiptObjectPath`
+  guard with `=== undefined`, and `MIME_MAP["constructor"]` returns `Object`
+  rather than `undefined` — so the guard did not fire at all and the builder
+  returned a name whose "extension" was a function's source text. Six new
+  graders (two per module), all six red against the old idiom.
+  **`toLowerCase()` runs before the lookup**, so `toString`/`valueOf`/
+  `hasOwnProperty` lower-case into members of nothing and make vacuous graders
+  — verified by running them, and the reachable set is exactly `constructor`
+  and `__proto__`. Pinned by a control asserting that fact.
+  <br>*F3 — the hand-rolled supabase-js fake in `garage-writes.test.ts` has
+  three modelling gaps*, now named in that file's own header rather than left
+  for the next person to discover: `.eq()`/`.in()`/`.order()` ignore their
+  arguments, `.single()` and a bare `select()` both resolve to one object where
+  production returns an array without `.single()`, and `outcome("insert", …)`
+  is used for every verb so only insert failures can be injected. Each would
+  let a *future* grader pass while production did something else.
+  <br>*F4 — the `photo_paths` race graders are self-authored.* There is no
+  `[TEST]` task for GAR-01′'s race fix and no independent grader pass; the 12
+  graders in `garage-writes.test.ts` were written by the same instance that
+  wrote the fix. They mutation-test correctly (6 red against the restored
+  client-computed array), but that is a weaker guarantee than the
+  test-writer/implementer split this project normally gets, and this line does
+  not claim otherwise. Whether it belongs on the AGENTS.md debt ledger is the
+  conductor's call.
+  <br>*F5 — nothing on the required merge path executes the migration SQL.*
+  `npm run verify` is Tier A only, which parses migration text; the SQL is run
+  only by CI's **non-required** `tier-b` job. Review did a static
+  `libpg_query` parse (grammar valid; the alias-in-`RETURNING` this task
+  flagged as its own biggest risk is in fact required and correct), but a parse
+  is not an execution. **`tier-b`'s actual output must be read once CI runs,
+  not assumed green.**
 
 - [ ] **T2-306a [TEST]** Graders for the cover-photo designation (GAR-01′):
   a nullable `vehicles.cover_photo_path` column (or equivalent) naming one entry already

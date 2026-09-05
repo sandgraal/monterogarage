@@ -103,6 +103,53 @@ describe("mediaIssue", () => {
     );
   });
 
+  /**
+   * The only two prototype members that survive the lookup's `toLowerCase()`.
+   *
+   * `toString`, `valueOf` and `hasOwnProperty` are the names that come to mind
+   * first and every one of them is **vacuous here**: the lookup lower-cases
+   * before it indexes, and `"tostring"` is not a member of anything. A grader
+   * built on them would pass against the broken code and prove nothing —
+   * verified by running it. These two are all-lowercase already, so they are
+   * the whole of the reachable set.
+   */
+  const PROTOTYPE_KEYS = [["constructor"], ["__proto__"]];
+
+  it.each(PROTOTYPE_KEYS)(
+    "refuses %s, which the prototype chain answers for (T2-305 review, F2)",
+    (name) => {
+      // Ordinary strings, and a `Content-Type` header can carry either. Both
+      // obvious spellings of the lookup consult the prototype:
+      // `"constructor" in MEDIA_MIME_TYPES` is `true`, and the bracket lookup
+      // returns `Object` rather than `undefined`, so a `=== undefined` guard
+      // does not fire either. Left alone, `mediaObjectPath` returns a name
+      // whose extension is a function's source text.
+      expect(mediaIssue({ type: name, size: 10 })).toBe("unsupported-type");
+      expect(mediaKindOf(name)).toBeNull();
+      expect(mediaWriteFromFile(RECORD, "p", name)).toBeNull();
+      expect(() =>
+        mediaObjectPath({
+          ownerId: OWNER,
+          vehicleId: VEHICLE,
+          recordId: RECORD,
+          mimeType: name,
+          randomId: "x",
+        })
+      ).toThrow(/unsupported type/);
+    }
+  );
+
+  it("MUTATION: those two really are prototype members before lowercasing", () => {
+    // The guard on the guard. If a future edit dropped `toLowerCase()` from
+    // the lookup, or renamed the allow-list, the graders above could go quiet
+    // for a reason unrelated to their claim. This states the fact they rest on.
+    for (const [name] of PROTOTYPE_KEYS) {
+      expect(name, name).toBe(name.toLowerCase());
+      expect(name in MEDIA_MIME_TYPES, name).toBe(true);
+      expect(Object.hasOwn(MEDIA_MIME_TYPES, name), name).toBe(false);
+    }
+  });
+
   it("checks the type before the size", () => {
     // Both wrong should report the type: it is the one a reader can do
     // something about by choosing a different file rather than a smaller one.

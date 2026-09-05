@@ -17,6 +17,28 @@
  * grader that could tell the two apart — a revert would have been silent, and
  * the symptom (an object no row names) is invisible until someone counts.
  *
+ * ## What the fake below does NOT model, for whoever extends it
+ *
+ * Recorded rather than fixed (T2-305 review, F3): the fake is sufficient for
+ * the claims in this file and would mislead a reader who assumed more of it.
+ * Three known gaps, each of which would make a *new* grader pass while
+ * production did something else:
+ *
+ * 1. **`.eq()` / `.in()` / `.order()` ignore their arguments.** Nothing here
+ *    checks that a filter names the right column, so a grader asserting "scoped
+ *    by id" cannot be written against this fake as it stands.
+ * 2. **`.single()` and a bare `select()` resolve identically**, to one object.
+ *    Production returns an *array* without `.single()`, so a `listRecordMedia`
+ *    or `listReceipts` grader written against this fake would receive an object
+ *    where the real client hands back a list — and would pass while the page
+ *    broke.
+ * 3. **`outcome("insert", name)` is the verb used for every table request**, so
+ *    a failure can only be injected for inserts. `select`/`update`/`delete`
+ *    failure paths are unreachable from here.
+ *
+ * Extending any of the three is a small change; assuming they already work is
+ * the expensive mistake.
+ *
  * refs specs/002-montero-garage (GAR-01′, GAR-06′, SHR-01, MIG-03)
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";

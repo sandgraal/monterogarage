@@ -134,10 +134,23 @@ export interface ChosenReceipt {
   readonly size: number;
 }
 
+/**
+ * The stored extension for a declared type, or `undefined`.
+ *
+ * `Object.hasOwn`, for the reason `photos.ts` records at its own copy of this
+ * (T2-305 review, F2): `in` and a bare bracket lookup both walk the prototype
+ * chain, so `"constructor"` — an ordinary string a `Content-Type` header can
+ * carry — reads as a member and returns `Object` rather than `undefined`.
+ */
+function receiptExtension(mimeType: string): string | undefined {
+  const key = mimeType.toLowerCase();
+  return Object.hasOwn(RECEIPT_MIME_EXTENSIONS, key)
+    ? RECEIPT_MIME_EXTENSIONS[key]
+    : undefined;
+}
+
 export function receiptIssue(file: ChosenReceipt): ReceiptIssue | null {
-  if (!(file.type.toLowerCase() in RECEIPT_MIME_EXTENSIONS)) {
-    return "unsupported-type";
-  }
+  if (receiptExtension(file.type) === undefined) return "unsupported-type";
   if (file.size > MAX_RECEIPT_BYTES) return "too-large";
   return null;
 }
@@ -172,7 +185,7 @@ export function receiptObjectPath(input: {
   readonly mimeType: string;
   readonly randomId: string;
 }): string {
-  const extension = RECEIPT_MIME_EXTENSIONS[input.mimeType.toLowerCase()];
+  const extension = receiptExtension(input.mimeType);
   if (extension === undefined) {
     throw new Error(`refusing to store an unsupported type: ${input.mimeType}`);
   }

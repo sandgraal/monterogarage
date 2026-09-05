@@ -35,9 +35,29 @@
  *
  * None of that makes the path the *association*: `public.record_media` is, one
  * row per object, and it is what a listing reads. The path's later segments are
- * a **check** — see {@link mediaPathBelongsTo}, which refuses to ask the
- * storage API to sign or remove a path that does not live under the owner and
- * record it was read from.
+ * a **check** — see {@link mediaPathBelongsTo}.
+ *
+ * ## Exactly where that check is applied, and where it is not
+ *
+ * It guards the three **destructive or enumerating** call sites in
+ * `src/lib/supabase/garage.ts`: `removeRecordMedia`, `deleteRecord`, and
+ * `vehicleMediaPaths`. A `storage_path` is a column a client wrote, so a row
+ * can name a path pointing outside `<owner>/`, and asking the Storage API to
+ * *delete* an arbitrary name on the owner's behalf is a request that should
+ * never be made — whatever the policies would do with it.
+ *
+ * It does **not** guard `signRecordMediaUrls`, and the first version of this
+ * docstring wrongly said it did (T2-305 review, F1). Signing is left unguarded
+ * deliberately and for the same reason `signReceiptUrls` and `signPhotoUrls`
+ * are: the bucket's own policy pins
+ * `(storage.foldername(name))[1]` to `auth.uid()`, so a request to sign
+ * somebody else's object is refused at the point it is made and the signature
+ * is never issued. Adding a fourth, differently-shaped sign function to prove a
+ * property the database already proves would buy nothing and would leave two of
+ * the three sign paths looking careless by comparison. What the guard prevents
+ * on the delete path — an irreversible action taken on a name the row invented
+ * — has no counterpart here, because a signature that is refused is simply a
+ * player that does not render.
  *
  * ## Why a row per object and not `records.media_paths text[]`
  *
@@ -156,10 +176,31 @@ export interface ChosenMedia {
   readonly size: number;
 }
 
+/**
+ * The allow-list entry for a declared type, or `undefined`.
+ *
+ * `Object.hasOwn` rather than `in` or a bare bracket lookup, and that is not
+ * pedantry (T2-305 review, F2). Both of the obvious spellings consult the
+ * prototype chain, so `"constructor"` — an ordinary string, and one a
+ * `Content-Type` header can carry — reads as a member: `in` answers `true`, and
+ * the bracket lookup returns `Object` itself rather than `undefined`, which
+ * means a `=== undefined` guard does **not** fire. Left alone, that is a file
+ * whose "extension" is the source text of a function.
+ *
+ * One accessor rather than three call sites repeating the guard, so the next
+ * lookup added here cannot quietly get it wrong.
+ */
+function mimeEntry(
+  mimeType: string
+): { readonly kind: MediaKind; readonly extension: string } | undefined {
+  const key = mimeType.toLowerCase();
+  return Object.hasOwn(MEDIA_MIME_TYPES, key)
+    ? MEDIA_MIME_TYPES[key]
+    : undefined;
+}
+
 export function mediaIssue(file: ChosenMedia): MediaIssue | null {
-  if (!(file.type.toLowerCase() in MEDIA_MIME_TYPES)) {
-    return "unsupported-type";
-  }
+  if (mimeEntry(file.type) === undefined) return "unsupported-type";
   if (file.size > MAX_MEDIA_BYTES) return "too-large";
   return null;
 }
@@ -175,7 +216,7 @@ export function mediaIssue(file: ChosenMedia): MediaIssue | null {
  * bucket too; guessing from the extension would make the two disagree.
  */
 export function mediaKindOf(mimeType: string): MediaKind | null {
-  return MEDIA_MIME_TYPES[mimeType.toLowerCase()]?.kind ?? null;
+  return mimeEntry(mimeType)?.kind ?? null;
 }
 
 /**
@@ -221,7 +262,7 @@ export function mediaObjectPath(input: {
   readonly mimeType: string;
   readonly randomId: string;
 }): string {
-  const entry = MEDIA_MIME_TYPES[input.mimeType.toLowerCase()];
+  const entry = mimeEntry(input.mimeType);
   if (entry === undefined) {
     throw new Error(`refusing to store an unsupported type: ${input.mimeType}`);
   }
@@ -241,10 +282,13 @@ export function randomMediaId(): string {
  *
  * Used to keep a listing honest rather than to grant anything: `storage_path`
  * is a column a client wrote, so a row can name a path pointing outside
- * `<owner>/`, and asking the storage API to sign or delete it would be asking
- * for somebody else's object on the owner's behalf. The bucket's policies
- * already refuse that; this stops it from being *asked for*. `receipt.ts` does
- * the same in `receiptPathBelongsTo`, and photos in `vehiclePhotoPaths`.
+ * `<owner>/`, and asking the Storage API to **delete** it would be asking for
+ * somebody else's object on the owner's behalf. The bucket's policies already
+ * refuse that; this stops it from being *asked for*. `receipt.ts` does the same
+ * in `receiptPathBelongsTo`, and photos in `vehiclePhotoPaths`.
+ *
+ * Applied to the delete and enumerate paths only, never to signing — the
+ * module docstring says which and why (T2-305 review, F1).
  */
 export function mediaPathBelongsTo(
   ownerId: string,
