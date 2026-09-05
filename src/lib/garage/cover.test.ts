@@ -51,6 +51,23 @@ function photo(slot: string): string {
 /** Three photos, in the order they were uploaded. */
 const PHOTOS = [photo("1"), photo("2"), photo("3")] as const;
 
+/**
+ * The message `call` threw, or `null` if it returned.
+ *
+ * A three-state answer rather than a boolean, so "it threw the seam", "it
+ * threw something else", and "it ran" stay distinguishable — the same
+ * discipline AGENTS.md asks for everywhere else in this project, applied to a
+ * control rather than to a fetch.
+ */
+function threw(call: () => unknown): string | null {
+  try {
+    call();
+    return null;
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+}
+
 function vehicle(overrides: Partial<CoverPhotoSource> = {}): CoverPhotoSource {
   return {
     id: VEHICLE,
@@ -230,14 +247,51 @@ describe("the seam and the fixtures are what this file thinks they are", () => {
   // does not resolve, or because a fixture path is malformed — which looks
   // identical in the reporter and means something completely different
   // (`.claude/GRADER-PRINCIPLES.md`: assert the reason).
-  it("fails today with the named seam, not with an import or type error", () => {
-    expect(() => resolveCoverPath(vehicle())).toThrow(COVER_SEAM);
-    expect(() => coverPhotoWrite(null)).toThrow(COVER_SEAM);
+  it("either throws the NAMED seam or is implemented — never a third thing", () => {
+    // **Branch-aware on purpose (T2-306a review, F2).** The first version
+    // asserted flatly that both functions throw, which meant T2-306's only
+    // route to green was to delete this control — exactly what T901's
+    // separation audit exists to flag, and not something an activation note
+    // mentioning only `.fails` markers authorized.
+    //
+    // What the control is actually for survives the rewrite intact: an
+    // unimplemented function must fail with *this* message and not with a
+    // module-resolution error or a `TypeError`, because those look identical
+    // in a report and mean something completely different
+    // (`.claude/GRADER-PRINCIPLES.md`: assert the reason). The third thing —
+    // throwing something that is not the seam — is a finding in both branches,
+    // which is the whole point.
+    for (const call of [
+      () => resolveCoverPath(vehicle()),
+      () => coverPhotoWrite(null),
+    ]) {
+      const message = threw(call);
+      if (message !== null) expect(message).toContain(COVER_SEAM);
+    }
   });
 
-  it("names the task that fills the seam in", () => {
-    // A seam message that did not name a task is a seam nobody can route.
-    expect(COVER_SEAM).toMatch(/^not implemented: T2-306$/);
+  it("once implemented, resolves a real designation", () => {
+    // The presence half, so activation makes this file's controls *stronger*
+    // rather than leaving a dead one to delete. Skipped while the seam throws;
+    // the marked graders above are what carry the requirement until then.
+    if (threw(() => resolveCoverPath(vehicle())) !== null) {
+      expect(threw(() => resolveCoverPath(vehicle()))).toContain(COVER_SEAM);
+      return;
+    }
+
+    expect(resolveCoverPath(vehicle({ cover_photo_path: PHOTOS[1] }))).toBe(
+      PHOTOS[1]
+    );
+    expect(Object.keys(coverPhotoWrite(null))).toEqual(["cover_photo_path"]);
+  });
+
+  it("names a task in the seam message", () => {
+    // A seam message that did not name a task is a seam nobody can route. The
+    // pattern rather than the literal, so the constant outlives T2-306 the way
+    // `SEAM_NOT_IMPLEMENTED` outlived T2-202 — these constants stay in the
+    // repo after activation, and a control that pinned one task id would have
+    // to be edited by whoever reuses it next.
+    expect(COVER_SEAM).toMatch(/^not implemented: T2-\d+[a-z]?$/);
   });
 
   it("builds fixture photos under this vehicle's own prefix", () => {

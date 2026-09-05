@@ -320,6 +320,33 @@ function coverMembershipIssues(sql: string): string[] {
  * 3. **It must clear, never promote.** Every assignment to the cover column
  *    has to be `null`. "Silently promoting another one" is the phrase GAR-01′
  *    forbids, and `photo_paths[1]` is the tempting thing to promote.
+ * 4. **It must be scoped to a *departure*, not to any non-membership.** The
+ *    rule this file's own review bought (F1), and the subtlest of the four.
+ *    A `before` trigger runs before the check constraint, so a trigger that
+ *    clears whenever the cover is not a member never lets a **freshly
+ *    written** bogus designation reach the constraint: it nulls it and the
+ *    write succeeds. That converts the defect the task line calls
+ *    unacceptable into a silent no-op — the owner clicks "set as cover", gets
+ *    no error, and gets no cover. Verified live, on a real stack, against
+ *    this file's own first fixture.
+ *
+ *    Two shapes satisfy it and both are accepted, because both genuinely
+ *    close it:
+ *
+ *    - the body consults `old.<cover column>`, however it spells the
+ *      comparison — `is not distinct from`, `=`, an early `return` on
+ *      `is distinct from`. What matters is that the *old* designation is
+ *      read at all; a body that never mentions it cannot be conditioning on
+ *      whether the designation changed, whatever else it does.
+ *    - the trigger is declared `update of <source column>`, so a patch that
+ *      touches only the cover never fires it. Different mechanism, same
+ *      guarantee, and a legitimate design a rule demanding `old.` alone would
+ *      have failed for its spelling.
+ *
+ *    Necessary, not sufficient: a body could name `old.` and ignore it. Tier
+ *    B is what proves the semantics — "a path the vehicle does not have is
+ *    refused" fails against the unscoped trigger, which is how this was
+ *    caught.
  */
 function coverClearingIssues(sql: string): string[] {
   const updateTriggers = vehicleTriggers(sql).filter((trigger) =>
@@ -347,6 +374,7 @@ function coverClearingIssues(sql: string): string[] {
 
   for (const trigger of clearing) {
     const name = /^create trigger ([a-z0-9_]+)/.exec(trigger)?.[1] ?? "?";
+    const body = triggerBody(sql, trigger);
     if (!/\bbefore\b/.test(trigger)) {
       issues.push(
         `public.${TABLE}: trigger ${name} fires after the row is written, so ` +
@@ -354,7 +382,20 @@ function coverClearingIssues(sql: string): string[] {
           `exists to allow`
       );
     }
-    for (const rhs of coverAssignments(triggerBody(sql, trigger))) {
+    const consultsOld = body.includes(`old.${COVER_PHOTO_COLUMN}`);
+    const scopedToSource = new RegExp(
+      `\\bupdate of [a-z0-9_, ]*\\b${COVER_PHOTO_SOURCE_COLUMN}\\b`
+    ).test(trigger);
+    if (!consultsOld && !scopedToSource) {
+      issues.push(
+        `public.${TABLE}: trigger ${name} clears ${COVER_PHOTO_COLUMN} ` +
+          `without consulting old.${COVER_PHOTO_COLUMN} or scoping itself to ` +
+          `\`update of ${COVER_PHOTO_SOURCE_COLUMN}\` — running before the ` +
+          `membership constraint, it would null a freshly written bogus ` +
+          `designation instead of letting the constraint refuse it`
+      );
+    }
+    for (const rhs of coverAssignments(body)) {
       if (!isNullAssignment(rhs)) {
         issues.push(
           `public.${TABLE}: trigger ${name} assigns ${COVER_PHOTO_COLUMN} ` +
@@ -1097,7 +1138,40 @@ describe.skipIf(!live.available)(liveTitle("two tabs, one truck", live), () => {
  * notices; a rule with no negative control was decorative all along.
  * ====================================================================== */
 
-/** A schema that gets the cover right, by check constraint plus trigger. */
+/**
+ * A schema that gets the cover right — check constraint plus a **departure
+ * scoped** trigger.
+ *
+ * ## The clause that was missing, and what it cost (T2-306a review, F1)
+ *
+ * The first version of this fixture cleared unconditionally:
+ *
+ *     if new.cover_photo_path is not null
+ *        and not (new.cover_photo_path = any(new.photo_paths)) then
+ *       new.cover_photo_path := null;
+ *
+ * That is wrong, and it is wrong in the exact way this task exists to
+ * prevent. A `before` trigger runs **before** the check constraint, so a
+ * bogus designation never reaches the constraint at all — the trigger nulls
+ * it first and the write *succeeds*. The reviewer shipped this fixture as a
+ * real migration and watched a live stack accept a cover naming a photo the
+ * vehicle does not have, another vehicle's photo, and a cover on a vehicle
+ * with no photos: `set.ok` came back `true` in all three. Silently swallowing
+ * a defect is precisely what the task line rules out — "a cover path naming a
+ * photo the vehicle does not have is a defect, not a user error to accept
+ * silently".
+ *
+ * `new.cover_photo_path is not distinct from old.cover_photo_path` is the
+ * whole fix. It restricts the trigger to the case it is *for* — the array
+ * moved underneath a designation nobody touched — and leaves a freshly
+ * written designation for the constraint to judge. `is not distinct from`
+ * rather than `=` because both sides are nullable and `null = null` is null,
+ * which is not true and therefore not a match.
+ *
+ * The rule this incident bought is in {@link coverClearingIssues}: a clearing
+ * trigger has to be scoped to a departure, and a Tier A grader now says so.
+ * Both directions are controlled below.
+ */
 const CORRECT = normalizeSql(`
   create table public.vehicles (
     id uuid primary key,
@@ -1115,6 +1189,7 @@ const CORRECT = normalizeSql(`
   returns trigger language plpgsql as $$
   begin
     if new.cover_photo_path is not null
+       and new.cover_photo_path is not distinct from old.cover_photo_path
        and not (new.cover_photo_path = any(new.photo_paths)) then
       new.cover_photo_path := null;
     end if;
@@ -1296,12 +1371,86 @@ describe("the clearing rule fires, and stays quiet when it should", () => {
     ]);
   });
 
-  it("accepts the update-clause spelling as well as the plpgsql one", () => {
-    // `update … set cover_photo_path = null` is an assignment too, and a rule
-    // that knew only `:=` would fail a statement trigger for its dialect.
-    const bySetClause = normalizeSql(`
+  it("reads both assignment spellings, plpgsql's and an update's", () => {
+    // Asserted against `coverAssignments` directly rather than through a whole
+    // synthetic schema (T2-306a review, F1). The claim here is narrow — "the
+    // extractor sees both spellings" — and routing it through
+    // `coverClearingIssues` meant inventing a *schema* to carry it, which then
+    // had to be correct in every other respect too. The schema that did carry
+    // it was a `before` trigger issuing an `update` against its own table:
+    // recursive, and not a design anybody should read as endorsed.
+    expect(coverAssignments("new.cover_photo_path := null;")).toEqual(["null"]);
+    expect(coverAssignments("cover_photo_path := null;")).toEqual(["null"]);
+    expect(
+      coverAssignments(
+        "update public.vehicles set cover_photo_path = null where id = new.id;"
+      )
+    ).toEqual(["null"]);
+  });
+
+  it("MUTATION: reports a trigger that clears on ANY non-membership", () => {
+    // **The defect this file's own review found (F1), pinned so it cannot come
+    // back.** A `before` trigger runs before the check constraint, so one that
+    // clears whenever the cover is not a member never lets a freshly written
+    // bogus designation reach the constraint — it nulls it and the write
+    // succeeds. The reviewer shipped exactly this as a migration and watched a
+    // live stack accept three separate covers it should have refused.
+    //
+    // Before this clause existed, `coverClearingIssues` AND
+    // `coverMembershipIssues` both reported `[]` for this schema. Verified by
+    // reproduction: the rule was silent, then the clause was added, then it
+    // spoke.
+    const clearsAlways = broken([
+      "and new.cover_photo_path is not distinct from old.cover_photo_path ",
+      "",
+    ]);
+
+    expect(coverClearingIssues(clearsAlways)).toEqual([
+      expect.stringContaining("without consulting old.cover_photo_path"),
+    ]);
+  });
+
+  it("accepts `update of photo_paths` as the other way to scope a departure", () => {
+    // A column-scoped trigger never fires for a patch that touches only the
+    // cover, so a fresh bogus designation reaches the constraint exactly as it
+    // should. Different mechanism, same guarantee — and a rule demanding
+    // `old.` alone would have failed this schema for its spelling, which is
+    // the T2-301a F1 mistake in a new coat.
+    const columnScoped = normalizeSql(`
       create table public.vehicles (
         id uuid primary key,
+        photo_paths text[] not null default '{}',
+        cover_photo_path text,
+        constraint vehicles_cover_ck
+          check (cover_photo_path is null or cover_photo_path = any(photo_paths))
+      );
+
+      create function public.clear_cover()
+      returns trigger language plpgsql as $$
+      begin
+        if not (new.cover_photo_path = any(new.photo_paths)) then
+          new.cover_photo_path := null;
+        end if;
+        return new;
+      end;
+      $$;
+
+      create trigger vehicles_clear_cover
+        before update of photo_paths on public.vehicles
+        for each row execute function public.clear_cover();
+    `);
+
+    expect(coverClearingIssues(columnScoped)).toEqual([]);
+  });
+
+  it("does not accept `update of` some OTHER column as scoping", () => {
+    // The over-acceptance direction. `update of display_name` fires on a write
+    // that has nothing to do with photos and scopes nothing that matters, so
+    // the rule must still ask for the `old.` guard.
+    const wrongColumn = normalizeSql(`
+      create table public.vehicles (
+        id uuid primary key,
+        display_name text not null,
         photo_paths text[] not null default '{}',
         cover_photo_path text
       );
@@ -1309,19 +1458,19 @@ describe("the clearing rule fires, and stays quiet when it should", () => {
       create function public.clear_cover()
       returns trigger language plpgsql as $$
       begin
-        update public.vehicles
-           set cover_photo_path = null
-         where id = new.id and not (cover_photo_path = any(photo_paths));
+        new.cover_photo_path := null;
         return new;
       end;
       $$;
 
       create trigger vehicles_clear_cover
-        before update on public.vehicles
+        before update of display_name on public.vehicles
         for each row execute function public.clear_cover();
     `);
 
-    expect(coverClearingIssues(bySetClause)).toEqual([]);
+    expect(coverClearingIssues(wrongColumn)).toEqual([
+      expect.stringContaining("without consulting old.cover_photo_path"),
+    ]);
   });
 
   it("does not read a comparison as an assignment", () => {
@@ -1376,17 +1525,37 @@ describe("the helpers read the shipped schema, not an empty string", () => {
     expect(found.some((expr) => expr.includes("display_name"))).toBe(true);
   });
 
-  it("reports today's schema as missing both halves of the requirement", () => {
+  it("names why the marked graders are red, and stays true once they are not", () => {
     // The seam, asserted rather than assumed: the marked graders above must be
     // failing because the feature does not exist, and this says so in the one
     // place a reader will look when they wonder whether a marker is honest.
+    //
+    // **Branch-aware on purpose (T2-306a review, F2).** The first version
+    // asserted the feature's *absence* flatly, which meant T2-306's only route
+    // to green was to delete or rewrite this control — exactly what T901's
+    // separation audit exists to flag, and not something an activation note
+    // mentioning only `.fails` markers authorized. The idiom here is the one
+    // `vehicle-photos.test.ts` already uses for its `PRIVATE_BUCKETS` sweep:
+    // branch on whether the thing exists, and **assert the branch** rather
+    // than returning quietly, so a reader sees which half ran instead of
+    // wondering why a claim vanished.
+    //
+    // The presence half is deliberately the stronger claim. Once the column
+    // ships this stops saying "not built yet" and starts saying "built, and
+    // both rules are satisfied" — so the control gains value at activation
+    // instead of becoming a chore to delete.
+    if (columnDefinitionFor(sql, TABLE, COVER_PHOTO_COLUMN) !== null) {
+      expect(coverMembershipIssues(sql)).toEqual([]);
+      expect(coverClearingIssues(sql)).toEqual([]);
+      return;
+    }
+
     expect(coverMembershipIssues(sql)).toEqual([
       expect.stringContaining("nothing constrains"),
     ]);
     expect(coverClearingIssues(sql)).toEqual([
       expect.stringContaining("no trigger fires on update"),
     ]);
-    expect(columnDefinitionFor(sql, TABLE, COVER_PHOTO_COLUMN)).toBeNull();
   });
 });
 
