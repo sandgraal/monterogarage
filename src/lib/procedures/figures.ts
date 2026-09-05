@@ -48,15 +48,20 @@
  *   review. A detector that flagged every `mm` would flag "use the 14 mm socket
  *   on the drain plug", which is how a real rule gets deleted in frustration.
  *
- * ## Scope: instructions and hazards, never names
+ * ## Scope: every free sentence but a tool's own name
  *
- * `src/schemas/procedures.ts` applies this to `prose.<locale>.steps` and
- * `prose.<locale>.safetyNotes` — the two fields that state what to *do* and
- * what will *hurt you*. It is deliberately **not** applied to `tools` or
- * `prerequisites` prose: a tool's name legitimately contains its range ("torque
- * wrench, 20–200 N·m"), which is the tool's identity and not a figure this job
- * sets, and flagging it would be the false positive that gets the whole rule
- * deleted. The same reasoning AGENTS.md uses for `24-valve` and `V6`.
+ * `src/schemas/procedures.ts` applies this to `title`, `summary`, `steps`,
+ * `prerequisites` and `safetyNotes`. The first version scanned steps and safety
+ * notes only, and `summary` was a **live bypass** (review F2): it renders on the
+ * detail page and on every index card, and a summary saying "Torque the drain
+ * plug to 39 N·m" shipped the figure twice, once per locale, past every gate in
+ * the repository.
+ *
+ * `tools` prose is deliberately still out. A tool's name legitimately contains
+ * its range ("torque wrench, 20–200 N·m"), which is the tool's identity and not
+ * a figure this job sets, and flagging it would be the false positive that gets
+ * the whole rule deleted. The same reasoning AGENTS.md uses for `24-valve` and
+ * `V6`.
  *
  * refs specs/001-foundation (PRC-03; AGENTS.md "Numbers are never translated")
  */
@@ -73,17 +78,49 @@ const NUMBER = String.raw`\d+(?:[.,]\d+)?`;
 const JOIN = String.raw`\s*[·⋅.\-]?\s*`;
 
 /**
- * Torque: a force unit joined to a distance unit.
+ * The same separator set with the *space* removed — punctuation or nothing.
  *
- * `n…m` covers `Nm`, `N·m`, `N.m`, `N-m` and `N m`; `kgf…m` the period metric
- * spelling factory literature still uses; `lb…ft` and `ft…lb` both orders of
- * the imperial one, with the optional `f` (`lbf`) and plural `s` (`ft lbs`).
+ * Used only where a bare space would make the rule too eager: `lb…in` and
+ * `in…lb`. "Add 5 lbs in the bag" is a mass and an English preposition, not an
+ * inch-pound figure, and `5 lb-in` / `5 in-lb` / `5 inlb` are the spellings a
+ * chart actually prints. Every other family keeps the space, because `88 N m`
+ * and `65 ft lbs` are real.
+ */
+const TIGHT_JOIN = String.raw`[·⋅.\-]?`;
+
+/**
+ * Torque: a force unit joined to a distance unit, in symbols or in words.
+ *
+ * `n…m` covers `Nm`, `N·m`, `N.m`, `N-m` and `N m`. `kgf?…m` covers the metric
+ * spelling factory literature still prints **with or without the `f`** — a
+ * Mitsubishi FSM table reads `88 N·m (9.0 kg-m, 65 ft-lb)`, so `kg-m`, `kgm`
+ * and `kg·m` are exactly what an author transcribing one will type (review F5).
+ * `lb…ft` / `ft…lb` are both orders of the imperial symbol, with the optional
+ * `f` (`lbf`) and plural `s` (`ft lbs`); `lb…in` / `in…lb` are the same pair
+ * for small fasteners, on {@link TIGHT_JOIN} for the reason recorded there.
+ *
+ * The spelled-out forms are here for the same reason the punctuation is
+ * enumerated rather than the spellings: a rule that recognised `N·m` and not
+ * "newton metres" would be a rule with a bypass per vocabulary, and the
+ * grader's own docstring says to widen the pattern rather than narrow the rule
+ * when a missing spelling turns up. Both English orthographies (`meter`,
+ * `metre`), the Spanish (`metro`, `kilográmetro`, `libras-pie`), and both
+ * orders of the imperial pair.
  */
 const TORQUE_UNIT =
   String.raw`(?:n${JOIN}m` +
-  String.raw`|kgf${JOIN}m` +
+  String.raw`|kgf?${JOIN}m` +
   String.raw`|lbf?s?${JOIN}ft` +
-  String.raw`|ft${JOIN}lbf?s?)`;
+  String.raw`|ft${JOIN}lbf?s?` +
+  String.raw`|lbf?s?${TIGHT_JOIN}in` +
+  String.raw`|in${TIGHT_JOIN}lbf?s?` +
+  // "88 newton metres", "9 kilogram-meters", "9 kilogramo metro"
+  String.raw`|(?:newton|kilogramo?)s?${JOIN}met(?:er|re|ro)s?` +
+  // "9 kilográmetros", "9 newtonmetros" — the closed compound
+  String.raw`|(?:newton|kilogr[aá])met(?:er|re|ro)s?` +
+  // "65 foot-pounds", "65 pound-feet", "65 libras-pie", "65 pie-libras"
+  String.raw`|(?:foot|feet|pie)s?${JOIN}(?:pound|libra)s?` +
+  String.raw`|(?:pound|libra)s?${JOIN}(?:foot|feet|pie)s?)`;
 
 /**
  * Volume: the symbols and the words, longest first so `litros` is never

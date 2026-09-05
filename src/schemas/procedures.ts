@@ -75,7 +75,10 @@
  *    an author actually commits, per-locale by construction, invisible to every
  *    type-level guard because it is a string. {@link findInlinedFigure}
  *    (`src/lib/procedures/figures.ts`) is the detector, and its docstring
- *    carries the category, the carve-outs and the stated gap.
+ *    carries the category, the carve-outs and the stated gap. Scoped to every
+ *    free-sentence field this collection owns except `tools` — see
+ *    {@link FIGURE_SCANNED_PROSE} for which, and why `summary` in particular is
+ *    not optional (review F2 found the bypass).
  *
  * The corpus half — does the id resolve, and is it a kind that carries a
  * figure — is `src/lib/procedures/index.ts`, called from
@@ -603,6 +606,78 @@ function checkSafetyNotes(
 }
 
 /**
+ * An **ordinary** procedure's safety note is optional — but once one locale
+ * carries it, every locale the entry declares must (review F1).
+ *
+ * This is the T501 audit's own F1, one collection later and on a field where it
+ * costs more. `checkSafetyNotes` above only fires on a safety-critical entry, so
+ * without this rule an air-filter change could ship "Hot oil will burn you. Let
+ * it cool first." in `prose.en.safetyNotes` with no `es` counterpart, and the ES
+ * page would render *nothing at all* where the EN page renders a hazard.
+ * AGENTS.md draws no exception for "only part of the page": *no page ships in
+ * one language, both or neither* — and a hazard is the last field on the site
+ * that should be the exception.
+ *
+ * Ported from `checkOptionalNotesAreSymmetric` in `src/schemas/parts.ts`,
+ * including the reason it excludes the required case: safety-critical entries
+ * are `checkSafetyNotes`' business, and this rule reporting the same missing
+ * sentence a second time would violate this module's own "one mistake, one
+ * error" invariant.
+ *
+ * Reported against the **missing** locale, so an author is sent to the file
+ * half they have to write.
+ */
+function checkOptionalSafetyNotesAreSymmetric(
+  entry: ProcedureEntryShape,
+  ctx: ProcedureRefineContext
+): void {
+  // The required case is `checkSafetyNotes`'; reporting here as well would be
+  // two complaints about one missing sentence.
+  if (entry.safetyCritical === true || systemIsSafetyCritical(entry.system)) {
+    return;
+  }
+
+  const prose = asRecord(entry.prose);
+  if (prose === null) return;
+
+  const locales = Object.entries(prose).flatMap(([locale, block]) => {
+    const localeProse = asRecord(block);
+    return localeProse === null ? [] : [{ locale, prose: localeProse }];
+  });
+  if (locales.length < 2) return;
+
+  const hasNote = (localeProse: Record<string, unknown>): boolean => {
+    const note = localeProse["safetyNotes"];
+    return typeof note === "string" && note.trim().length > 0;
+  };
+
+  const present = locales.filter((each) => hasNote(each.prose));
+  if (present.length === 0 || present.length === locales.length) return;
+
+  const presentLocales = present.map((each) => each.locale).sort();
+
+  for (const { locale, prose: localeProse } of locales) {
+    if (hasNote(localeProse)) continue;
+
+    ctx.addIssue({
+      code: "custom",
+      path: ["prose", locale, "safetyNotes"],
+      message:
+        `this procedure states a hazard in ` +
+        `${presentLocales.map((each) => `\`${each}\``).join(", ")} and none in ` +
+        `\`${locale}\`. A safety note is optional on a job the system list does ` +
+        `not catch, but once one locale carries one, every locale this entry ` +
+        `declares must (AGENTS.md, "no page ships in one language, both or ` +
+        `neither") — otherwise half this site's readers get the warning and ` +
+        `half get a page with nothing where it should be. Write the ` +
+        `\`${locale}\` note, or remove it from ` +
+        `${presentLocales.map((each) => `\`${each}\``).join(", ")}. ` +
+        `refs specs/001-foundation (PRC-01, I18N-06)`,
+    });
+  }
+}
+
+/**
  * No list repeats an id.
  *
  * Swept over **every** id list, not the ones that occurred to an author: two
@@ -822,14 +897,38 @@ function checkProseCoverage(
 }
 
 /**
+ * Every free-sentence prose field this collection owns, scanned in the order a
+ * reader meets them.
+ *
+ * `title` and `summary` were **missing from the first version and that was a
+ * live bypass** (review F2): an entry whose EN summary read "Torque the drain
+ * plug to 39 N·m when you are done" and whose ES summary said the same thing
+ * with the same number passed every gate in the repository and shipped the
+ * figure twice, once per locale, on the detail page *and* on every index card.
+ * There was an argument for excluding `tools`; there was never one for
+ * excluding the two fields that render on the most surfaces.
+ *
+ * `prerequisites` is here for the same reason `steps` is: "engine cold" is a
+ * condition, and "torque the wheels to 110 N·m first" is a specification
+ * wearing a condition's clothes.
+ *
+ * **`tools` stays out, deliberately.** A tool's name legitimately carries its
+ * range — "torque wrench, 20–200 N·m", "3/8 in drive" — which is the tool's
+ * identity and not a figure this job sets, exactly the carve-out AGENTS.md
+ * makes for `24-valve` and `V6`. Flagging it would be the false positive that
+ * gets a real rule deleted.
+ */
+const FIGURE_SCANNED_PROSE = ["title", "summary"] as const;
+
+/** Keyed prose records scanned the same way, one issue per offending id. */
+const FIGURE_SCANNED_RECORDS = ["steps", "prerequisites"] as const;
+
+/**
  * No sentence states a figure PRC-03 says belongs in a `reference` entry.
  *
- * Scoped to the two fields that tell a reader what to *do* and what will *hurt
- * them* — steps and safety notes. Tool and prerequisite names are deliberately
- * out of scope: "torque wrench, 20–200 N·m" is the tool's identity, not a
- * figure this job sets, and flagging it would be the false positive that gets
- * a real rule deleted. See `src/lib/procedures/figures.ts` for the category,
- * the engine-code carve-out and the stated `mm` gap.
+ * Scoped by {@link FIGURE_SCANNED_PROSE} and {@link FIGURE_SCANNED_RECORDS},
+ * plus `safetyNotes`. See `src/lib/procedures/figures.ts` for the category, the
+ * engine-code carve-out and the stated `mm` gap.
  */
 function checkInlinedFigures(
   entry: ProcedureEntryShape,
@@ -861,15 +960,18 @@ function checkInlinedFigures(
     const localeProse = asRecord(block);
     if (localeProse === null) continue;
 
-    const steps = asRecord(localeProse["steps"]) ?? {};
-    for (const [id, text] of Object.entries(steps)) {
-      if (typeof text !== "string") continue;
-      report(["prose", locale, "steps", id], text);
+    for (const field of FIGURE_SCANNED_RECORDS) {
+      const sentences = asRecord(localeProse[field]) ?? {};
+      for (const [id, text] of Object.entries(sentences)) {
+        if (typeof text !== "string") continue;
+        report(["prose", locale, field, id], text);
+      }
     }
 
-    const notes = localeProse["safetyNotes"];
-    if (typeof notes === "string") {
-      report(["prose", locale, "safetyNotes"], notes);
+    for (const field of [...FIGURE_SCANNED_PROSE, "safetyNotes"] as const) {
+      const text = localeProse[field];
+      if (typeof text !== "string") continue;
+      report(["prose", locale, field], text);
     }
   }
 }
@@ -889,6 +991,7 @@ export function checkProcedureEntry(
   checkSafetyFlag(candidate, ctx);
   checkSafetySubject(candidate, ctx);
   checkSafetyNotes(candidate, ctx);
+  checkOptionalSafetyNotesAreSymmetric(candidate, ctx);
   checkDuplicateIds(candidate, ctx);
   checkStepReferences(candidate, ctx);
   checkSelfPrerequisite(candidate, ctx);

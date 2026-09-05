@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  UNIT_SYMBOLS,
   quantityLabel,
   referenceFigures,
   specRows,
   unitSymbol,
 } from "./specs.ts";
+import {
+  DIMENSION_UNITS,
+  TORQUE_UNITS,
+  VOLUME_UNITS,
+} from "../../schemas/reference.ts";
 
 /** A synthetic `reference` entry. Every figure is an obvious placeholder. */
 function reference(
@@ -36,6 +42,25 @@ describe("unit symbols (PRC-03, REF-01)", () => {
   it("falls back to the stored id rather than to a blank", () => {
     // Ugly and honest beats a page with a number and no unit on it.
     expect(unitSymbol("test-unit")).toBe("test-unit");
+  });
+
+  it("names every unit a citable spec kind can be stated in (review F6)", () => {
+    /*
+     * `UNIT_SYMBOLS` is hand-maintained, and a hand-maintained table stops
+     * being complete the first time somebody widens a vocabulary in
+     * `src/schemas/reference.ts` — the failure would be silent, rendering the
+     * raw stored id (`us-gal`) on a page. Derived from the real vocabularies
+     * rather than re-listed here, so adding a unit there turns *this* red
+     * (`.claude/GRADER-PRINCIPLES.md`: "a known-list sweep is only as complete
+     * as its list" — so do not keep a second list).
+     *
+     * Scoped to the three families `PROCEDURE_SPEC_KINDS` can carry: torque,
+     * volume (fluid and capacity), and dimension.
+     */
+    const cited = [...TORQUE_UNITS, ...VOLUME_UNITS, ...DIMENSION_UNITS];
+    const missing = cited.filter((unit) => !(unit in UNIT_SYMBOLS));
+
+    expect(missing).toEqual([]);
   });
 });
 
@@ -110,6 +135,35 @@ describe("the figures a reference row states (REF-01)", () => {
         "en-US"
       )
     ).toEqual(["50 N·m", "50 N·m", "90°"]);
+  });
+
+  it("reads a dimension — the kind that closes the `mm` gap (review F7)", () => {
+    /*
+     * `dimension` is citable precisely so a valve clearance has a legal home
+     * outside a sentence (the detector deliberately does not see `mm`). If this
+     * render path were broken, that escape hatch would be a dead end and the
+     * only remaining move would be the one PRC-03 forbids — so it is graded,
+     * in both locales' number formatting.
+     */
+    const clearance = {
+      kind: "dimension",
+      dimension: { value: 0.15, unit: "mm" },
+    };
+
+    expect(referenceFigures(clearance, "en-US")).toEqual(["0.15 mm"]);
+    expect(referenceFigures(clearance, "es-CR")).toEqual(["0,15 mm"]);
+  });
+
+  it("reads a signed alignment figure without losing its sign", () => {
+    // Camber, caster and toe are legitimately negative (`ANGLE_UNITS` is the
+    // one family `quantitySchema` lets be non-positive). A renderer that
+    // dropped the sign would invert an alignment spec.
+    expect(
+      referenceFigures(
+        { kind: "dimension", dimension: { value: -0.5, unit: "deg" } },
+        "en-US"
+      )
+    ).toEqual(["-0.5°"]);
   });
 
   it("states nothing for a row that carries no figure", () => {

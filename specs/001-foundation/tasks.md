@@ -235,6 +235,66 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
      shared (`difficultySchema` is imported); only the sentence is per
      collection. If the owner would rather collapse the three, that is a
      UI-strings decision, not a schema one.
+  <br>**Independent-review round 1 (2026-09-05), four defects fixed on the same
+  branch.** The reviewer verified the seam split, the build-gate wiring, the
+  spec rendering, the cycle detection and the grader-edit disclosure as exactly
+  as claimed, and found four real defects by building probe entries and
+  shipping them:
+  - **F1 (medium-high) — a hazard could ship in one language.**
+    `checkSafetyNotes` fires only on safety-critical entries and
+    `checkProseCoverage` never covered `safetyNotes`, so an *ordinary*
+    procedure could carry `prose.en.safetyNotes` with no `es` counterpart:
+    the reviewer's probe rendered "Hot oil will burn you" on the EN page and
+    nothing on the ES page, with `astro check` clean. Fixed by
+    `checkOptionalSafetyNotesAreSymmetric`, ported from
+    `checkOptionalNotesAreSymmetric` in `src/schemas/parts.ts` — the same
+    defect class as T501's own audit F1, one collection later and on a field
+    where it costs more. It reports against the *missing* locale and excludes
+    the safety-critical case so it never double-reports.
+  - **F2 (medium) — PRC-03's prose detector did not scan `summary`.** A
+    summary renders on the detail page *and* on every index card; the
+    reviewer's probe shipped "39 N·m" twice, once per locale, past every gate.
+    The detector's scope is now `title`, `summary`, `steps`, `prerequisites`
+    and `safetyNotes` — every free-sentence field this collection owns except
+    `tools`, which stays out because a tool's range ("torque wrench,
+    20–200 N·m") is its identity, not a figure the job sets.
+  - **F3 (medium) — the two new index pages were missing from
+    `tests/e2e/hidden-guard.spec.ts`' `UNCONDITIONAL_PAGES`.** Coverage gap,
+    not a live bug; both paths added on T601's precedent, and they pass
+    vacuously until T504 fills the collection, exactly as the parts rows did.
+  - **F5 (low) — the torque family missed the spelling FSM tables print.** A
+    Mitsubishi table reads `88 N·m (9.0 kg-m, 65 ft-lb)`, and the pattern
+    required the `f` in `kgf`. Widened per the T502a grader's own instruction
+    ("add it here and widen the pattern, do not narrow the rule") to `kg-m` /
+    `kgm` / `kg·m`, inch-pounds in both orders, and the spelled-out units
+    (`newton metres`, `kilográmetros`, `foot-pounds`, `libras-pie`).
+  All four fixes are pinned by new regression tests —
+  `src/schemas/procedures.test.ts` (F1, F2) and
+  `src/lib/procedures/figures.test.ts` (F5) — mutation-verified: reverting the
+  three code fixes turns exactly those 10 tests red and nothing else.
+  <br>**Review findings also closed, though the reviewer marked them optional:**
+  **F6**, `UNIT_SYMBOLS` had no completeness grader, so a unit added to
+  `src/schemas/reference.ts` would have silently rendered its raw id — now
+  derived from `TORQUE_UNITS ∪ VOLUME_UNITS ∪ DIMENSION_UNITS` at test time
+  rather than re-listed. **F7**, the `dimension` render path (the one that
+  closes the `mm` gap, so a valve clearance has a legal home outside a
+  sentence) is now graded in both locales' number formatting, along with a
+  signed alignment figure.
+  <br>**Owed, and deliberately not done here — F4: the procedures *index* page
+  has no render-test coverage,** unlike `tests/pages/parts-index.render.test.ts`
+  and `mods-index.render.test.ts`. Nothing is broken today (the list branch does
+  not render until T504 fills `ENTRY_SLUGS.procedures`), but the reviewer is
+  right that this is the surface past defects in this repo have hidden in
+  (T501 F1, T601 F1/F2) — the bare-route `href` bug in particular is
+  re-implementable from scratch on every new listing page and no CI check sees
+  it while the collection is empty. **The honest sequencing is that this grader
+  belongs to a `[TEST]` author, not to T502's implementer**, and it is most
+  useful landing with or just before T504, when it would have real entries to
+  render. Added to the T901-ledgered `[TEST]` back-fill scope alongside
+  T207/T208/T401/T501.
+  <br>**F8/F9 informational, no action:** the third difficulty-template string
+  (see judgment call 7 above) and the absence of extra listing prominence for
+  safety-critical cards — both owner/precedent questions rather than defects.
 - [ ] **T503 [CONTENT]** Parts wave 1: every part referenced by T303/T403/T404 garage+problem entries. Depends: T501, gaps report. *(PRT-01, PRT-02)*
 - [ ] **T504 [CONTENT]** Procedures wave 1: maintenance set (oil, filters, timing belt 6G74, diffs/tcase fluid, brakes, plugs) — bilingual, cited, safety-flagged where due. Depends: T502. *(PRC-01, PRC-02, PRC-03)*
 

@@ -107,6 +107,15 @@ const UNCONDITIONAL_PAGES = [
   // lays its toolbar out with `display: flex`, exactly like the parts index.
   { locale: "en", path: "/en/mods/" },
   { locale: "es", path: "/es/modificaciones/" },
+  // T502 — the procedures index has both halves of the defect class again: a
+  // `display: grid` list of `display: flex` cards the filter script hides with
+  // `hidden`, and a `[data-procedures-none]` paragraph. Listed on the same
+  // reasoning the parts note above records — the collection is empty until
+  // T504, so these two rows pass vacuously today and start checking something
+  // real the moment the first procedure lands. That is the right time to have
+  // added them, not a reason to wait.
+  { locale: "en", path: "/en/procedures/" },
+  { locale: "es", path: "/es/procedimientos/" },
 ] as const;
 
 /**
