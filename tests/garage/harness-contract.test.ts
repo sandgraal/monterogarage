@@ -701,6 +701,7 @@ describe("the declared contract is internally coherent", () => {
       "vehicles",
       "records",
       "receipts",
+      "record_media",
       "shares",
     ]);
   });
@@ -714,6 +715,7 @@ describe("the declared contract is internally coherent", () => {
       "vehicles",
       "records",
       "receipts",
+      "record_media",
     ]);
     expect(UNSHIPPED_USER_TABLES.map((table) => table.name)).toEqual([
       "shares",

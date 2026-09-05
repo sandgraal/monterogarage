@@ -766,13 +766,13 @@ function closedSetDdl(sql: string, table: string, column: string): string {
  * ====================================================================== */
 
 describe("the record-media bucket is created private", () => {
-  it.fails("creates a private bucket and never flips it public", () => {
+  it("creates a private bucket and never flips it public", () => {
     expect(bucketPrivacyIssues(migrationSql(), RECORD_MEDIA_BUCKET)).toEqual(
       []
     );
   });
 
-  it.fails("polices the bucket, on all four commands, scoped by path", () => {
+  it("polices the bucket, on all four commands, scoped by path", () => {
     // `bucketPolicyIssues` rather than `storagePolicyIssues`: the whole-table
     // rule is satisfied today by receipts and photos alone, and would stay
     // satisfied if this bucket shipped with no policy whatsoever — every
@@ -780,7 +780,7 @@ describe("the record-media bucket is created private", () => {
     expect(bucketPolicyIssues(migrationSql(), RECORD_MEDIA_BUCKET)).toEqual([]);
   });
 
-  it.fails("grants no record-media policy to anon", () => {
+  it("grants no record-media policy to anon", () => {
     // Both halves matter. Filtering for "granted to" alone passes vacuously
     // today — there are no media policies, so none are granted to anon — which
     // is a grader reporting success because the feature is missing.
@@ -792,32 +792,30 @@ describe("the record-media bucket is created private", () => {
     );
   });
 
-  it.fails(
-    "restricts the bucket to photo, video and audio and nothing else",
-    () => {
-      expect(
-        mimeRestrictionIssues(migrationSql(), RECORD_MEDIA_BUCKET)
-      ).toEqual([]);
-    }
-  );
-
-  it.fails.each(
-    RECORD_MEDIA_KINDS.map((entry) => [entry.kind, entry.mimePrefix])
-  )("allows at least one %s type (%s…)", (_kind, prefix) => {
-    // The per-kind half, as a boundary table rather than one aggregate
-    // assertion: a bucket that allows images and nothing else satisfies "no
-    // disallowed category is present" completely, and is the exact shape the
-    // `vehicle-photos` bucket already has. The WhatsApp voice note is the
-    // motivating case and it is the one an image-only allow-list drops.
-    const restriction = mimeRestriction(migrationSql(), RECORD_MEDIA_BUCKET);
-
-    expect(restriction.state, JSON.stringify(restriction)).toBe("restricted");
-    expect(restriction.state === "restricted" ? restriction.types : []).toEqual(
-      expect.arrayContaining([expect.stringContaining(prefix)])
+  it("restricts the bucket to photo, video and audio and nothing else", () => {
+    expect(mimeRestrictionIssues(migrationSql(), RECORD_MEDIA_BUCKET)).toEqual(
+      []
     );
   });
 
-  it.fails(`refuses ${NON_MEDIA_MIME_TYPE}, which belongs to receipts`, () => {
+  it.each(RECORD_MEDIA_KINDS.map((entry) => [entry.kind, entry.mimePrefix]))(
+    "allows at least one %s type (%s…)",
+    (_kind, prefix) => {
+      // The per-kind half, as a boundary table rather than one aggregate
+      // assertion: a bucket that allows images and nothing else satisfies "no
+      // disallowed category is present" completely, and is the exact shape the
+      // `vehicle-photos` bucket already has. The WhatsApp voice note is the
+      // motivating case and it is the one an image-only allow-list drops.
+      const restriction = mimeRestriction(migrationSql(), RECORD_MEDIA_BUCKET);
+
+      expect(restriction.state, JSON.stringify(restriction)).toBe("restricted");
+      expect(
+        restriction.state === "restricted" ? restriction.types : []
+      ).toEqual(expect.arrayContaining([expect.stringContaining(prefix)]));
+    }
+  );
+
+  it(`refuses ${NON_MEDIA_MIME_TYPE}, which belongs to receipts`, () => {
     // The boundary between GAR-05′ and GAR-06′, stated as the thing that must
     // NOT be true. If the media bucket takes PDFs it has become a second
     // receipts bucket and "independent of a receipt's fields" is a naming
@@ -843,7 +841,7 @@ describe("ACC-03 reaches media objects too", () => {
     expect(deletionReachesBucket(body, VEHICLE_PHOTOS_BUCKET)).toBe(true);
   });
 
-  it.fails("purge_expired_accounts deletes record-media objects", () => {
+  it("purge_expired_accounts deletes record-media objects", () => {
     // ACC-03 says "all vehicles, records, and stored files"; a voice note is a
     // stored file. The purge names its buckets explicitly, and the failure is
     // invisible from outside — the count it returns is deleted *accounts*, so
@@ -859,11 +857,11 @@ describe("ACC-03 reaches media objects too", () => {
  * ====================================================================== */
 
 describe("the record_media table exists and is shaped by GAR-06′", () => {
-  it.fails(`public.${TABLE} is created`, () => {
+  it(`public.${TABLE} is created`, () => {
     expect(createTableBody(migrationSql(), TABLE)).not.toBeNull();
   });
 
-  it.fails.each(
+  it.each(
     RECORD_MEDIA_TABLE.columns.map((column) => [
       column.name,
       column.requirement,
@@ -875,7 +873,7 @@ describe("the record_media table exists and is shaped by GAR-06′", () => {
     expect(columnDefinition(body ?? "", column)).not.toBeNull();
   });
 
-  it.fails.each(
+  it.each(
     RECORD_MEDIA_TABLE.columns
       .filter((column) => column.notNull === true)
       .map((column) => [column.name])
@@ -887,7 +885,7 @@ describe("the record_media table exists and is shaped by GAR-06′", () => {
     expect(isNotNullFor(migrationSql(), TABLE, column)).toBe(true);
   });
 
-  it.fails(`${TABLE}.record_id references records on delete cascade`, () => {
+  it(`${TABLE}.record_id references records on delete cascade`, () => {
     // The ownership path is `record_id → vehicle_id → owner_id`. A missing
     // cascade on this hop leaves an orphan row that still names a storage
     // path, and ACC-03's hard delete either fails on the constraint or lies.
@@ -898,7 +896,7 @@ describe("the record_media table exists and is shaped by GAR-06′", () => {
     expect(fk?.cascades).toBe(true);
   });
 
-  it.fails("media_kind is a closed set, not free text", () => {
+  it("media_kind is a closed set, not free text", () => {
     // GAR-06′ names three kinds. Free text means the page's render branch is
     // driven by strings nobody validates, and "photo" vs "image" silently
     // renders nothing — the same failure `records.kind` is constrained against.
@@ -912,22 +910,22 @@ describe("the record_media table exists and is shaped by GAR-06′", () => {
 });
 
 describe("record_media is private by default (SHR-01)", () => {
-  it.fails("enables row level security", () => {
+  it("enables row level security", () => {
     expect(enablesRls(migrationSql(), TABLE)).toBe(true);
   });
 
-  it.fails("FORCES row level security", () => {
+  it("FORCES row level security", () => {
     // Without `force`, the table owner is exempt — and migrations run as the
     // owner, so every proof written against a policy is a proof about
     // somebody else's session.
     expect(forcesRls(migrationSql(), TABLE)).toBe(true);
   });
 
-  it.fails("polices every command, owner-scoped through the vehicle", () => {
+  it("polices every command, owner-scoped through the vehicle", () => {
     expect(userTablePolicyIssues(migrationSql(), [TABLE])).toEqual([]);
   });
 
-  it.fails.each([["select"], ["insert"], ["update"], ["delete"]])(
+  it.each([["select"], ["insert"], ["update"], ["delete"]])(
     "covers %s with a policy",
     (command) => {
       // Four separate graders rather than one, because a table policed for
@@ -990,11 +988,11 @@ describe("an attachment is not a receipt (GAR-06′ ✕ GAR-05′)", () => {
     ]);
   });
 
-  it.fails("no receipt field is required on a media row", () => {
+  it("no receipt field is required on a media row", () => {
     expect(requiredReceiptFieldIssues(migrationSql(), TABLE)).toEqual([]);
   });
 
-  it.fails("record_media declares no column the contract does not name", () => {
+  it("record_media declares no column the contract does not name", () => {
     // The independence claim from the other side. GAR-06′ asks for
     // documentation, not a second financial ledger, and a `vendor`/`amount`
     // pair that arrives "just in case" is how two surfaces that must stay
@@ -1074,7 +1072,7 @@ describe("deleting a record reaches its media objects", () => {
     expect(deleteTriggerOn(insertOnly, "records")).toBeUndefined();
   });
 
-  it.fails("a delete trigger exists on public.records", () => {
+  it("a delete trigger exists on public.records", () => {
     // No foreign key can do this: a storage object is not a row in `public`,
     // so `on delete cascade` has nothing to hang from. Removing one record
     // from a vehicle's log would otherwise leave its video in the bucket
@@ -1086,7 +1084,7 @@ describe("deleting a record reaches its media objects", () => {
     ).toBeDefined();
   });
 
-  it.fails("the record-delete cleanup targets the record-media bucket", () => {
+  it("the record-delete cleanup targets the record-media bucket", () => {
     // Separate from the trigger existing, because a trigger that fires and
     // deletes nothing is the failure this section is about. The routine is
     // found by following `execute function`, not by guessing its name.
@@ -1098,20 +1096,17 @@ describe("deleting a record reaches its media objects", () => {
     expect(deletionReachesBucket(body, RECORD_MEDIA_BUCKET)).toBe(true);
   });
 
-  it.fails(
-    "the record-delete cleanup narrows to the record being deleted",
-    () => {
-      // The over-reach direction. A cleanup keyed on the owner segment alone
-      // deletes every media object that owner has, in every vehicle, on every
-      // record — triggered by deleting one note.
-      expect(
-        recordScopeIssues(
-          deleteCleanupBody(migrationSql(), "records"),
-          RECORD_MEDIA_BUCKET
-        )
-      ).toEqual([]);
-    }
-  );
+  it("the record-delete cleanup narrows to the record being deleted", () => {
+    // The over-reach direction. A cleanup keyed on the owner segment alone
+    // deletes every media object that owner has, in every vehicle, on every
+    // record — triggered by deleting one note.
+    expect(
+      recordScopeIssues(
+        deleteCleanupBody(migrationSql(), "records"),
+        RECORD_MEDIA_BUCKET
+      )
+    ).toEqual([]);
+  });
 });
 
 /* =========================================================================
@@ -1140,7 +1135,7 @@ describe("record_media joins the tables every generic sweep already covers", () 
     ]);
   });
 
-  it.fails("record_media is enumerated in USER_TABLES", () => {
+  it("record_media is enumerated in USER_TABLES", () => {
     // T2-305 promotes it, in the same commit that creates the table. Three
     // edits, all named in `contract.ts`'s `RECORD_MEDIA_TABLE` docstring:
     //   1. move the entry into `USER_TABLES`, emptying `PENDING_USER_TABLES`
@@ -1344,31 +1339,28 @@ async function createRecordWithMedia(
 describe.skipIf(!live.available)(
   liveTitle("a record's media has no public URL", live),
   () => {
-    it.fails(
-      "the public object route does not serve an attachment",
-      async () => {
-        const scenario = await provisionScenario(stackOf(live));
-        try {
-          const { mediaPath } = await createRecordWithMedia(
-            scenario,
-            scenario.ownerA
-          );
+    it("the public object route does not serve an attachment", async () => {
+      const scenario = await provisionScenario(stackOf(live));
+      try {
+        const { mediaPath } = await createRecordWithMedia(
+          scenario,
+          scenario.ownerA
+        );
 
-          const publicRead = await fetchPublicObject(
-            scenario,
-            mediaPath,
-            RECORD_MEDIA_BUCKET
-          );
+        const publicRead = await fetchPublicObject(
+          scenario,
+          mediaPath,
+          RECORD_MEDIA_BUCKET
+        );
 
-          expect(publicRead.ok).toBe(false);
-          expect(publicRead.text).not.toContain(MEDIA_BODY_MARKERS.video);
-        } finally {
-          await teardownScenario(scenario);
-        }
+        expect(publicRead.ok).toBe(false);
+        expect(publicRead.text).not.toContain(MEDIA_BODY_MARKERS.video);
+      } finally {
+        await teardownScenario(scenario);
       }
-    );
+    });
 
-    it.fails("an unauthenticated direct read does not serve it", async () => {
+    it("an unauthenticated direct read does not serve it", async () => {
       const scenario = await provisionScenario(stackOf(live));
       try {
         const { mediaPath } = await createRecordWithMedia(
@@ -1390,7 +1382,7 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails("anon cannot list the media bucket", async () => {
+    it("anon cannot list the media bucket", async () => {
       // A media path is `<owner>/<vehicle>/<record>/<file>`, so one listing
       // hands out the owner id, the vehicle id, the record id and the
       // filename together — a map of somebody's garage without reading a byte.
@@ -1411,68 +1403,62 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails(
-      "POSITIVE CONTROL: the owner reads their own attachment back",
-      async () => {
-        // Every denial above is satisfied by a bucket that does not exist.
-        const scenario = await provisionScenario(stackOf(live));
-        try {
-          const { mediaPath } = await createRecordWithMedia(
-            scenario,
-            scenario.ownerA
-          );
+    it("POSITIVE CONTROL: the owner reads their own attachment back", async () => {
+      // Every denial above is satisfied by a bucket that does not exist.
+      const scenario = await provisionScenario(stackOf(live));
+      try {
+        const { mediaPath } = await createRecordWithMedia(
+          scenario,
+          scenario.ownerA
+        );
 
-          const ownerRead = await downloadObject(
-            scenario,
-            scenario.ownerA,
-            mediaPath,
-            RECORD_MEDIA_BUCKET
-          );
+        const ownerRead = await downloadObject(
+          scenario,
+          scenario.ownerA,
+          mediaPath,
+          RECORD_MEDIA_BUCKET
+        );
 
-          expect(ownerRead.ok).toBe(true);
-        } finally {
-          await teardownScenario(scenario);
-        }
+        expect(ownerRead.ok).toBe(true);
+      } finally {
+        await teardownScenario(scenario);
       }
-    );
+    });
 
-    it.fails(
-      "POSITIVE CONTROL: the owner's signed URL works without credentials",
-      async () => {
-        // The feature has to work. A signed URL nobody can follow satisfies
-        // every denial above and ships a garage where no video ever plays.
-        const scenario = await provisionScenario(stackOf(live));
-        try {
-          const { mediaPath } = await createRecordWithMedia(
-            scenario,
-            scenario.ownerA
-          );
+    it("POSITIVE CONTROL: the owner's signed URL works without credentials", async () => {
+      // The feature has to work. A signed URL nobody can follow satisfies
+      // every denial above and ships a garage where no video ever plays.
+      const scenario = await provisionScenario(stackOf(live));
+      try {
+        const { mediaPath } = await createRecordWithMedia(
+          scenario,
+          scenario.ownerA
+        );
 
-          const signed = await signObject(
-            scenario,
-            scenario.ownerA,
-            mediaPath,
-            RECORD_MEDIA_BUCKET
-          );
-          expect(signed.ok).toBe(true);
+        const signed = await signObject(
+          scenario,
+          scenario.ownerA,
+          mediaPath,
+          RECORD_MEDIA_BUCKET
+        );
+        expect(signed.ok).toBe(true);
 
-          const url = (signed.body as { signedURL?: string }).signedURL ?? "";
-          expect(url).toBeTruthy();
-          expect(await followSignedUrl(stackOf(live), url)).toMatchObject({
-            ok: true,
-          });
-        } finally {
-          await teardownScenario(scenario);
-        }
+        const url = (signed.body as { signedURL?: string }).signedURL ?? "";
+        expect(url).toBeTruthy();
+        expect(await followSignedUrl(stackOf(live), url)).toMatchObject({
+          ok: true,
+        });
+      } finally {
+        await teardownScenario(scenario);
       }
-    );
+    });
   }
 );
 
 describe.skipIf(!live.available)(
   liveTitle("one owner's media is their own", live),
   () => {
-    it.fails("owner B cannot read owner A's attachment", async () => {
+    it("owner B cannot read owner A's attachment", async () => {
       const scenario = await provisionScenario(stackOf(live));
       try {
         const { mediaPath } = await createRecordWithMedia(
@@ -1494,7 +1480,7 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails("owner B cannot sign for owner A's attachment", async () => {
+    it("owner B cannot sign for owner A's attachment", async () => {
       // The refusal has to happen at signing: a signed URL is a bearer token,
       // and once issued nothing downstream asks who asked for it.
       const scenario = await provisionScenario(stackOf(live));
@@ -1518,7 +1504,7 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails("owner B cannot upload into owner A's prefix", async () => {
+    it("owner B cannot upload into owner A's prefix", async () => {
       // Write access to someone else's prefix is also the ability to replace
       // their documentation with something else entirely.
       //
@@ -1570,7 +1556,7 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails("owner B cannot read owner A's record_media rows", async () => {
+    it("owner B cannot read owner A's record_media rows", async () => {
       // The row half. The object policies and the table policies are two
       // independent guarantees, and the row alone names the vendor-free
       // storage path an attacker would then go and sign for.
@@ -1586,7 +1572,7 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails("owner B cannot attach media to owner A's record", async () => {
+    it("owner B cannot attach media to owner A's record", async () => {
       // The FK keeps an attachment on a record; the policy keeps it on *your*
       // record. This is the seam between them, and a correct FK with a lazy
       // `with check` fails exactly here.
@@ -1630,7 +1616,7 @@ describe.skipIf(!live.available)(
 describe.skipIf(!live.available)(
   liveTitle("the bucket accepts three kinds and only three", live),
   () => {
-    it.fails.each(RECORD_MEDIA_KIND_NAMES.map((kind) => [kind]))(
+    it.each(RECORD_MEDIA_KIND_NAMES.map((kind) => [kind]))(
       "accepts a %s upload",
       async (kind) => {
         // The positive half of the MIME restriction, one grader per kind. An
@@ -1659,7 +1645,7 @@ describe.skipIf(!live.available)(
       }
     );
 
-    it.fails(`refuses a ${NON_MEDIA_MIME_TYPE} upload`, async () => {
+    it(`refuses a ${NON_MEDIA_MIME_TYPE} upload`, async () => {
       // The negative half, and the GAR-05′/GAR-06′ boundary made real: the
       // media bucket is not a second place to put receipts.
       //
@@ -1698,81 +1684,70 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails(
-      "refuses a media row whose kind is not one of the three",
-      async () => {
-        // The closed set, proved rather than read out of the DDL — and paired
-        // with an accepted kind, because a missing table rejects every insert
-        // and would have made this look like a working `check` constraint.
-        const scenario = await provisionScenario(stackOf(live));
-        try {
-          const fixture = await createRecordFixture(scenario, scenario.ownerA);
+    it("refuses a media row whose kind is not one of the three", async () => {
+      // The closed set, proved rather than read out of the DDL — and paired
+      // with an accepted kind, because a missing table rejects every insert
+      // and would have made this look like a working `check` constraint.
+      const scenario = await provisionScenario(stackOf(live));
+      try {
+        const fixture = await createRecordFixture(scenario, scenario.ownerA);
 
-          const named = await insertRow(scenario, scenario.ownerA, TABLE, {
-            record_id: fixture.recordId,
-            storage_path: mediaPathFor(
-              scenario.ownerA,
-              fixture,
-              "video",
-              "akind"
-            ),
-            media_kind: "video",
-          });
-          expect(named.ok, named.text).toBe(true);
+        const named = await insertRow(scenario, scenario.ownerA, TABLE, {
+          record_id: fixture.recordId,
+          storage_path: mediaPathFor(
+            scenario.ownerA,
+            fixture,
+            "video",
+            "akind"
+          ),
+          media_kind: "video",
+        });
+        expect(named.ok, named.text).toBe(true);
 
-          const response = await insertRow(scenario, scenario.ownerA, TABLE, {
-            record_id: fixture.recordId,
-            storage_path: mediaPathFor(
-              scenario.ownerA,
-              fixture,
-              "video",
-              "notakind"
-            ),
-            media_kind: "TEST-NOT-A-KIND",
-          });
+        const response = await insertRow(scenario, scenario.ownerA, TABLE, {
+          record_id: fixture.recordId,
+          storage_path: mediaPathFor(
+            scenario.ownerA,
+            fixture,
+            "video",
+            "notakind"
+          ),
+          media_kind: "TEST-NOT-A-KIND",
+        });
 
-          expect(response.ok).toBe(false);
-        } finally {
-          await teardownScenario(scenario);
-        }
+        expect(response.ok).toBe(false);
+      } finally {
+        await teardownScenario(scenario);
       }
-    );
+    });
 
-    it.fails(
-      "POSITIVE CONTROL: an attachment needs no vendor, date or amount",
-      async () => {
-        // GAR-06′'s independence clause, end to end: record, path, kind, and
-        // nothing else. If this fails, the media surface has inherited GAR-05′'s
-        // form and the WhatsApp voice note that started all this cannot be
-        // filed without inventing a vendor.
-        const scenario = await provisionScenario(stackOf(live));
-        try {
-          const fixture = await createRecordFixture(scenario, scenario.ownerA);
+    it("POSITIVE CONTROL: an attachment needs no vendor, date or amount", async () => {
+      // GAR-06′'s independence clause, end to end: record, path, kind, and
+      // nothing else. If this fails, the media surface has inherited GAR-05′'s
+      // form and the WhatsApp voice note that started all this cannot be
+      // filed without inventing a vendor.
+      const scenario = await provisionScenario(stackOf(live));
+      try {
+        const fixture = await createRecordFixture(scenario, scenario.ownerA);
 
-          const response = await insertRow(scenario, scenario.ownerA, TABLE, {
-            record_id: fixture.recordId,
-            storage_path: mediaPathFor(
-              scenario.ownerA,
-              fixture,
-              "audio",
-              "bare"
-            ),
-            media_kind: "audio",
-          });
+        const response = await insertRow(scenario, scenario.ownerA, TABLE, {
+          record_id: fixture.recordId,
+          storage_path: mediaPathFor(scenario.ownerA, fixture, "audio", "bare"),
+          media_kind: "audio",
+        });
 
-          expect(response.ok, response.text).toBe(true);
-        } finally {
-          await teardownScenario(scenario);
-        }
+        expect(response.ok, response.text).toBe(true);
+      } finally {
+        await teardownScenario(scenario);
       }
-    );
+    });
   }
 );
 
 describe.skipIf(!live.available)(
   liveTitle("deleting reaches the objects", live),
   () => {
-    it.fails("deleting a record removes its media objects", async () => {
+    it("deleting a record removes its media objects", async () => {
       const scenario = await provisionScenario(stackOf(live));
       try {
         const { recordId, mediaPath } = await createRecordWithMedia(
@@ -1801,86 +1776,80 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails(
-      "deleting one record leaves another record's media alone",
-      async () => {
-        // The over-reach direction, which is the same defect wearing the
-        // opposite coat and much harder to notice: nobody checks the records
-        // they did not delete.
-        const scenario = await provisionScenario(stackOf(live));
-        try {
-          const keep = await createRecordWithMedia(
-            scenario,
-            scenario.ownerA,
-            "video",
-            "keep"
-          );
-          const drop = await createRecordWithMedia(
-            scenario,
-            scenario.ownerA,
-            "audio",
-            "drop"
-          );
+    it("deleting one record leaves another record's media alone", async () => {
+      // The over-reach direction, which is the same defect wearing the
+      // opposite coat and much harder to notice: nobody checks the records
+      // they did not delete.
+      const scenario = await provisionScenario(stackOf(live));
+      try {
+        const keep = await createRecordWithMedia(
+          scenario,
+          scenario.ownerA,
+          "video",
+          "keep"
+        );
+        const drop = await createRecordWithMedia(
+          scenario,
+          scenario.ownerA,
+          "audio",
+          "drop"
+        );
 
-          await deleteRows(
-            scenario,
-            scenario.ownerA,
-            "records",
-            `id=eq.${drop.recordId}`
-          );
+        await deleteRows(
+          scenario,
+          scenario.ownerA,
+          "records",
+          `id=eq.${drop.recordId}`
+        );
 
-          const survivor = await downloadObject(
-            scenario,
-            scenario.ownerA,
-            keep.mediaPath,
-            RECORD_MEDIA_BUCKET
-          );
+        const survivor = await downloadObject(
+          scenario,
+          scenario.ownerA,
+          keep.mediaPath,
+          RECORD_MEDIA_BUCKET
+        );
 
-          expect(survivor.ok, survivor.text).toBe(true);
-        } finally {
-          await teardownScenario(scenario);
-        }
+        expect(survivor.ok, survivor.text).toBe(true);
+      } finally {
+        await teardownScenario(scenario);
       }
-    );
+    });
 
-    it.fails(
-      "deleting a vehicle removes its records' media objects",
-      async () => {
-        // A vehicle delete cascades its records away, and a row-level `after
-        // delete` trigger on `records` fires for cascaded rows too — so this
-        // should follow from the record trigger. "Should follow" is exactly the
-        // kind of claim that is worth one live grader rather than an argument:
-        // if the belt is written as a statement-level trigger instead, this is
-        // the one that catches it.
-        const scenario = await provisionScenario(stackOf(live));
-        try {
-          const { vehicleId, mediaPath } = await createRecordWithMedia(
-            scenario,
-            scenario.ownerA
-          );
+    it("deleting a vehicle removes its records' media objects", async () => {
+      // A vehicle delete cascades its records away, and a row-level `after
+      // delete` trigger on `records` fires for cascaded rows too — so this
+      // should follow from the record trigger. "Should follow" is exactly the
+      // kind of claim that is worth one live grader rather than an argument:
+      // if the belt is written as a statement-level trigger instead, this is
+      // the one that catches it.
+      const scenario = await provisionScenario(stackOf(live));
+      try {
+        const { vehicleId, mediaPath } = await createRecordWithMedia(
+          scenario,
+          scenario.ownerA
+        );
 
-          await deleteRows(
-            scenario,
-            scenario.ownerA,
-            "vehicles",
-            `id=eq.${vehicleId}`
-          );
+        await deleteRows(
+          scenario,
+          scenario.ownerA,
+          "vehicles",
+          `id=eq.${vehicleId}`
+        );
 
-          const read = await downloadObject(
-            scenario,
-            scenario.ownerA,
-            mediaPath,
-            RECORD_MEDIA_BUCKET
-          );
+        const read = await downloadObject(
+          scenario,
+          scenario.ownerA,
+          mediaPath,
+          RECORD_MEDIA_BUCKET
+        );
 
-          expect(read.ok).toBe(false);
-        } finally {
-          await teardownScenario(scenario);
-        }
+        expect(read.ok).toBe(false);
+      } finally {
+        await teardownScenario(scenario);
       }
-    );
+    });
 
-    it.fails("the account purge removes media objects too", async () => {
+    it("the account purge removes media objects too", async () => {
       const scenario = await provisionScenario(stackOf(live));
       try {
         const { mediaPath } = await createRecordWithMedia(

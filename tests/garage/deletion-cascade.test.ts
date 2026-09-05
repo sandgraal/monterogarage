@@ -96,6 +96,10 @@ const CASCADE_HOPS = [
   ["vehicles", "owner_id", "auth.users"],
   ["records", "vehicle_id", "vehicles"],
   ["receipts", "record_id", "records"],
+  // Promoted by T2-305 in the commit that created the table — the second of
+  // the three edits `RECORD_MEDIA_TABLE`'s docstring names. A media row that
+  // outlived its record would still name a storage path nothing can reach.
+  ["record_media", "record_id", "records"],
 ] as const;
 
 /** The hops a named task still has to ship. Marked, never dropped. */

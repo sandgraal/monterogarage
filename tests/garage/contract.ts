@@ -108,6 +108,100 @@ export interface TableContract {
 }
 
 /**
+ * The media-attachment table (GAR-06′) — **declared by T2-305a, promoted into
+ * `USER_TABLES` by T2-305**, which is the commit that created it.
+ *
+ * ## Why the declaration sits above `USER_TABLES` rather than beside its kin
+ *
+ * It is the fifth element of that array now, and `const` has no hoisting: a
+ * definition further down the file is in its temporal dead zone when the array
+ * literal is evaluated, and `USER_TABLE_NAMES` reads the array a hundred lines
+ * later still. So promotion moved the declaration here rather than inlining
+ * the entry and losing this docstring. Nothing else about it changed.
+ *
+ * ## Naming: `record_media`, not `record_attachments`
+ *
+ * A bucket id is global to the project and permanent in every stored path
+ * (the `vehicle-photos` argument below), and the same is true of a table name
+ * in every query that will ever read it. `record_attachments` is the *generic*
+ * name for "a thing attached to a record" — and a receipt is already a thing
+ * attached to a record, living in a different bucket under a different table
+ * with different columns. A name that describes both while governing one is a
+ * name that will be wrong the first time somebody reads it quickly.
+ *
+ * `record_media` describes the contents, and the contents are exactly what the
+ * bucket's `allowed_mime_types` says they are: image, video, audio. It also
+ * leaves `record_attachments` free for the general surface if one is ever
+ * wanted. As with every other name in this file, this is T2-305a's design
+ * decision on the spec's behalf and is a one-line conversation with the
+ * conductor to change — what is not negotiable is the behaviour graded around
+ * it.
+ *
+ * ## Why it is a table and not `records.media_paths text[]`
+ *
+ * `vehicles.photo_paths` is the array precedent, and T2-304's seeding found
+ * the defect it carries: two uploads landing back-to-back read-modify-write the
+ * same array and one clobbers the other, leaving a real storage object that no
+ * row names (recorded on T2-302/T2-305 in `tasks.md`). A row per object has no
+ * such race — an insert is an insert — and it is also the only shape that can
+ * carry `media_kind`, which GAR-06′ needs and an array of paths cannot hold.
+ *
+ * ## What promotion took, for the next table that arrives this way
+ *
+ * `USER_TABLES` drives unmarked `it.each` sweeps in `schema-shape.test.ts`,
+ * `rls-deny-by-default.test.ts` and `deletion-cascade.test.ts`, so a table
+ * declared before its migration existed had to wait outside them:
+ * `PENDING_USER_TABLES` held it, and the marked grader
+ * `"record_media is enumerated in USER_TABLES"` failed until T2-305 made these
+ * three edits in the same commit as the migration —
+ *
+ * 1. move this entry into the `USER_TABLES` array, emptying
+ *    `PENDING_USER_TABLES` (which stays exported: `rules.ts` reads it, and the
+ *    next table to arrive this way will refill it);
+ * 2. add `["record_media", "record_id", "records"]` to `CASCADE_HOPS` in
+ *    `tests/garage/deletion-cascade.test.ts`;
+ * 3. extend the table-name lists in `harness-contract.test.ts`'s
+ *    `"names the user-data tables, shipped and pending"` and
+ *    `"splits into a shipped half and a pending half"`.
+ *
+ * **Verified, not assumed** (T2-305a ran a scratch migration to check): with
+ * the table created and promotion skipped, the two ungraded-table sweeps in
+ * `rls-deny-by-default.test.ts` and `share-instrument.test.ts` fail by name,
+ * and so do the anonymous-privilege sweeps — Supabase's default privileges
+ * grant ALL on a new table in `public` to `anon` and `authenticated`, and an
+ * explicit `grant` *adds to* that ACL rather than replacing it. T2-202's F2
+ * found that the hard way; `20260903120000_record_media.sql` does the revoke
+ * dance by name before granting the four verbs.
+ */
+export const RECORD_MEDIA_TABLE: TableContract = {
+  name: "record_media",
+  requirement: "GAR-06′",
+  ownershipPath: ["record_id", "vehicle_id", "owner_id"],
+  columns: [
+    { name: "id", requirement: "GAR-06′", type: /uuid/, notNull: true },
+    {
+      name: "record_id",
+      requirement: "GAR-06′ (an attachment is documentation *of a record*)",
+      type: /uuid/,
+      notNull: true,
+    },
+    {
+      name: "storage_path",
+      requirement: "GAR-06′ (the object in the private bucket)",
+      notNull: true,
+    },
+    {
+      // The closed set. Without it the "photo, video, or audio" of GAR-06′ is
+      // a sentence in a spec rather than a property of the data, and a UI that
+      // renders an `<audio>` for a video is one typo away.
+      name: "media_kind",
+      requirement: "GAR-06′ (“photo, video, or audio” — three, and only three)",
+      notNull: true,
+    },
+  ],
+};
+
+/**
  * The user-data tables. `profiles` exists because a user needs a row of their
  * own that is not `auth.users` (which no client may read).
  *
@@ -301,6 +395,7 @@ export const USER_TABLES: readonly TableContract[] = [
       { name: "currency", requirement: "GAR-05′" },
     ],
   },
+  RECORD_MEDIA_TABLE,
   {
     /**
      * The grants table (SHR-05..08) — declared by T2-401 [TEST], created by
@@ -498,106 +593,19 @@ export const RECEIPT_FINANCIAL_COLUMNS = [
 ] as const;
 
 /**
- * The media-attachment table — **declared here, not yet in `USER_TABLES`**.
- *
- * ## Naming: `record_media`, not `record_attachments`
- *
- * A bucket id is global to the project and permanent in every stored path
- * (the `vehicle-photos` argument above), and the same is true of a table name
- * in every query that will ever read it. `record_attachments` is the *generic*
- * name for "a thing attached to a record" — and a receipt is already a thing
- * attached to a record, living in a different bucket under a different table
- * with different columns. A name that describes both while governing one is a
- * name that will be wrong the first time somebody reads it quickly.
- *
- * `record_media` describes the contents, and the contents are exactly what the
- * bucket's `allowed_mime_types` says they are: image, video, audio. It also
- * leaves `record_attachments` free for the general surface if one is ever
- * wanted. As with every other name in this file, this is T2-305a's design
- * decision on the spec's behalf and is a one-line conversation with the
- * conductor to change — what is not negotiable is the behaviour graded around
- * it.
- *
- * ## Why it is a table and not `records.media_paths text[]`
- *
- * `vehicles.photo_paths` is the array precedent, and T2-304's seeding found
- * the defect it carries: two uploads landing back-to-back read-modify-write the
- * same array and one clobbers the other, leaving a real storage object that no
- * row names (recorded on T2-302/T2-305 in `tasks.md`). A row per object has no
- * such race — an insert is an insert — and it is also the only shape that can
- * carry `media_kind`, which GAR-06′ needs and an array of paths cannot hold.
- *
- * ## Why it is NOT in `USER_TABLES` yet, and what promotion costs
- *
- * `USER_TABLES` drives unmarked `it.each` sweeps in `schema-shape.test.ts`,
- * `rls-deny-by-default.test.ts` and `deletion-cascade.test.ts`. Adding a table
- * that no migration creates would turn those sweeps red *without a marker*,
- * which is the one thing a `[TEST]` branch must never do — an expected failure
- * and an error look identical in a report and mean opposite things.
- *
- * So the contract is declared here and graded by T2-305a's own marked graders,
- * and **promotion is T2-305's job**, in the same commit that creates the table.
- * Promotion is three edits and the marked grader
- * `"record_media is enumerated in USER_TABLES"` fails until all three land:
- *
- * 1. move this entry into the `USER_TABLES` array (delete `PENDING_USER_TABLES`);
- * 2. add `["record_media", "record_id", "records"]` to `CASCADE_HOPS` in
- *    `tests/garage/deletion-cascade.test.ts`;
- * 3. extend the five-name list in `harness-contract.test.ts`'s
- *    `"names the four user-data tables T2-202 must ship"`.
- *
- * Until then `ungradedTableIssues` is silent because the table does not exist;
- * the moment it does and promotion has not happened, that sweep goes red and
- * says so by name. That is the ordering `EXEMPT_PUBLIC_TABLES` already
- * describes for `shares`, applied a second time.
- *
- * **Verified, not assumed** (T2-305a ran a scratch migration to check): with
- * the table created and promotion skipped, the two ungraded-table sweeps in
- * `rls-deny-by-default.test.ts` and `share-instrument.test.ts` fail by name,
- * and so do the anonymous-privilege sweeps — Supabase's default privileges
- * grant ALL on a new table in `public` to `anon` and `authenticated`, and an
- * explicit `grant` *adds to* that ACL rather than replacing it. T2-202's F2
- * found that the hard way and the fix is in `20260830120000_garage_schema.sql`:
- * revoke first, by name, then grant the four verbs to `authenticated` only.
- */
-export const RECORD_MEDIA_TABLE: TableContract = {
-  name: "record_media",
-  requirement: "GAR-06′",
-  ownershipPath: ["record_id", "vehicle_id", "owner_id"],
-  columns: [
-    { name: "id", requirement: "GAR-06′", type: /uuid/, notNull: true },
-    {
-      name: "record_id",
-      requirement: "GAR-06′ (an attachment is documentation *of a record*)",
-      type: /uuid/,
-      notNull: true,
-    },
-    {
-      name: "storage_path",
-      requirement: "GAR-06′ (the object in the private bucket)",
-      notNull: true,
-    },
-    {
-      // The closed set. Without it the "photo, video, or audio" of GAR-06′ is
-      // a sentence in a spec rather than a property of the data, and a UI that
-      // renders an `<audio>` for a video is one typo away.
-      name: "media_kind",
-      requirement: "GAR-06′ (“photo, video, or audio” — three, and only three)",
-      notNull: true,
-    },
-  ],
-};
-
-/**
  * Tables this file has declared that no migration creates yet.
  *
  * Named rather than commented out, so the promotion grader has something to
- * read and so a reader can tell "declared, pending" from "forgotten". T2-305
- * empties this array.
+ * read and so a reader can tell "declared, pending" from "forgotten".
+ *
+ * **Empty since T2-305**, which promoted `record_media` into `USER_TABLES` in
+ * the commit that created the table. The export stays: `rules.ts` reads it so
+ * `isCorrelated` has columns to test a pending table's policy against, and the
+ * next table declared ahead of its migration refills it. An empty array here
+ * means "nothing is waiting", which is a different and better answer than
+ * "this idea was deleted".
  */
-export const PENDING_USER_TABLES: readonly TableContract[] = [
-  RECORD_MEDIA_TABLE,
-];
+export const PENDING_USER_TABLES: readonly TableContract[] = [];
 
 /* -------------------------------------------------------------------------
  * Two kinds of "not yet", and they are NOT the same list
