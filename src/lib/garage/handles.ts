@@ -45,24 +45,41 @@
  * grader's list, and its whole job is to disagree with this one when this one
  * is wrong.
  *
- * ## Reserved words: derived where it can be, hand-written where it cannot
+ * ## Reserved words: transcribed, and *proved* against the registry
  *
  * {@link RESERVED_HANDLES} is the site's own namespace plus the impersonation
- * words. The namespace half is **computed** from `COLLECTION_ROUTE_SEGMENTS`
- * and `LOCALES` rather than transcribed, so adding a collection to the site
- * cannot leave its segment claimable — that is the failure the grader's
- * superset check exists to catch, and a list that computes itself cannot fall
- * behind. The impersonation half stays hand-written, because reserving a word
- * is a decision.
+ * words. The namespace half was computed from `COLLECTION_ROUTE_SEGMENTS` until
+ * that turned out to cost every visitor a copy of Zod (see the import note
+ * below), so it is written out — and {@link SITE_NAMESPACE_IS_RESERVED} then
+ * re-derives the same set from the registry's *type* and fails the build if the
+ * list has fallen behind it. Adding a collection to the site still cannot leave
+ * its segment claimable; the check runs at `astro check` instead of at page
+ * load, and names the missing segment when it fires.
+ *
+ * The impersonation half stays hand-written with no derivation possible,
+ * because reserving a word is a decision.
  *
  * refs specs/002-montero-garage (SHR-01, SHR-02, SHR-04),
  * specs/001-foundation (I18N-01, I18N-04, I18N-05)
  */
 import { LOCALES, isLocale, type Locale } from "../../i18n/routing";
-import {
-  COLLECTION_ROUTE_SEGMENTS,
-  collectionRoutePath,
-} from "../../i18n/routes";
+/**
+ * **`import type`, and that is load-bearing rather than tidy.**
+ *
+ * This module is imported by the garage page's *client* script, and a value
+ * import of `src/i18n/routes.ts` drags the whole schema graph with it —
+ * `routes.ts` → `schemas/slugs.ts` → `schemas/entry.ts` → `astro/zod`. That
+ * shipped a schema-validation library to every visitor's browser to validate no
+ * schemas, on the heaviest-scripted page on the site (T2-402 review, F3;
+ * measured at +167% raw / +163% gzip on this page's bundle). `handles.test.ts`
+ * already refuses to import the same module for the same reason, in its own
+ * words.
+ *
+ * A type-only import is erased before bundling, so the registry is still the
+ * authority for every value below — checked by the compiler, at `astro check`
+ * time, in `npm run verify` — and none of it reaches the browser.
+ */
+import type { COLLECTION_ROUTE_SEGMENTS } from "../../i18n/routes";
 
 /**
  * The shape a handle may take.
@@ -82,6 +99,22 @@ export const HANDLE_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 
 /** The inclusive length bounds, in characters, of a well-formed handle. */
 export const HANDLE_LENGTH = { min: 2, max: 32 } as const;
+
+/**
+ * The segment a handle is nested under, per locale.
+ *
+ * The `satisfies` clause is the whole safety story now that the registry is a
+ * type-only import: `COLLECTION_ROUTE_SEGMENTS.garage` is
+ * `{ readonly en: "garage"; readonly es: "taller" }` — *literal* types, because
+ * the registry is declared `as const` — so this object is assignable to it only
+ * when both strings match exactly. Rename `taller` in `src/i18n/routes.ts` and
+ * `astro check` fails here rather than the site quietly serving published pages
+ * at an address the locale switcher does not know about.
+ */
+const GARAGE_ROUTE_SEGMENTS = {
+  en: "garage",
+  es: "taller",
+} as const satisfies (typeof COLLECTION_ROUTE_SEGMENTS)["garage"];
 
 /**
  * Words that would let an account impersonate the site or its operators.
@@ -130,30 +163,79 @@ const IMPERSONATION_HANDLES = [
 ] as const;
 
 /**
+ * Every route segment the site serves, in either locale.
+ *
+ * Written out rather than computed with `Object.values(...)`, because the
+ * computation needed the registry as a *value* and that is what put Zod in the
+ * browser (see the import note above). What is not given up is the guarantee:
+ * {@link SITE_NAMESPACE_IS_RESERVED} below re-derives the same set from the
+ * registry's **type** and fails the build if this list falls behind it. The
+ * check moved from run time to compile time; it did not go away.
+ */
+const SITE_ROUTE_HANDLES = [
+  "glossary",
+  "glosario",
+  "community",
+  "comunidad",
+  "sign-in",
+  "ingresar",
+  "garage",
+  "taller",
+  "problems",
+  "problemas",
+  "parts",
+  "repuestos",
+  "mods",
+  "modificaciones",
+] as const;
+
+/**
  * Every handle nobody may claim: the impersonation words, both locale codes,
  * and every route segment the site serves in either locale.
  *
  * The locale codes are not decoration — `/es/` and a user called `es` are the
  * same string in the same position of the same URL.
  *
- * The route segments are computed, and the computation is the point: a handle
- * lives at `/{locale}/{garage segment}/{handle}/`, so only the segment *at the
- * handle's own position* can truly collide with it. Reserving the whole
+ * A handle lives at `/{locale}/{garage segment}/{handle}/`, so only the segment
+ * *at the handle's own position* can truly collide with it. Reserving the whole
  * registry anyway costs one Costa Rican owner the handle `taller` and buys
  * immunity from the position ever moving — and un-reserving a word later is
  * safe in a way that reserving one later is not, because by then somebody holds
  * it.
  */
-export const RESERVED_HANDLES: readonly string[] = [
+export const RESERVED_HANDLES = [
   ...IMPERSONATION_HANDLES,
   ...LOCALES,
-  ...Object.values(COLLECTION_ROUTE_SEGMENTS).flatMap((segments) =>
-    LOCALES.map((locale) => segments[locale])
-  ),
-];
+  ...SITE_ROUTE_HANDLES,
+] as const;
+
+/**
+ * Compile-time proof that {@link RESERVED_HANDLES} still covers the site's own
+ * namespace.
+ *
+ * `SiteSegment` is every string in `COLLECTION_ROUTE_SEGMENTS`, read off the
+ * registry's literal type. A union is assignable to another union only when
+ * every member is, so this is exactly the superset check `handles.test.ts` runs
+ * against the grader's own list — asked of *this* list, at `astro check` time,
+ * for free at run time.
+ *
+ * Add a collection to the registry without reserving its segments and the build
+ * fails here, naming them in the error: `true` is not assignable to
+ * `["unreserved route segment(s)", "recipes" | "recetas"]`. That is the failure
+ * this list existed to have, kept after the value import had to go.
+ */
+type SiteSegment =
+  (typeof COLLECTION_ROUTE_SEGMENTS)[keyof typeof COLLECTION_ROUTE_SEGMENTS][Locale];
+
+export const SITE_NAMESPACE_IS_RESERVED: SiteSegment extends (typeof RESERVED_HANDLES)[number]
+  ? true
+  : [
+      "unreserved route segment(s)",
+      Exclude<SiteSegment, (typeof RESERVED_HANDLES)[number]>,
+    ] = true;
 
 /** The same set, folded, for the O(1) membership test {@link handleIssues} runs. */
-const RESERVED = new Set(
+const RESERVED = new Set<string>(
   RESERVED_HANDLES.map((handle) => handle.toLowerCase())
 );
 
@@ -226,7 +308,7 @@ export function isWellFormedHandle(input: string): boolean {
  * (`all-general-taller`). See `src/i18n/routes.ts`.
  */
 export function handleRoutePath(handle: string, locale: Locale): string {
-  return `${collectionRoutePath("garage", locale)}${normalizeHandle(handle)}/`;
+  return `/${GARAGE_ROUTE_SEGMENTS[locale]}/${normalizeHandle(handle)}/`;
 }
 
 /**

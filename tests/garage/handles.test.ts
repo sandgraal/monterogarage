@@ -511,6 +511,63 @@ describe.skipIf(!live.available)(
       }
     });
 
+    it("retired_handles is trigger-owned — a client cannot squat the namespace", async () => {
+      // ## The defect this pins (T2-402 review, F1 — reproduced live)
+      //
+      // Retirement is what makes the grader two above true, and its input used
+      // to be `new.retired_handles` — the value the *client* sent. `profiles`
+      // carries a table-wide `grant update to authenticated` with no column
+      // list, so one request to one's own row —
+      //
+      //     PATCH /rest/v1/profiles?id=eq.<self>
+      //     {"retired_handles": ["gitana", "montero2002", "cr", ...]}
+      //
+      // — made every named handle permanently unclaimable by anybody, because
+      // the "released by another account" refusal fired on a handle nobody had
+      // ever held. The whole namespace, for the price of one PATCH.
+      //
+      // ## Why the attack request is asserted to SUCCEED
+      //
+      // This is the positive control, and it is the half that makes the grader
+      // mean something. `attack.ok === true` says the write really did reach
+      // the row: the defence under test is the trigger discarding the value,
+      // not PostgREST refusing the column. If someone later "fixes" this by
+      // revoking the column instead, this line goes red and says so — which is
+      // the honest outcome, because a column-level revoke is a different
+      // (and also acceptable) fix that this grader should be told about rather
+      // than silently satisfied by.
+      //
+      // The negative half — that a *genuine* retirement still blocks a stranger
+      // — is the grader two above, and neither is worth anything without the
+      // other: together they say the list is enforced and unforgeable.
+      const scenario = await provisionScenario(stackOf(live));
+      try {
+        const squatted = testHandle("squat", scenario.runId);
+
+        const attack = await updateRows(
+          scenario,
+          scenario.ownerA,
+          "profiles",
+          `id=eq.${scenario.ownerA.userId}`,
+          { retired_handles: [squatted] }
+        );
+
+        // Owner B has never met owner A and has nothing to do with any of it.
+        const claim = await updateRows(
+          scenario,
+          scenario.ownerB,
+          "profiles",
+          `id=eq.${scenario.ownerB.userId}`,
+          { handle: squatted }
+        );
+
+        expect(attack.ok).toBe(true);
+        expect(claim.ok).toBe(true);
+      } finally {
+        await teardownScenario(scenario);
+      }
+    });
+
     it("a vehicle can be published under the handle (SHR-02)", async () => {
       // The point of the whole file. Every rule above is a constraint, and a
       // set of constraints with no working case is a feature nobody can use.

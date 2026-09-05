@@ -51,13 +51,19 @@ alter table public.profiles
 -- Every handle this account has released, folded. `not null default '{}'` and
 -- never nullable: an empty array genuinely *is* "has released nothing", and the
 -- null-versus-empty ambiguity would have to be re-decided by every reader.
+--
+-- **Written only by `normalize_profile_handle()`.** The column is grantable —
+-- `profiles` carries a table-wide `grant update to authenticated` — so the
+-- trigger recomputes it from the stored row on every write rather than trusting
+-- the one that arrived. See the note in the function body for the namespace
+-- squat that costs.
 alter table public.profiles
   add column if not exists retired_handles text[] not null default '{}';
 
 comment on column public.profiles.handle is
   'SHR-02: the stable public namespace a published page lives under. Null until claimed.';
 comment on column public.profiles.retired_handles is
-  'SHR-02: handles this account has released. Nobody else may claim one; the original owner may take it back.';
+  'SHR-02: handles this account has released. Trigger-owned — a client value is discarded. Nobody else may claim one; the original owner may take it back.';
 
 -- ---------------------------------------------------------------------------
 -- The shape of a handle
@@ -160,10 +166,34 @@ begin
   -- lower-case. An all-whitespace handle is `null` — "" is not a shorter
   -- handle, it is the absence of one, and the two must not be different states.
   new.handle := nullif(btrim(lower(coalesce(new.handle, ''))), '');
-  new.retired_handles := coalesce(new.retired_handles, array[]::text[]);
 
+  -- ## `retired_handles` is computed here, never accepted from the caller
+  --
+  -- The column is bookkeeping this trigger owns, but `profiles` carries a
+  -- table-wide `grant update to authenticated` with no column list, so any
+  -- account can PATCH it. The first version of this function read
+  -- `new.retired_handles` — the value the *client* sent — and the consequence
+  -- was total: one request writing
+  --
+  --     {"retired_handles": ["gitana", "montero2002", "cr", ...]}
+  --
+  -- to the attacker's own row made every one of those handles permanently
+  -- unclaimable by anybody, because the refusal below fires on a handle nobody
+  -- ever held. Squatting the whole namespace cost one request (T2-402 review,
+  -- F1 — reproduced live).
+  --
+  -- So the incoming value is discarded and the column is rebuilt from `old` on
+  -- every write. `new.retired_handles` is never read again in this body, which
+  -- is what makes the property checkable by reading rather than by reasoning: a
+  -- client's value cannot reach the refusal because it does not survive the
+  -- first six lines of the trigger.
   if tg_op = 'UPDATE' then
     v_previous := old.handle;
+    new.retired_handles := coalesce(old.retired_handles, array[]::text[]);
+  else
+    -- An insert has no history to preserve, and a row arriving with one is a
+    -- row asserting a past it does not have.
+    new.retired_handles := array[]::text[];
   end if;
 
   -- Releasing a handle retires it to this account. SHR-02's stability is a
@@ -183,16 +213,35 @@ begin
     -- handle is never simultaneously held and retired by the same account.
     new.retired_handles := array_remove(new.retired_handles, new.handle);
 
+    -- ## One refusal for "taken" and for "released by somebody else"
+    --
+    -- Both conditions are asked here, together, and answered with a single
+    -- exception spelled exactly as Postgres spells its own unique violation on
+    -- `profiles_handle_lower_uk` — same message, same detail, same SQLSTATE.
+    -- PostgREST hands the raw message back, so two different sentences would
+    -- have let any token holder tell "somebody has it" from "somebody used to
+    -- have it" by reading the error text (T2-402 review, F6). The UI copy
+    -- already refuses to make that distinction (`garageHandleUnavailable`); the
+    -- API layer has to refuse it too, or the careful sentence is decoration
+    -- over an oracle about other people's accounts.
+    --
+    -- Asking the held case here as well as the retired one is what puts the
+    -- common path through this branch instead of through the index. The index
+    -- stays as the concurrency backstop — two claims in flight at once — and in
+    -- that narrow race it raises this same text, because this text is its text.
     if exists (
       select 1
         from public.profiles p
        where p.id <> new.id
-         and new.handle = any (p.retired_handles)
+         and (lower(p.handle) = new.handle
+              or new.handle = any (p.retired_handles))
     ) then
       raise exception
-        'handle % was released by another account and cannot be reused (SHR-02)',
-        new.handle
-        using errcode = '23505';
+        'duplicate key value violates unique constraint "profiles_handle_lower_uk"'
+        using errcode = '23505',
+              detail = format(
+                'Key (lower(handle))=(%s) already exists.', new.handle
+              );
     end if;
   end if;
 
@@ -205,7 +254,7 @@ revoke all on function public.normalize_profile_handle() from anon;
 revoke all on function public.normalize_profile_handle() from authenticated;
 
 comment on function public.normalize_profile_handle() is
-  'SHR-02: folds a handle to its canonical form, retires the one it replaces, and refuses a handle another account released.';
+  'SHR-02: folds a handle to its canonical form, computes retired_handles from the stored row (never from the caller), and refuses a handle another account holds or released — with one indistinguishable message for both.';
 
 drop trigger if exists on_profile_handle_write on public.profiles;
 
