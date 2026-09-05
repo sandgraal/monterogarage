@@ -1,0 +1,76 @@
+{
+  "id": "gen3-interior-drawer-system",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    }
+  },
+  "system": "interior",
+  "cost": {
+    "from": "significant"
+  },
+  "difficulty": 3,
+  "requires": [],
+  "affects": [
+    {
+      "id": "an-empty-drawer-has-already-spent-payload",
+      "system": "suspension",
+      "impact": "needs-adjustment",
+      "ref": {
+        "collection": "mods",
+        "id": "gen3-suspension-lift-springs"
+      }
+    },
+    {
+      "id": "the-flat-cargo-floor-is-gone",
+      "system": "interior",
+      "impact": "degrades"
+    }
+  ],
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "ARB 4x4 Accessories — Roller Drawer RD945 specifications: an external envelope of «37.2 in L x 19.8 in W x 11 in H» against an internal «33.5 in L x 17.1 in W x 8.7 in H», a unit weight of «81.6 lb», and a stated drawer load rating of «275 lb per drawer»",
+      "url": "https://store.arbusa.com/roller-drawer-rd945/",
+      "archiveUrl": "https://web.archive.org/web/20260514072807id_/https://store.arbusa.com/roller-drawer-rd945/",
+      "accessed": "2026-09-05",
+      "kind": "vendor"
+    },
+    {
+      "title": "CarSpecs — 2003 Mitsubishi Montero Limited 4dr SUV 3.8L V6 4x4 auto: curb weight «4,784 lbs.» and gross weight «6,085 lbs.», the pair a drawer system's own weight and its contents both have to fit inside",
+      "url": "https://www.carspecs.us/cars/2003/mitsubishi/montero/13201",
+      "archiveUrl": "https://web.archive.org/web/20260905142251id_/https://www.carspecs.us/cars/2003/mitsubishi/montero/13201",
+      "accessed": "2026-09-05",
+      "kind": "reference"
+    },
+    {
+      "title": "Luso Overland — MONTERO Gen3 Lovells Coil Springs: the load-carrying duty classifications and the stated minimum of added constant weight below which the supplier will not recommend its tallest springs — the number a permanently-installed drawer counts against",
+      "url": "https://lusooverland.com/2001-2006-mitsubishi-montero-gen3-coil-springs",
+      "archiveUrl": "https://web.archive.org/web/20250425022326id_/https://lusooverland.com/2001-2006-mitsubishi-montero-gen3-coil-springs",
+      "accessed": "2026-09-05",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "A drawer system buys order and spends payload",
+      "summary": "A rear drawer turns a boot full of loose boxes into something you can find things in at night, and it is genuinely the modification people regret least. It is also heavy before it holds anything: the unit cited below publishes its own weight, its external footprint, its usable internal space and its rated load, and the gap between the external and internal dimensions is the price of the slides and the frame. Set that unit weight against the difference between the curb weight and the gross weight in the second citation — that difference is the entire payload of the vehicle, and it is the same budget the passengers, the fuel, the roof load and the second battery are all drawing on.",
+      "tradeoffs": "Read the drawer's own load rating carefully: it says how much the drawer can hold, not how much the truck can carry, and those are different questions with different answers. Every kilo of drawer is permanent, sits behind the rear axle, and is exactly the kind of added constant weight the spring supplier cited below asks about when it recommends a spring — a drawer plus armour plus a bumper is how a truck ends up sitting on its bump stops with nothing in it. You also lose the flat floor and a chunk of height: the external envelope in the first citation is the space the drawer occupies whether or not you fill it, and anything tall now travels on top of the drawer rather than on the floor. A drawer and a folded third-row seat want the same floor, so if the truck is a seven-seater, work out where the seats are going to live before you order rather than after. Finally, weight distribution moves rearwards, which changes how the truck behaves loaded — one more reason the spring choice is made after the accessories are chosen, not before, which is the linked entry.",
+      "affectsNotes": {
+        "an-empty-drawer-has-already-spent-payload": "The drawer's own weight is in the first citation and it is charged against the vehicle's payload — the difference between curb and gross weight in the second — before you put a single tool in it. The spring supplier cited below asks specifically about added constant weight when it recommends a spring, and a drawer is exactly that; make the spring decision, in the linked entry, after the drawer is on the list rather than before.",
+        "the-flat-cargo-floor-is-gone": "The external dimensions in the first citation are what the drawer occupies permanently, and the internal dimensions are what you get back. The floor is now higher, tall items travel on top of the unit, and the space a third-row seat used to fold into is where the drawer lives."
+      }
+    },
+    "es": {
+      "title": "Un sistema de gavetas compra orden y gasta capacidad de carga",
+      "summary": "Una gaveta trasera convierte una cajuela llena de cajas sueltas en algo donde usted encuentra las cosas de noche, y es sinceramente la modificación de la que menos gente se arrepiente. También es pesada antes de contener nada: la unidad citada abajo publica su propio peso, su huella exterior, el espacio interior aprovechable y su capacidad de carga, y la diferencia entre las medidas exteriores e interiores es lo que cuestan las correderas y el marco. Ponga ese peso frente a la diferencia entre el peso en vacío y el peso bruto de la segunda fuente: esa diferencia es toda la capacidad de carga del vehículo, y es el mismo presupuesto del que están tomando los pasajeros, el combustible, la carga de techo y la segunda batería.",
+      "tradeoffs": "Lea con cuidado la capacidad de carga de la gaveta: dice cuánto aguanta la gaveta, no cuánto puede cargar el vehículo, y son preguntas distintas con respuestas distintas. Cada kilo de gaveta es permanente, va detrás del eje trasero, y es exactamente el tipo de peso permanente agregado por el que pregunta la casa de resortes citada abajo cuando recomienda un resorte: gavetas más blindaje más bumper es como un carro termina sentado sobre los topes sin llevar nada. También pierde el piso plano y buena parte de la altura: la huella exterior de la primera fuente es el espacio que la gaveta ocupa la llene o no, y todo lo alto ahora viaja encima de ella y no en el piso. Una gaveta y un asiento de tercera fila plegado quieren el mismo piso, así que si el carro es de siete puestos, resuelva dónde van a quedar los asientos antes de encargarla y no después. Por último, la distribución de peso se corre hacia atrás, lo que cambia el comportamiento del carro cargado: una razón más para escoger los resortes después de decidir los accesorios y no antes, que es la entrada enlazada.",
+      "affectsNotes": {
+        "an-empty-drawer-has-already-spent-payload": "El peso de la propia gaveta está en la primera fuente y se le carga a la capacidad del vehículo —la diferencia entre peso en vacío y peso bruto de la segunda— antes de que usted meta una sola herramienta. La casa de resortes citada abajo pregunta específicamente por el peso permanente agregado cuando recomienda un resorte, y una gaveta es justamente eso; tome la decisión de resortes, en la entrada enlazada, con la gaveta ya en la lista y no antes.",
+        "the-flat-cargo-floor-is-gone": "Las medidas exteriores de la primera fuente son lo que la gaveta ocupa de forma permanente, y las interiores son lo que usted recupera. El piso queda más alto, lo alto viaja encima de la unidad, y el espacio donde antes se guardaba el asiento de tercera fila es donde ahora vive la gaveta."
+      }
+    }
+  }
+}

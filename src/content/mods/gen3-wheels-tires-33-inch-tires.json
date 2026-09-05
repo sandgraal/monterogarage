@@ -1,0 +1,98 @@
+{
+  "id": "gen3-wheels-tires-33-inch-tires",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    }
+  },
+  "system": "wheels-tires",
+  "cost": {
+    "from": "moderate",
+    "to": "significant"
+  },
+  "difficulty": 2,
+  "requires": [],
+  "affects": [
+    {
+      "id": "the-speedometer-and-odometer-now-read-low",
+      "system": "interior",
+      "impact": "degrades"
+    },
+    {
+      "id": "every-gear-is-effectively-taller",
+      "system": "drivetrain",
+      "impact": "degrades",
+      "ref": {
+        "collection": "mods",
+        "id": "gen3-drivetrain-regear-third-member-swap"
+      }
+    },
+    {
+      "id": "unsprung-and-rotating-weight-goes-up",
+      "system": "suspension",
+      "impact": "degrades"
+    },
+    {
+      "id": "the-door-placard-pressure-no-longer-applies",
+      "system": "wheels-tires",
+      "impact": "needs-adjustment"
+    }
+  ],
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Cars.com — 2003 Mitsubishi Montero specifications: the factory tire size, listed as «P265/70R16», with the 3.8L V6",
+      "url": "https://www.cars.com/research/mitsubishi-montero-2003/specs/",
+      "archiveUrl": "https://web.archive.org/web/20251208021846id_/https://www.cars.com/research/mitsubishi-montero-2003/specs/",
+      "accessed": "2026-09-05",
+      "kind": "reference"
+    },
+    {
+      "title": "Tire Size — 2003 Mitsubishi Montero OE tire sizes by trim: «265/70R16» for the XLS, Limited and 20th Anniversary, and the smaller sizes carried by the separate Montero Sport line",
+      "url": "https://tiresize.com/tires/Mitsubishi/Montero/2003/",
+      "archiveUrl": "https://web.archive.org/web/20260905142021id_/https://tiresize.com/tires/Mitsubishi/Montero/2003/",
+      "accessed": "2026-09-05",
+      "kind": "reference"
+    },
+    {
+      "title": "Tacoma World tire size calculator — 265/70-R16 vs 285/75-R16: diameters of «30.61 (777.4)» and «32.83 (833.9)» inches (mm), a difference of «2.22 (56.5) 7.3%», and a true «64.36 mph (103.58 km/h)» at an indicated 60 mph on the larger tire",
+      "url": "https://www.tacomaworld.com/tirecalc?tires=265-70r16-285-75r16",
+      "archiveUrl": "https://web.archive.org/web/20250823085834id_/https://www.tacomaworld.com/tirecalc?tires=265-70r16-285-75r16",
+      "accessed": "2026-09-05",
+      "kind": "reference"
+    },
+    {
+      "title": "Tire Size — BFGoodrich All-Terrain T/A KO2 285/75R16 specifications: «58.6 lbs» per tire, «32.8\"» overall diameter, «E - 10 ply» load range, «3750/3415 lbs» maximum load at «80 psi», «15/32\"» tread depth and «7.5-9\"» approved rim widths",
+      "url": "https://tiresize.com/tires/BFGoodrich/All-Terrain-TA-KO2-285-75R16.htm",
+      "archiveUrl": "https://web.archive.org/web/20250815100141id_/https://tiresize.com/tires/BFGoodrich/All-Terrain-TA-KO2-285-75R16.htm",
+      "accessed": "2026-09-05",
+      "kind": "reference"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Going to 33s: what 285/75R16 costs you",
+      "summary": "The factory size on a third-generation Montero is listed in two of the citations below, and the usual 33-inch answer for a 16-inch wheel is 285/75R16. The tire calculator cited here gives the overall diameter of both sizes, the difference between them as a figure and as a percentage, and what the speedometer reads once the bigger tire is on — those are the numbers this decision actually turns on, and they are in the citation rather than repeated here. What the calculator cannot tell you is the second half of the bill: a common 33-inch all-terrain in this size is a light-truck tire with a stiff ten-ply casing and a per-tire weight the fourth citation states, and every one of those pounds is unsprung and rotating.",
+      "tradeoffs": "The speedometer and the odometer both go optimistic in your favour and against you at once: you are travelling faster than the dial says, and the truck is recording fewer kilometres than it covers, which quietly stretches every service interval you keep by mileage. Acceleration, braking and fuel all get worse in the same move, because you have added rotating mass at the biggest radius on the vehicle and lengthened the effective final drive at the same time. The load rating is not decoration — a ten-ply light-truck casing is rated at a pressure far above anything the door placard contemplates, and the placard pressure was calculated for the factory tire, so it is no longer the right answer for this one. Some of this is recoverable: gearing can be put back (see the regear entry linked in the table below), and a tire shop can reset the pressures properly. Some of it is not: the extra mass stays for as long as the tires do, and clearance at full lock and at full compression is something you check on your own truck before you buy, because trim, wheel offset and ride height all move it and no table can answer it for you. Tires and load ratings are safety-critical: have the fitment, the load rating and the pressures confirmed by a qualified tire shop rather than working from a forum post — including this one.",
+      "affectsNotes": {
+        "the-speedometer-and-odometer-now-read-low": "The instrument cluster counts wheel revolutions and multiplies by the factory rolling circumference, so a taller tire makes both the speedometer and the odometer read low. The tire calculator cited below gives the exact true speed at an indicated 60 mph and the percentage error; treat every mileage-based service interval as arriving sooner than the odometer claims.",
+        "every-gear-is-effectively-taller": "A larger rolling diameter multiplies through the whole driveline, so every gear and the low range with it end up taller than the factory chose. That is a permanent change in how the truck pulls, and the only real fix is the differential ratio — which is the linked entry.",
+        "unsprung-and-rotating-weight-goes-up": "The per-tire weight of a common ten-ply 33 in this size is in the fourth citation, and it is weight at the worst possible place: unsprung, and turning. Springs and dampers now control more mass than they were valved for, and a lift that was chosen for the standard tire does not account for it.",
+        "the-door-placard-pressure-no-longer-applies": "The pressure on the door placard was calculated for the factory tire, and the light-truck tire cited below carries a completely different maximum-load-and-pressure pair. Running placard pressure in a ten-ply casing gives a hard ride and a narrow contact patch; guessing lower risks overheating a tire under load. Have the pressure set against the tire's own load table for the weight your truck actually carries."
+      }
+    },
+    "es": {
+      "title": "Montar 33: lo que le cuestan unas 285/75R16",
+      "summary": "La medida de fábrica de una Montero de tercera generación aparece en dos de las fuentes citadas abajo, y la respuesta habitual para 33 pulgadas sobre un aro de 16 es 285/75R16. La calculadora de medidas que citamos da el diámetro total de ambas medidas, la diferencia entre ellas en pulgadas y en porcentaje, y qué marca el velocímetro una vez montada la llanta grande. Esos son los números de los que depende de verdad esta decisión, y están en la fuente y no repetidos aquí. Lo que la calculadora no le dice es la otra mitad de la cuenta: una todoterreno de 33 común en esta medida es una llanta de camión liviano, con carcasa rígida de diez capas y un peso por unidad que indica la cuarta fuente, y cada una de esas libras es peso no suspendido y girando.",
+      "tradeoffs": "El velocímetro y el odómetro se vuelven optimistas a favor y en contra suyo al mismo tiempo: usted anda más rápido de lo que marca la aguja, y el carro registra menos kilómetros de los que recorre, lo que estira sin avisar todo mantenimiento que usted lleve por kilometraje. La aceleración, el frenado y el consumo empeoran en la misma jugada, porque le agregó masa giratoria en el radio más grande del vehículo y alargó la relación final al mismo tiempo. La capacidad de carga de la llanta no es adorno: una carcasa de diez capas está calificada a una presión muy por encima de lo que contempla la calcomanía de la puerta, y esa calcomanía se calculó para la llanta de fábrica, así que ya no es la respuesta correcta para esta. Parte de esto se recupera: la relación del diferencial se puede volver a bajar (vea la entrada enlazada en la tabla) y en un taller de llantas le ajustan bien las presiones. Otra parte no se recupera: la masa se queda mientras duren las llantas, y el espacio libre a tope de giro y con la suspensión comprimida es algo que usted revisa en su propio carro antes de comprar, porque el acabado, el offset del aro y la altura lo mueven y ninguna tabla se lo va a contestar. Llantas y capacidades de carga son asunto crítico de seguridad: haga que un taller de llantas calificado confirme el montaje, la capacidad de carga y las presiones, en lugar de guiarse por una publicación de foro —incluida esta página—.",
+      "affectsNotes": {
+        "the-speedometer-and-odometer-now-read-low": "El tablero cuenta vueltas de rueda y las multiplica por la circunferencia de rodadura de fábrica, así que una llanta más alta hace que el velocímetro y el odómetro marquen de menos. La calculadora citada abajo da la velocidad real exacta con 60 mph indicadas y el porcentaje de error; tome cada intervalo de mantenimiento por kilometraje como si llegara antes de lo que dice el odómetro.",
+        "every-gear-is-effectively-taller": "Un diámetro de rodadura mayor se multiplica por todo el tren motriz, así que cada marcha —y el rango bajo con ellas— queda más larga de lo que la fábrica escogió. Es un cambio permanente en cómo jala el carro, y lo único que lo corrige de verdad es la relación del diferencial, que es la entrada enlazada.",
+        "unsprung-and-rotating-weight-goes-up": "El peso por llanta de una 33 de diez capas común en esta medida está en la cuarta fuente, y es peso en el peor lugar posible: no suspendido y girando. Los resortes y los amortiguadores pasan a controlar más masa de aquella para la que fueron calibrados, y un levante escogido para la llanta estándar no lo tomó en cuenta.",
+        "the-door-placard-pressure-no-longer-applies": "La presión de la calcomanía de la puerta se calculó para la llanta de fábrica, y la llanta de camión liviano citada abajo trae un par de carga máxima y presión completamente distinto. Andar con la presión de la calcomanía en una carcasa de diez capas da marcha dura y poca huella de contacto; bajarla a ojo arriesga recalentar la llanta con carga. Haga que le fijen la presión contra la tabla de carga de la propia llanta, para el peso que su carro realmente lleva."
+      }
+    }
+  }
+}

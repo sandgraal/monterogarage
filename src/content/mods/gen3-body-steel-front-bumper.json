@@ -1,0 +1,85 @@
+{
+  "id": "gen3-body-steel-front-bumper",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    }
+  },
+  "system": "body",
+  "safetyCritical": true,
+  "cost": {
+    "from": "significant",
+    "to": "major"
+  },
+  "difficulty": 4,
+  "requires": [],
+  "affects": [
+    {
+      "id": "airbag-timing-rides-on-the-front-crush-path",
+      "system": "interior",
+      "impact": "breaks"
+    },
+    {
+      "id": "the-bar-needs-clearance-to-move",
+      "system": "body",
+      "impact": "needs-adjustment"
+    },
+    {
+      "id": "constant-weight-lands-on-the-front-springs",
+      "system": "suspension",
+      "impact": "needs-adjustment",
+      "ref": {
+        "collection": "mods",
+        "id": "gen3-suspension-lift-springs"
+      }
+    }
+  ],
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "ARB 4x4 Accessories — «ASK ARB – air bag compatibility»: «The air bag triggering system is designed to work in harmony with the frontal crush characteristics of a vehicle»; on manufacturers' sacrificial crush sections, that «Such premature triggering of the air bag is potentially quite dangerous… Likewise, an air bag deploying later than intended by the manufacturer could also be dangerous»; that «fitting a rigid structure, not behaving the same as the original frontal characteristics of the vehicle, may change the deployment timing of the air bag»; the design method — «to evaluate the standard vehicle's frontal crush characteristics, and where necessary to duplicate these characteristics as part of the design of the bar and its mounting system»; the Monash University engagement; the compliance sticker text «This product and its mounting system has been designed, tested and manufactured by ARB to ensure its fitment to a vehicle fitted with SRS air bags does not affect the vehicle's compliance to ADR69»; and that «a correctly installed ARB bar on the vehicle will have a clearance space between the bumper section and the vehicle's original bodywork… essential space to allow the bar to move without impacting other components»",
+      "url": "https://www.arb.com.au/ask-arb-air-bag-compatibility/",
+      "archiveUrl": "https://web.archive.org/web/20251111135721id_/https://www.arb.com.au/ask-arb-air-bag-compatibility/",
+      "accessed": "2026-09-05",
+      "kind": "vendor"
+    },
+    {
+      "title": "Adventure Driven Design — Montero Gen 3 (2001-2006) listings, including an «ARB Bumper and Installation Kit» offered for this generation, i.e. a bar designed and sold against this specific vehicle rather than adapted to it",
+      "url": "https://shop.adventuredrivendesign.com/index.php?route=product/category&path=71_74",
+      "archiveUrl": "https://web.archive.org/web/20260316143832id_/https://shop.adventuredrivendesign.com/index.php?route=product/category&path=71_74",
+      "accessed": "2026-09-05",
+      "kind": "vendor"
+    },
+    {
+      "title": "Luso Overland — MONTERO Gen3 Lovells Coil Springs: the duty ratings and the stated minimum of added constant weight below which the supplier changes its recommendation — the yardstick a front bar has to be measured against",
+      "url": "https://lusooverland.com/2001-2006-mitsubishi-montero-gen3-coil-springs",
+      "archiveUrl": "https://web.archive.org/web/20250425022326id_/https://lusooverland.com/2001-2006-mitsubishi-montero-gen3-coil-springs",
+      "accessed": "2026-09-05",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "A steel front bumper is an airbag decision first",
+      "summary": "A Gen 3 has front airbags, and the airbag decides when to fire by reading how the front of the vehicle is crushing. A manufacturer of these bars explains it plainly in the first citation: the triggering system is designed to work in harmony with the vehicle's frontal crush characteristics, and bolting on a rigid structure that does not behave the way the original front end behaved may change deployment timing — early or late, and it says both are dangerous. The same source describes what a compatible bar therefore has to do: measure the standard vehicle's crush behaviour and reproduce it in the bar and its mounting system, then say so on a sticker that names the standard it complies with. That is the difference between a bar engineered for this truck and a bar that merely bolts to it.",
+      "tradeoffs": "The upside is real: a designed front bar carries a winch, gives you a recovery-rated front end and turns a minor animal strike into a repair you can drive away from. Everything under that is cost. It is the heaviest single thing in this wave-1 list and all of it hangs ahead of the front axle, so the springs, the alignment and the front bearings all inherit it; the spring supplier's stated threshold for added constant weight is in the third citation and a steel bar clears it on its own. It changes the approach angle in your favour and the parking geometry against you, and the manufacturer's own account lists pedestrian safety among the things its engineers weigh at the design stage — a reminder that the factory bumper was doing more jobs than looking like a bumper. Fitment cannot be improvised: the first citation notes that a correctly installed bar leaves a deliberate clearance gap to the bodywork so the bar can move, so a bar packed tight against the panels is not a neater installation, it is a wrong one. And the legal side varies by jurisdiction — the compliance standard named on that sticker is Australian, and what an inspection in Costa Rica, the United Kingdom or the European Union asks of a front bar is set by those authorities and not by this page. If you cannot establish that a given bar was designed and tested for a vehicle with SRS airbags, treat that as a reason not to buy it, and have the installation done by a qualified shop.",
+      "affectsNotes": {
+        "airbag-timing-rides-on-the-front-crush-path": "The manufacturer cited below states that the airbag triggering system is designed around the vehicle's frontal crush characteristics, that manufacturers add sacrificial crush sections so a minor impact is not read as a major one, and that a rigid bolt-on structure which does not behave like the original front end may change deployment timing — with both early and late deployment described as dangerous. A bar that has not been designed and tested against this vehicle's crush behaviour is therefore a change to how the restraint system reads a crash, which is why this entry treats the consequence as breaking something rather than degrading it.",
+        "the-bar-needs-clearance-to-move": "The same source states that a correctly installed bar has a clearance space between the bumper section and the original bodywork, and that the space is essential so the bar can move without hitting other components. If your bar sits hard against the panels, stop and check the mounting kit rather than admiring the fit.",
+        "constant-weight-lands-on-the-front-springs": "A steel bar, its mounting system and any winch you put in it are permanent weight forward of the front axle. The spring supplier cited below publishes a threshold of added constant weight at which its own recommendation changes; work out the total before ordering springs, which is the linked entry."
+      }
+    },
+    "es": {
+      "title": "Un bumper delantero de acero es, antes que nada, una decisión de bolsas de aire",
+      "summary": "Una Gen 3 trae bolsas de aire delanteras, y la bolsa decide cuándo dispararse leyendo cómo se está deformando la parte delantera del vehículo. Un fabricante de estas defensas lo explica sin rodeos en la primera fuente: el sistema de disparo está diseñado para trabajar en armonía con las características de deformación frontal del vehículo, y atornillar una estructura rígida que no se comporta como se comportaba el frente original puede cambiar el momento del disparo —antes o después— y dice que las dos cosas son peligrosas. Esa misma fuente describe lo que entonces tiene que hacer una defensa compatible: medir la deformación del vehículo estándar y reproducirla en la defensa y en su sistema de anclaje, y luego declararlo en una calcomanía que nombra la norma que cumple. Esa es la diferencia entre una defensa diseñada para este vehículo y una que simplemente se le atornilla.",
+      "tradeoffs": "La ventaja es real: una defensa diseñada carga un winch, le da un frente con puntos de rescate y convierte un golpe menor con un animal en una reparación con la que usted se va manejando. Todo lo demás es costo. Es lo más pesado de esta primera tanda y va colgado por delante del eje delantero, así que los resortes, el alineamiento y los rodamientos delanteros lo heredan; el umbral de peso permanente agregado que publica la casa de resortes está en la tercera fuente, y una defensa de acero lo pasa ella sola. Le mejora el ángulo de ataque y le empeora la geometría para parquear, y el propio relato del fabricante menciona la seguridad del peatón entre lo que sus ingenieros sopesan en la etapa de diseño: un recordatorio de que el bumper de fábrica hacía más oficios que parecer un bumper. La instalación no se improvisa: la primera fuente señala que una defensa bien instalada deja a propósito un espacio libre contra la carrocería para que la defensa pueda moverse, así que una defensa pegada a las láminas no es una instalación más fina, es una instalación equivocada. Y la parte legal varía por jurisdicción: la norma que nombra esa calcomanía es australiana, y lo que le exija a una defensa delantera una revisión en Costa Rica, el Reino Unido o la Unión Europea lo fijan esas autoridades y no esta página. Si usted no puede establecer que una defensa determinada fue diseñada y probada para un vehículo con bolsas de aire, tome eso como razón para no comprarla, y deje la instalación en manos de un taller calificado.",
+      "affectsNotes": {
+        "airbag-timing-rides-on-the-front-crush-path": "El fabricante citado abajo indica que el sistema de disparo de la bolsa de aire está diseñado alrededor de las características de deformación frontal del vehículo, que los fabricantes agregan secciones de deformación sacrificables para que un golpe menor no se lea como uno mayor, y que una estructura rígida atornillada que no se comporta como el frente original puede cambiar el momento del disparo, describiendo como peligroso tanto el disparo adelantado como el atrasado. Una defensa que no haya sido diseñada y probada contra la deformación de este vehículo es, entonces, un cambio en cómo el sistema de retención lee un choque, y por eso esta entrada trata la consecuencia como algo que se rompe y no como algo que se degrada.",
+        "the-bar-needs-clearance-to-move": "Esa misma fuente indica que una defensa bien instalada deja un espacio libre entre la sección de bumper y la carrocería original, y que ese espacio es indispensable para que la defensa se mueva sin pegarle a otros componentes. Si su defensa queda pegada a las láminas, deténgase y revise el juego de anclaje en vez de celebrar lo bien que calzó.",
+        "constant-weight-lands-on-the-front-springs": "Una defensa de acero, su sistema de anclaje y cualquier winch que le monte son peso permanente por delante del eje delantero. La casa de resortes citada abajo publica un umbral de peso permanente agregado a partir del cual cambia su propia recomendación; saque el total antes de pedir resortes, que es la entrada enlazada."
+      }
+    }
+  }
+}

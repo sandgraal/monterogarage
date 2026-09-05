@@ -1,0 +1,87 @@
+{
+  "id": "gen3-suspension-lift-springs",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    }
+  },
+  "system": "suspension",
+  "cost": {
+    "from": "moderate",
+    "to": "significant"
+  },
+  "difficulty": 4,
+  "requires": [],
+  "affects": [
+    {
+      "id": "alignment-after-any-height-change",
+      "system": "steering",
+      "impact": "needs-adjustment"
+    },
+    {
+      "id": "spring-duty-must-match-the-weight-you-added",
+      "system": "suspension",
+      "impact": "needs-adjustment"
+    },
+    {
+      "id": "spacers-move-the-arc-without-changing-the-spring",
+      "system": "suspension",
+      "impact": "degrades"
+    },
+    {
+      "id": "dampers-are-part-of-the-kit",
+      "system": "suspension",
+      "impact": "needs-adjustment"
+    }
+  ],
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen3 Lovells Coil Springs: the two raised-height classes («Raised Height = Lifts the vehicle 1-2\" above the original factory ride height», «Extra Raised Height = Lifts the vehicle 2-3\"»), the Standard / Medium / Heavy / Extra Heavy duty ratings with their constant-load figures, the 2001-2002 XLS caveat («We do not recommend Extra Raised Height springs for these vehicles unless you have at least 75 lbs of added constant weight»), and the damper families the springs are sold to be paired with",
+      "url": "https://lusooverland.com/2001-2006-mitsubishi-montero-gen3-coil-springs",
+      "archiveUrl": "https://web.archive.org/web/20250425022326id_/https://lusooverland.com/2001-2006-mitsubishi-montero-gen3-coil-springs",
+      "accessed": "2026-09-05",
+      "kind": "vendor"
+    },
+    {
+      "title": "Luso Overland — MONTERO Gen3 Front Strut Top Hat Spacers, 6mm: «6mm (.22\") thick spacer results in 10-12mm (.4-.5\") of lift», the warning that «large spacer lifts… will change the geometry of the suspension arc and can cause the upper control arm to hit the shock absorber at full droop», and «A wheel alignment is required after installation»",
+      "url": "https://lusooverland.com/VS-LO-M3-FSS6",
+      "archiveUrl": "https://web.archive.org/web/20260905141606id_/https://lusooverland.com/VS-LO-M3-FSS6",
+      "accessed": "2026-09-05",
+      "kind": "vendor"
+    },
+    {
+      "title": "Gaval Parts 4x4 — «Kits de Suspensión Vs Kits de Levante con calzas»: «El rango del resorte no se cambia, el carro va a tener la misma articulación y el mismo performance y confort que la suspension original», «si le va a agregar mucho peso en accesorios, igual se ve bajar», and «Al agregar calzas sin cambiar amortiguadores, disminuye el recorrido de la suspensión»",
+      "url": "https://gavalparts.com/blogs/noticias/kits-de-suspension-vs-kits-de-levante-con-calzas",
+      "archiveUrl": "https://web.archive.org/web/20251009224213id_/https://gavalparts.com/blogs/noticias/kits-de-suspension-vs-kits-de-levante-con-calzas",
+      "accessed": "2026-09-05",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Lifting a Gen 3: springs first, spacers second",
+      "summary": "A third-generation Montero rides on coil springs at all four corners, so a lift here is a spring decision before it is anything else. The specialist that supplies this generation sells its springs in two raised-height classes and four duty ratings, and the two are independent: height is how far the body sits off the axles, duty is how much permanent weight the spring was chosen to carry. Both sets of figures, and the caveat that even a difference in factory trim moves which spring suits a given truck, are in the first citation. Spacers are the other half of the story and the half that gets oversold — the same supplier publishes what a thin strut-top spacer actually adds, and warns in the same breath about what a large one does to the suspension's arc.",
+      "tradeoffs": "You are buying height and paying for it in geometry. An alignment is not optional after any change in ride height — the supplier says so on the spacer page in as many words — and it is a recurring cost every time you change the setup, not a one-off. Springs chosen for a bare truck sag again the day you bolt on a bumper, a winch, a second battery and a drawer, so the duty rating is a decision about the truck you are going to have rather than the one in your driveway; choose it too heavy and the empty truck rides like a cart, too light and you are back where you started with a taller ride height to make it worse. Spacers are cheap and reversible, and that is precisely why they get over-used: a spacer does not touch the spring, so the articulation, the comfort and the load capacity are the ones you already had, and the Spanish-language shop cited below is blunt that fitting them without new dampers leaves you less travel than before. Dampers are part of the kit and not an afterthought; the supplier names the families it expects these springs to run with. Finally, ride height is not a private decision — it changes what a roadworthiness inspection will accept, and which inspection depends on where the truck lives: the RTV in Costa Rica, the MOT in the United Kingdom, the ADRs in Australia. Those rules are set there, not on this page. Suspension is safety-critical work: have the alignment done and the suspension fasteners torqued by a qualified mechanic.",
+      "affectsNotes": {
+        "alignment-after-any-height-change": "Changing ride height changes camber, caster and toe, which is why the supplier states that a wheel alignment is required after installation. That applies to the thinnest spacer as much as to a full spring change, and an out-of-spec alignment eats tires and steers badly long before it looks wrong.",
+        "spring-duty-must-match-the-weight-you-added": "Height and load-carrying are two separate classifications printed on the same spring. The supplier publishes both, and states a minimum of added constant weight below which it will not recommend its tallest springs for the lighter 2001-2002 trim — so tell the supplier what the truck permanently carries, not which badge is on the tailgate.",
+        "spacers-move-the-arc-without-changing-the-spring": "A spacer relocates the whole suspension arc while leaving the spring and the damper exactly as they were. The supplier warns that large spacer lifts change that arc and can bring the upper control arm into the shock absorber at full droop; the Spanish-language shop cited below reaches the same place from the other side, noting that spacers fitted without new dampers reduce the travel you have left.",
+        "dampers-are-part-of-the-kit": "The spring supplier names the damper families these springs are meant to run with. A new spring rate under tired factory dampers is how a lifted truck ends up wallowing worse than the standard one it replaced — the spring is now controlling less of the movement, not more."
+      }
+    },
+    "es": {
+      "title": "Levante de una Gen 3: primero los resortes, después las calzas",
+      "summary": "Una Montero de tercera generación anda sobre resortes en las cuatro esquinas, así que aquí un levante es, antes que nada, una decisión de resortes. La casa especializada que surte esta generación vende los suyos en dos clases de altura y cuatro grados de servicio, y las dos cosas son independientes: la altura es cuánto sube la carrocería respecto a los ejes, y el grado es cuánto peso permanente se escogió que el resorte cargue. Las cifras de ambas clasificaciones, y la advertencia de que hasta una diferencia de acabado de fábrica cambia cuál resorte le sirve a un vehículo determinado, están en la primera fuente citada. Las calzas son la otra mitad del cuento, y es la mitad que más se sobrevende: esa misma casa publica cuánto sube de verdad una calza delgada sobre el amortiguador, y en la misma línea advierte qué le hace una calza grande al arco que describe la suspensión.",
+      "tradeoffs": "Usted está comprando altura y la está pagando en geometría. El alineamiento no es opcional después de cualquier cambio de altura —la casa lo dice con todas sus letras en la página de las calzas— y es un gasto que se repite cada vez que toca la configuración, no una sola vez. Un resorte escogido para un carro pelado se vuelve a sentar el día que le monta bumper, winch, segunda batería y gavetas, así que el grado de servicio es una decisión sobre el carro que va a tener y no sobre el que tiene hoy parqueado en la casa; si lo escoge muy duro, vacío le va a andar como carreta, y si lo escoge muy suave vuelve al punto de partida, ahora con más altura para empeorarlo. Las calzas son baratas y reversibles, y por eso mismo se abusa de ellas: la calza no toca el resorte, de modo que la articulación, el confort y la capacidad de carga siguen siendo las que ya tenía, y el taller de habla hispana que citamos abajo lo dice sin rodeos: montarlas sin cambiar amortiguadores le deja menos recorrido del que tenía. Los amortiguadores son parte del juego y no un pendiente para después; la casa nombra las familias con las que espera que estos resortes trabajen. Por último, la altura no es un asunto privado: cambia lo que una revisión acepta, y cuál revisión depende de dónde viva el carro —la RTV en Costa Rica, el MOT en el Reino Unido, las ADR en Australia—. Esas reglas las fijan ellos, no esta página. La suspensión es trabajo crítico de seguridad: el alineamiento y el torque de los tornillos de suspensión déjelos en manos de un mecánico calificado.",
+      "affectsNotes": {
+        "alignment-after-any-height-change": "Cambiar la altura cambia el camber, el caster y la convergencia, y por eso la casa indica que se requiere un alineamiento después de la instalación. Eso vale igual para la calza más delgada que para un cambio completo de resortes, y un alineamiento fuera de especificación se come las llantas y daña la dirección mucho antes de que se note a simple vista.",
+        "spring-duty-must-match-the-weight-you-added": "La altura y la capacidad de carga son dos clasificaciones distintas impresas sobre el mismo resorte. La casa publica las dos, y fija un mínimo de peso permanente agregado por debajo del cual no recomienda sus resortes más altos para el acabado más liviano de 2001-2002. Dígale al proveedor qué carga el vehículo de forma permanente, no cuál emblema trae en la puerta trasera.",
+        "spacers-move-the-arc-without-changing-the-spring": "La calza mueve todo el arco de la suspensión y deja el resorte y el amortiguador tal como estaban. La casa advierte que las calzas grandes cambian ese arco y pueden hacer que la tijereta superior pegue contra el amortiguador con la suspensión totalmente extendida; el taller de habla hispana citado abajo llega al mismo punto por el otro lado, señalando que las calzas montadas sin amortiguadores nuevos le reducen el recorrido que le queda.",
+        "dampers-are-part-of-the-kit": "La casa de resortes nombra las familias de amortiguadores con las que estos resortes deben trabajar. Un resorte nuevo bajo amortiguadores cansados es la receta para que un carro levantado se mezca más que el estándar que reemplazó: el resorte pasa a controlar menos movimiento, no más."
+      }
+    }
+  }
+}
