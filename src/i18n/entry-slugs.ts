@@ -83,6 +83,19 @@ export const ENTRY_SLUGS: Readonly<
   parts: {},
   /** MOD-01 — one page per modification. Populated by T602. */
   mods: {},
+  /**
+   * PRC-01 — one page per job. Populated by T504.
+   *
+   * The namespace is opened empty, on T501's precedent: the build's "every
+   * entry has a slug row, every row names an entry" check
+   * (`src/integrations/validate-procedures.ts`) needs something to compare
+   * against, and `slugRegistryIds("procedures")` has to answer `[]` rather
+   * than `undefined` from the day the page template lands.
+   *
+   * The ES slug is a Costa Rican reader's own words, never the English one
+   * with an accent: `cambio-de-aceite-6g74`, not `oil-change-6g74`.
+   */
+  procedures: {},
 };
 
 const registryIssues = validateSlugRegistry(ENTRY_SLUGS as SlugRegistry);

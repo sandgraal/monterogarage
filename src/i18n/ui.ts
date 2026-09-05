@@ -797,6 +797,65 @@ export interface UiStrings
    * `{count}` is `affects.length`, a figure computed at render time.
    */
   readonly modsAffectsCountTemplate: string;
+  /* Procedures — T502, PRC-01, PRC-02, PRC-03 */
+  readonly proceduresHeading: string;
+  readonly proceduresIntro: string;
+  readonly proceduresEmpty: string;
+  readonly proceduresNoResults: string;
+  /** `{shown}` / `{total}`, computed and interpolated — see `glossaryCountTemplate`. */
+  readonly proceduresCountTemplate: string;
+  readonly proceduresFilterSystemLabel: string;
+  readonly proceduresFilterSystemAll: string;
+  readonly proceduresBackToIndex: string;
+  /**
+   * `{value}` / `{max}` are `difficulty` and `DIFFICULTY_MAX`, both figures
+   * interpolated at render time and never typed into either locale
+   * (AGENTS.md).
+   *
+   * Deliberately **not** `problemDifficultyTemplate` or
+   * `modsDifficultyTemplate`, on the precedent T601 set when it declined to
+   * reuse T401's: those keys read as the difficulty of *fixing a fault* and of
+   * *choosing to fit a mod*. This one is the difficulty of the job itself, and
+   * reusing another collection's sentence would couple three pages' copy to
+   * whichever one is edited first. The **scale** is shared — `difficultySchema`
+   * is imported, never re-minted — which is the part that must not drift.
+   */
+  readonly proceduresDifficultyTemplate: string;
+  /** The label beside the `time` estimate; the figure is `fixTimeLabel`'s. */
+  readonly proceduresTimeLabel: string;
+  /** PRC-01's "prerequisites" — what has to be true before you start. */
+  readonly proceduresPrerequisitesHeading: string;
+  readonly proceduresPrerequisitesIntro: string;
+  /** The link on a prerequisite that names another job on this site. */
+  readonly proceduresPrerequisiteProcedureLabel: string;
+  /** PRC-01's "tools (flagging special/SST tools)". */
+  readonly proceduresToolsHeading: string;
+  /** The chip on a tool a reader cannot substitute a socket for. */
+  readonly proceduresToolSpecialLabel: string;
+  /** The label before a Mitsubishi special service tool number. */
+  readonly proceduresToolSstLabel: string;
+  /** PRC-01's "parts consumed". */
+  readonly proceduresPartsHeading: string;
+  /** `{count}` is a consumed part's `quantity`, shared data interpolated in. */
+  readonly proceduresPartQuantityTemplate: string;
+  /**
+   * PRC-03's section: the torque, fluid, capacity and dimension figures this
+   * job sets, each one rendered from the `reference` entry that stores it.
+   */
+  readonly proceduresSpecsHeading: string;
+  readonly proceduresSpecsIntro: string;
+  /**
+   * Shown in place of a figure when a cited `reference` id resolves to
+   * nothing. `validate-procedures` refuses that corpus at build time, so this
+   * is defense-in-depth — it exists so "we could not find this row" never
+   * renders as a confident blank (`.claude/GRADER-PRINCIPLES.md`, "unknown is
+   * not zero").
+   */
+  readonly proceduresSpecUnresolvedLabel: string;
+  /** PRC-01's "step-by-step". */
+  readonly proceduresStepsHeading: string;
+  /** PRC-01's ninth field: *this job's* hazards, not the standing notice. */
+  readonly proceduresSafetyNotesHeading: string;
 }
 
 const en: UiStrings = {
@@ -1228,6 +1287,35 @@ const en: UiStrings = {
   modsAffectsNoteLabel: "What happens",
   modsTradeoffsHeading: "The honest tradeoffs",
   modsAffectsCountTemplate: "{count} affected",
+  proceduresHeading: "Procedures",
+  proceduresIntro:
+    "Step-by-step jobs, with the tools, the parts they use up and the factory " +
+    "figures they depend on. Every figure links to the reference entry that " +
+    "cites it, so you can check it before you turn the wrench.",
+  proceduresEmpty: "No procedures have been written up yet.",
+  proceduresNoResults: "No procedures match these filters.",
+  proceduresCountTemplate: "{shown} of {total} procedures",
+  proceduresFilterSystemLabel: "Filter by system",
+  proceduresFilterSystemAll: "All systems",
+  proceduresBackToIndex: "All procedures",
+  proceduresDifficultyTemplate: "Difficulty {value}/{max}",
+  proceduresTimeLabel: "Roughly",
+  proceduresPrerequisitesHeading: "Before you start",
+  proceduresPrerequisitesIntro:
+    "All of this has to be true before the first step, not partway through it.",
+  proceduresPrerequisiteProcedureLabel: "Do this first",
+  proceduresToolsHeading: "Tools",
+  proceduresToolSpecialLabel: "Special tool",
+  proceduresToolSstLabel: "Mitsubishi tool number",
+  proceduresPartsHeading: "Parts it uses up",
+  proceduresPartQuantityTemplate: "{count} needed",
+  proceduresSpecsHeading: "Figures this job sets",
+  proceduresSpecsIntro:
+    "Each one is stored once, in the reference entry that cites its source, " +
+    "and shown here in both languages from that single copy.",
+  proceduresSpecUnresolvedLabel: "Look this figure up before you use it",
+  proceduresStepsHeading: "The job, step by step",
+  proceduresSafetyNotesHeading: "What can hurt you on this job",
   "modImpact.breaks": "Stops working",
   "modImpact.degrades": "Gets worse",
   "modImpact.needs-adjustment": "Has to be reset",
@@ -1744,6 +1832,37 @@ const es: UiStrings = {
   modsAffectsNoteLabel: "Qué pasa",
   modsTradeoffsHeading: "Los contras, sin adornos",
   modsAffectsCountTemplate: "{count} afectados",
+  proceduresHeading: "Procedimientos",
+  proceduresIntro:
+    "Trabajos paso a paso, con las herramientas, los repuestos que se " +
+    "consumen y las cifras de fábrica de las que dependen. Cada cifra lleva a " +
+    "la entrada de referencia que la cita, para que usted la revise antes de " +
+    "meterle llave.",
+  proceduresEmpty: "Todavía no se ha documentado ningún procedimiento.",
+  proceduresNoResults: "Ningún procedimiento coincide con estos filtros.",
+  proceduresCountTemplate: "{shown} de {total} procedimientos",
+  proceduresFilterSystemLabel: "Filtre por sistema",
+  proceduresFilterSystemAll: "Todos los sistemas",
+  proceduresBackToIndex: "Todos los procedimientos",
+  proceduresDifficultyTemplate: "Dificultad {value}/{max}",
+  proceduresTimeLabel: "Como",
+  proceduresPrerequisitesHeading: "Antes de empezar",
+  proceduresPrerequisitesIntro:
+    "Todo esto tiene que estar listo antes del primer paso, no a media " +
+    "faena.",
+  proceduresPrerequisiteProcedureLabel: "Haga esto primero",
+  proceduresToolsHeading: "Herramientas",
+  proceduresToolSpecialLabel: "Herramienta especial",
+  proceduresToolSstLabel: "Número de herramienta Mitsubishi",
+  proceduresPartsHeading: "Repuestos que se consumen",
+  proceduresPartQuantityTemplate: "Se necesitan {count}",
+  proceduresSpecsHeading: "Cifras que fija este trabajo",
+  proceduresSpecsIntro:
+    "Cada una se guarda una sola vez, en la entrada de referencia que cita su " +
+    "fuente, y aquí se muestra en los dos idiomas desde esa única copia.",
+  proceduresSpecUnresolvedLabel: "Busque esta cifra antes de usarla",
+  proceduresStepsHeading: "El trabajo, paso a paso",
+  proceduresSafetyNotesHeading: "Lo que le puede hacer daño en este trabajo",
   "modImpact.breaks": "Deja de servir",
   "modImpact.degrades": "Empeora",
   "modImpact.needs-adjustment": "Hay que reajustarlo",

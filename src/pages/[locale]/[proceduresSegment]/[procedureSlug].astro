@@ -1,0 +1,742 @@
+---
+/**
+ * One job's page (T502, PRC-01, PRC-02, PRC-03).
+ *
+ * > **PRC-02** WHEN a procedure touches a safety-critical system, THE entry
+ * > SHALL carry the `safety-critical` flag and render per PRB-03's notice
+ * > rules.
+ *
+ * ## The URL is two registries composed (I18N-01, I18N-05)
+ *
+ * `/en/procedures/oil-change-6g74/` and
+ * `/es/procedimientos/cambio-de-aceite-6g74/` are the same page: the *segment*
+ * comes from `src/i18n/routes.ts` and the *slug* from
+ * `src/i18n/entry-slugs.ts`. Both halves are per-locale, so neither locale
+ * reads as a translation of the other, and `routePathByLocale` hands
+ * `BaseLayout` the URLs that were actually built — which is what
+ * `check:hreflang` verifies after every build.
+ *
+ * The registry is empty until T504, so this route builds zero pages today.
+ * That is the intended state and not a stub: the index below
+ * `/en/procedures/` exists, is audited, and says so.
+ *
+ * ## The entry arrives as a prop, and that is a contract
+ *
+ * `getStaticPaths` resolves each slug row to its entry and passes the **entry
+ * itself** in `props`, T401's pattern — not T501's `entryId` plus a
+ * `getCollection` lookup in the frontmatter. That is not a preference:
+ * `tests/pages/procedure-page.render.test.ts` renders this file through
+ * Astro's container API, where the content store does not exist (`vitest run`
+ * happens before `astro build`), and its `astro:content` mock **throws** on any
+ * `procedures` lookup rather than answering an empty array. A page that looked
+ * its entry up would render an empty shell and fail every marker for a harness
+ * reason instead of for PRC-02. Resolving the entry once, in `getStaticPaths`,
+ * also means a slug row naming no entry is a named build error rather than a
+ * page that renders nothing.
+ *
+ * ## Page order, and why
+ *
+ * The design handoff's problem-page order, which the parts page already
+ * follows: title → chips → **safety notice** (both languages in one band, page
+ * locale first) → confidence caveat (dashed, only below `tsb`) → this job's own
+ * hazards → what has to be true first → tools → parts → figures → the steps →
+ * numbered sources with their archive state.
+ *
+ * The hazards come *before* the first step and not after the last, because a
+ * reader who finds out at step nine that the spring is under load has already
+ * done steps one to eight.
+ *
+ * ## The two bands are T401's components, never this page's own markup
+ *
+ * `SafetyNotice.astro` and `ConfidenceCaveat.astro`, exactly as the parts pages
+ * adopted them. PRB-03 and PRC-02 ask for the *same* band, and two templates
+ * drawing "the standing bilingual safety notice" are two warnings that can
+ * drift in wording, in colour and in reading order. `SafetyNotice` derives its
+ * heading id from the system — a change PR #72 made *for this page*, because a
+ * page showing two notices would otherwise emit two elements with one id.
+ *
+ * ## Every figure comes from a `reference` entry (PRC-03)
+ *
+ * The "figures this job sets" section renders `specs[]` through
+ * `src/lib/procedures/specs.ts`, which reads the number out of the cited
+ * `reference` entry. Nothing numeric is typed into either locale — the schema
+ * throws at define time if it is — and the build has already refused a spec id
+ * that resolves to nothing or to a row carrying no figure
+ * (`src/integrations/validate-procedures.ts`), which is why the unresolved
+ * state below is defense-in-depth rather than a live path.
+ *
+ * refs specs/001-foundation (PRC-01, PRC-02, PRC-03, I18N-01, I18N-04, I18N-05, I18N-08)
+ */
+import { getCollection } from "astro:content";
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import ConfidenceCaveat from "../../../components/ConfidenceCaveat.astro";
+import SafetyNotice from "../../../components/SafetyNotice.astro";
+import {
+  LOCALES,
+  LOCALE_BCP47,
+  isLocale,
+  localeHref,
+  type Locale,
+} from "../../../i18n/routing";
+import {
+  COLLECTION_ROUTE_SEGMENTS,
+  collectionRoutePath,
+  entryRoutePath,
+  entryRoutePaths,
+} from "../../../i18n/routes";
+import { entrySlugs, slugRegistryIds } from "../../../i18n/entry-slugs";
+import {
+  generationLabel,
+  glossarySystemLabel,
+  sourceKindLabel,
+  t,
+} from "../../../i18n/ui";
+import { needsConfidenceCaveat } from "../../../lib/confidence";
+import { isSafetyCritical } from "../../../lib/safety";
+import { fixTimeLabel } from "../../../lib/problems";
+import { specRows } from "../../../lib/procedures/specs";
+import { buildTaxonomy, expandGenerations } from "../../../lib/fitment";
+import { selectorTaxonomyData } from "../../../lib/vehicle-taxonomy";
+import { DIFFICULTY_MAX } from "../../../schemas/problems";
+import { GENERATION_IDS, type GenerationId } from "../../../schemas/vehicles";
+import type { ProcedureEntryData } from "../../../schemas/procedures";
+
+interface ProcedureEntry {
+  id: string;
+  data: ProcedureEntryData;
+}
+
+/**
+ * One path per locale per registered entry, with the parsed entry as a prop.
+ *
+ * The lookup happens **here** and not in the frontmatter — see "The entry
+ * arrives as a prop" above. A registry row naming no entry throws by name
+ * rather than building a URL that renders nothing (I18N-05); the build check
+ * already refuses that corpus, so this is the second line of the same defence.
+ */
+export async function getStaticPaths() {
+  const entries = await getCollection("procedures");
+
+  return slugRegistryIds("procedures").flatMap((entryId) => {
+    const slugs = entrySlugs("procedures", entryId);
+    if (slugs === null) return [];
+
+    const entry = entries.find((candidate) => candidate.data.id === entryId);
+    if (entry === undefined) {
+      throw new Error(
+        `ENTRY_SLUGS.procedures lists \`${entryId}\`, and no entry in ` +
+          `src/content/procedures/ has that id (I18N-05). ` +
+          `refs specs/001-foundation`
+      );
+    }
+
+    return LOCALES.map((locale) => ({
+      params: {
+        locale,
+        proceduresSegment: COLLECTION_ROUTE_SEGMENTS.procedures[locale],
+        procedureSlug: slugs[locale],
+      },
+      props: { entry },
+    }));
+  });
+}
+
+const { locale: param } = Astro.params;
+if (!isLocale(param)) {
+  throw new Error(`Unknown locale segment: ${String(param)}`);
+}
+const locale: Locale = param;
+const strings = t(locale);
+const bcp47 = LOCALE_BCP47[locale];
+
+const { entry } = Astro.props as { entry: ProcedureEntry };
+const data = entry.data;
+const local = data.prose[locale];
+
+const routes = entryRoutePaths("procedures", data.id);
+
+/**
+ * The same taxonomy the selector ships to the browser, built here so the
+ * *server* render answers generation questions the same way the client does —
+ * one engine, one answer, whichever side of the wire asks (FIT-01).
+ */
+const taxonomy = buildTaxonomy(
+  selectorTaxonomyData(
+    (await getCollection("vehicles")).map((vehicle) => vehicle.data)
+  ).nodes
+);
+
+/** A `GENERATION_IDS` value if `id` is one, else the raw string unchanged. */
+function isKnownGeneration(id: string): id is GenerationId {
+  return (GENERATION_IDS as readonly string[]).includes(id);
+}
+
+const genLabels = expandGenerations(data.fitment.gens, taxonomy).map((gen) =>
+  isKnownGeneration(gen) ? generationLabel(strings, gen) : gen
+);
+
+/**
+ * A route path from `src/i18n/routes.ts` is locale-independent — that is its
+ * contract, because `BaseLayout` needs the whole set to build hreflang pairs.
+ * Anything rendered into an `href` therefore goes through `localeHref`, which
+ * adds the `/en` or `/es` prefix and the deploy base. Without it every internal
+ * link on this page would point at a 404 — the defect
+ * `tests/pages/part-page.render.test.ts` caught on T501 and now pins.
+ */
+function hrefFor(routePath: string | null): string | null {
+  return routePath === null ? null : localeHref(locale, routePath);
+}
+
+/** Prerequisites, each carrying its link when it names another job. */
+const prerequisites = data.prerequisites.map((prerequisite) => ({
+  id: prerequisite.id,
+  text: local.prerequisites[prerequisite.id] ?? "",
+  href:
+    prerequisite.procedure === undefined
+      ? null
+      : hrefFor(entryRoutePath("procedures", prerequisite.procedure, locale)),
+}));
+
+const tools = data.tools.map((tool) => ({
+  id: tool.id,
+  name: local.tools[tool.id] ?? "",
+  special: tool.special === true,
+  sstNumber: tool.sstNumber ?? null,
+}));
+
+/**
+ * Consumed parts, resolved to their own pages. `parts` is read here (and not
+ * `procedures`) because a part number a reader cannot open is a number they
+ * cannot check the supersession chain on before ordering (PRT-02).
+ */
+const partEntries = await getCollection("parts");
+const partsConsumed = data.partsConsumed.map((consumed) => {
+  const part = partEntries.find(
+    (candidate) => candidate.data.id === consumed.part
+  );
+  return {
+    id: consumed.part,
+    title: part?.data.prose[locale].title ?? consumed.part,
+    oemNumber: part?.data.oemNumber ?? null,
+    href: hrefFor(entryRoutePath("parts", consumed.part, locale)),
+    quantity: consumed.quantity ?? null,
+  };
+});
+
+/** PRC-03: every figure, read out of the `reference` entry that stores it. */
+const specs = specRows(data.specs, await getCollection("reference"), locale);
+
+/** The steps, in order, each with the rows it is about. */
+const specById = new Map(specs.map((spec) => [spec.id, spec]));
+const partById = new Map(partsConsumed.map((part) => [part.id, part]));
+const steps = data.steps.map((step) => ({
+  id: step.id,
+  text: local.steps[step.id] ?? "",
+  specs: step.specs.flatMap((id) => {
+    const spec = specById.get(id);
+    return spec === undefined ? [] : [spec];
+  }),
+  parts: step.parts.flatMap((id) => {
+    const part = partById.get(id);
+    return part === undefined ? [] : [part];
+  }),
+}));
+
+const accessedDate = new Intl.DateTimeFormat(bcp47, {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+  timeZone: "UTC",
+});
+
+/** Parsed and formatted in UTC: an ISO date is a calendar day, not an instant. */
+function formatAccessed(iso: string): string {
+  return accessedDate.format(new Date(`${iso}T00:00:00Z`));
+}
+
+const safetyCritical = isSafetyCritical(data);
+const showCaveat = needsConfidenceCaveat(data.confidence);
+const indexHref = localeHref(locale, collectionRoutePath("procedures", locale));
+const difficultyLabel = strings.proceduresDifficultyTemplate
+  .replace("{value}", new Intl.NumberFormat(bcp47).format(data.difficulty))
+  .replace("{max}", new Intl.NumberFormat(bcp47).format(DIFFICULTY_MAX));
+const timeLabel = fixTimeLabel(data.time, bcp47);
+---
+
+<BaseLayout
+  locale={locale}
+  routePathByLocale={routes ?? undefined}
+  title={`${local.title} — ${strings.proceduresHeading}`}
+  description={local.summary}
+>
+  <article class="procedure">
+    <nav class="procedure__crumbs" aria-label={strings.proceduresHeading}>
+      <a href={indexHref}>{strings.proceduresBackToIndex}</a>
+    </nav>
+
+    <header class="procedure__head">
+      <h1>{local.title}</h1>
+      <div class="procedure__chips">
+        <span class="chip">{glossarySystemLabel(strings, data.system)}</span>
+        {
+          safetyCritical && (
+            <span class="chip chip--safety">
+              {strings.safetyCriticalChipLabel}
+            </span>
+          )
+        }
+        <span class="chip datum">{difficultyLabel}</span>
+        {
+          timeLabel !== "" && (
+            <span class="chip datum">
+              {strings.proceduresTimeLabel} {timeLabel}
+            </span>
+          )
+        }
+        {genLabels.map((label) => <span class="chip datum">{label}</span>)}
+      </div>
+    </header>
+
+    {
+      /*
+       * T401's component, not this page's own markup. PRC-02 routes straight
+       * here (PRB-03's notice rules, verbatim), and `SafetyNotice` names the
+       * system in its heading — which a procedure can fill because this
+       * collection carries the same `system` facet `problems` and `parts` do.
+       */
+      safetyCritical && <SafetyNotice locale={locale} system={data.system} />
+    }
+
+    {showCaveat && <ConfidenceCaveat locale={locale} tier={data.confidence} />}
+
+    <p class="procedure__summary">{local.summary}</p>
+
+    {
+      /*
+       * PRC-01's ninth field — *this* job's hazards, in this locale's words.
+       * Deliberately page-locale only, unlike the standing notice above: both
+       * locales' sentences in one column is how a bilingual page becomes an
+       * unreadable one (the F8 reading recorded on T401).
+       */
+      local.safetyNotes !== undefined && (
+        <section
+          class="section section--hazard"
+          aria-labelledby="procedure-hazards"
+        >
+          <h2 id="procedure-hazards">{strings.proceduresSafetyNotesHeading}</h2>
+          <p class="section__body">{local.safetyNotes}</p>
+        </section>
+      )
+    }
+
+    {
+      prerequisites.length > 0 && (
+        <section class="section" aria-labelledby="procedure-prerequisites">
+          <h2 id="procedure-prerequisites">
+            {strings.proceduresPrerequisitesHeading}
+          </h2>
+          <p class="section__intro">{strings.proceduresPrerequisitesIntro}</p>
+          <ul class="rows">
+            {prerequisites.map((prerequisite) => (
+              <li>
+                <span>{prerequisite.text}</span>
+                {prerequisite.href !== null && (
+                  <a class="rows__link" href={prerequisite.href}>
+                    {strings.proceduresPrerequisiteProcedureLabel}
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    {
+      tools.length > 0 && (
+        <section class="section" aria-labelledby="procedure-tools">
+          <h2 id="procedure-tools">{strings.proceduresToolsHeading}</h2>
+          <ul class="rows">
+            {tools.map((tool) => (
+              <li data-special={tool.special ? "true" : undefined}>
+                <span>{tool.name}</span>
+                {tool.special && (
+                  <span class="tag tag--special">
+                    {strings.proceduresToolSpecialLabel}
+                  </span>
+                )}
+                {tool.sstNumber !== null && (
+                  <span class="rows__meta">
+                    <span class="rows__label">
+                      {strings.proceduresToolSstLabel}
+                    </span>
+                    <span class="datum">{tool.sstNumber}</span>
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    {
+      partsConsumed.length > 0 && (
+        <section class="section" aria-labelledby="procedure-parts">
+          <h2 id="procedure-parts">{strings.proceduresPartsHeading}</h2>
+          <ul class="rows">
+            {partsConsumed.map((part) => (
+              <li>
+                {part.href === null ? (
+                  <span>{part.title}</span>
+                ) : (
+                  <a href={part.href}>{part.title}</a>
+                )}
+                {part.oemNumber !== null && (
+                  <span class="datum">{part.oemNumber}</span>
+                )}
+                {part.quantity !== null && (
+                  <span class="tag datum">
+                    {strings.proceduresPartQuantityTemplate.replace(
+                      "{count}",
+                      new Intl.NumberFormat(bcp47).format(part.quantity)
+                    )}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    {
+      specs.length > 0 && (
+        <section class="section" aria-labelledby="procedure-specs">
+          <h2 id="procedure-specs">{strings.proceduresSpecsHeading}</h2>
+          <p class="section__intro">{strings.proceduresSpecsIntro}</p>
+          <ul class="rows">
+            {specs.map((spec) => (
+              <li data-kind={spec.kind ?? undefined}>
+                <span>{spec.title ?? spec.id}</span>
+                {spec.figures.map((figure) => (
+                  <span class="datum spec__figure">{figure}</span>
+                ))}
+                {!spec.resolved && (
+                  <span class="tag tag--unknown">
+                    {strings.proceduresSpecUnresolvedLabel}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    <section class="section" aria-labelledby="procedure-steps">
+      <h2 id="procedure-steps">{strings.proceduresStepsHeading}</h2>
+      <ol class="steps">
+        {
+          steps.map((step) => (
+            <li class="step" id={`step-${step.id}`}>
+              <p class="step__text">{step.text}</p>
+              {(step.specs.length > 0 || step.parts.length > 0) && (
+                <p class="step__refs">
+                  {step.specs.map((spec) => (
+                    <span class="tag datum">
+                      {spec.figures[0] ?? spec.title ?? spec.id}
+                    </span>
+                  ))}
+                  {step.parts.map((part) => (
+                    <span class="tag datum">
+                      {part.oemNumber ?? part.title}
+                    </span>
+                  ))}
+                </p>
+              )}
+            </li>
+          ))
+        }
+      </ol>
+    </section>
+
+    {
+      data.sources.length > 0 && (
+        <section class="section" aria-labelledby="procedure-sources">
+          <h2 id="procedure-sources">{strings.sourcesHeading}</h2>
+          <ol class="sources">
+            {data.sources.map((source) => (
+              <li>
+                <a href={source.url}>{source.title}</a>
+                {/*
+                 * `sourceKind.*` and `sourceKindLabel()` are T401's, minted
+                 * unprefixed and shared — adopted here, never re-minted
+                 * (T501's "Owed 2" note names this task).
+                 */}
+                <span class="sources__kind">
+                  {sourceKindLabel(strings, source.kind)}
+                </span>
+                <span class="sources__meta datum">
+                  <time datetime={source.accessed}>
+                    {strings.sourceAccessedTemplate.replace(
+                      "{date}",
+                      formatAccessed(source.accessed)
+                    )}
+                  </time>
+                  <a href={source.archiveUrl}>{strings.sourceArchiveLabel}</a>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )
+    }
+  </article>
+</BaseLayout>
+
+<style>
+  /* Tokens from specs/001-foundation/design/HANDOFF-DESIGN.md, page-scoped. */
+  .procedure {
+    --paper: #f7f4ee;
+    --panel: #ffffff;
+    --ink: #2b2620;
+    --muted: #6e6559;
+    --muted-strong: #55493c;
+    --faint: #a99c88;
+    --line: #e4ddd1;
+    --chip: #efe9dd;
+    --rust: #b0532a;
+    --rust-deep: #93441f;
+    --safety-text: #7a2e2e;
+    --safety-bg: #f6e3d8;
+    --safety-border: #e4c4b0;
+
+    font-family: Archivo, "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-width: 60rem;
+  }
+
+  .datum {
+    font-family:
+      "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  .procedure__crumbs {
+    font-size: 0.8125rem;
+  }
+
+  .procedure__crumbs a {
+    color: var(--rust-deep);
+  }
+
+  .procedure__head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+  }
+
+  .procedure__head h1 {
+    margin: 0;
+    font-size: 1.875rem;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+  }
+
+  .procedure__chips {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  .chip,
+  .tag {
+    font-size: 0.75rem;
+    background: var(--chip);
+    border-radius: 4px;
+    padding: 0.125rem 0.5rem;
+    color: var(--muted-strong);
+  }
+
+  .chip--safety,
+  .tag--special {
+    font-weight: 700;
+    color: var(--safety-text);
+    background: var(--safety-bg);
+    border: 1px solid var(--safety-border);
+  }
+
+  /*
+   * "We could not resolve this figure" is drawn dashed, matching
+   * `ConfidenceCaveat`'s own "we are not fully sure" convention — never as a
+   * confident filled chip beside the real ones.
+   */
+  .tag--unknown {
+    background: var(--paper);
+    border: 1.5px dashed var(--faint);
+  }
+
+  .procedure__summary {
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: var(--muted-strong);
+    max-width: 66ch;
+  }
+
+  .section {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1.25rem 1.375rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  /* This job's own hazards sit in the safety palette, not the neutral one. */
+  .section--hazard {
+    background: var(--safety-bg);
+    border-color: var(--safety-border);
+  }
+
+  .section h2 {
+    margin: 0;
+    font-size: 1.0625rem;
+    font-weight: 700;
+  }
+
+  .section__intro {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--muted);
+    max-width: 62ch;
+  }
+
+  .section__body {
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--safety-text);
+    max-width: 66ch;
+  }
+
+  .rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .rows > li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+    border-left: 2px solid var(--line);
+    padding-left: 0.75rem;
+  }
+
+  .rows a,
+  .rows__link {
+    color: var(--rust-deep);
+    /* HANDOFF-DESIGN: mobile tap targets ≥44px (the T501 F3 fix, adopted). */
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+  }
+
+  .rows__label {
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-right: 0.375rem;
+  }
+
+  .rows__meta {
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .spec__figure {
+    font-weight: 600;
+  }
+
+  .steps {
+    margin: 0;
+    padding-left: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+  }
+
+  .step__text {
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.65;
+    max-width: 66ch;
+  }
+
+  .step__refs {
+    margin: 0.375rem 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+
+  .sources {
+    margin: 0;
+    padding-left: 1.125rem;
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+
+  .sources a {
+    color: var(--rust-deep);
+  }
+
+  .sources > li > a,
+  .sources__meta a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+  }
+
+  .sources__kind {
+    display: inline-block;
+    margin-left: 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--muted-strong);
+    background: var(--chip);
+    border-radius: 4px;
+    padding: 0.125rem 0.5rem;
+  }
+
+  .sources__meta {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .sources__meta a {
+    margin-left: 0.5rem;
+  }
+
+  @media (max-width: 48rem) {
+    .procedure__head h1 {
+      font-size: 1.5rem;
+    }
+  }
+</style>

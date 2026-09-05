@@ -132,7 +132,7 @@ describe("no figure may be declared in the prose shape (PRC-03, define time)", (
    * a guard: `specs: z.object({ torqueNm: z.number() })` duplicates a figure
    * per locale exactly like a top-level one.
    */
-  it.fails.each<[string, string, z.ZodType]>([
+  it.each<[string, string, z.ZodType]>([
     ["a torque figure", "torqueNm", z.number()],
     ["an optional torque figure", "torqueNm", z.number().optional()],
     ["a capacity", "capacityLitres", z.number()],
@@ -157,7 +157,7 @@ describe("no figure may be declared in the prose shape (PRC-03, define time)", (
     ).toThrow(new RegExp(field));
   });
 
-  it.fails("builds cleanly with the prose shape as it actually ships", () => {
+  it("builds cleanly with the prose shape as it actually ships", () => {
     // The positive control. Without it, "the guard throws" is satisfied by a
     // guard that throws on everything.
     const { shared, prose } = procedureShapes();
@@ -165,7 +165,7 @@ describe("no figure may be declared in the prose shape (PRC-03, define time)", (
     expect(() => defineEntrySchema(shared, prose)).not.toThrow();
   });
 
-  it.fails("keeps PRC-01's figures in shared data, where they belong", () => {
+  it("keeps PRC-01's figures in shared data, where they belong", () => {
     const { shared, prose } = procedureShapes();
 
     // `difficulty` and `time` are numbers. In shared data they are walked by
@@ -179,19 +179,16 @@ describe("no figure may be declared in the prose shape (PRC-03, define time)", (
     expect(Object.keys(prose)).not.toContain("time");
   });
 
-  it.fails(
-    "keeps the human half in prose, where a translator can reach it",
-    () => {
-      const { shared, prose } = procedureShapes();
+  it("keeps the human half in prose, where a translator can reach it", () => {
+    const { shared, prose } = procedureShapes();
 
-      expect(Object.keys(prose)).toEqual(
-        expect.arrayContaining(["steps", "tools", "prerequisites"])
-      );
-      // The mirror-image mistake: an English sentence in shared data is a page
-      // that ships in one language.
-      expect(Object.keys(shared)).not.toContain("safetyNotes");
-    }
-  );
+    expect(Object.keys(prose)).toEqual(
+      expect.arrayContaining(["steps", "tools", "prerequisites"])
+    );
+    // The mirror-image mistake: an English sentence in shared data is a page
+    // that ships in one language.
+    expect(Object.keys(shared)).not.toContain("safetyNotes");
+  });
 });
 
 /* -------------------------------------------------------------------------
@@ -199,7 +196,7 @@ describe("no figure may be declared in the prose shape (PRC-03, define time)", (
  * ---------------------------------------------------------------------- */
 
 describe("a figure smuggled into an entry's prose is named (PRC-03, SCF-04)", () => {
-  it.fails.each<[string, unknown]>([
+  it.each<[string, unknown]>([
     ["torqueNm", 88],
     ["capacityLitres", 4.5],
     ["minutes", 45],
@@ -214,7 +211,7 @@ describe("a figure smuggled into an entry's prose is named (PRC-03, SCF-04)", ()
     }
   });
 
-  it.fails("accepts the same entry once the figure is gone", () => {
+  it("accepts the same entry once the figure is gone", () => {
     expect(procedureIssuePaths(makeProcedure())).toEqual([]);
   });
 });
@@ -230,7 +227,7 @@ describe("a procedure states no spec of its own (PRC-03)", () => {
    * procedure that redeclares one is the second copy PRC-03 exists to
    * prevent — and the copy nobody updates when the FSM figure is corrected.
    */
-  it.fails.each<[string, unknown]>([
+  it.each<[string, unknown]>([
     ["torque", { value: 88, unit: "nm" }],
     ["torqueNm", 88],
     ["stages", [{ torque: { value: 50, unit: "nm" } }]],
@@ -246,7 +243,7 @@ describe("a procedure states no spec of its own (PRC-03)", () => {
     );
   });
 
-  it.fails("accepts the reference entry id instead", () => {
+  it("accepts the reference entry id instead", () => {
     // The positive control, and the shape PRC-03 actually asks for: one id,
     // one copy of the number, in the entry that cites it.
     expect(
@@ -262,7 +259,7 @@ describe("a procedure states no spec of its own (PRC-03)", () => {
     ).toEqual([]);
   });
 
-  it.fails("rejects a catalogue token written where a spec id belongs", () => {
+  it("rejects a catalogue token written where a spec id belongs", () => {
     /*
      * The mistake an author makes: pasting the *number* instead of naming the
      * entry that holds it. An entry id is lowercase kebab-case and a catalogue
@@ -349,7 +346,7 @@ describe("a figure written into a sentence is still an inlined value (PRC-03)", 
     });
   }
 
-  it.fails.each<[string, "en" | "es", string]>([
+  it.each<[string, "en" | "es", string]>([
     ["N·m", "en", "Torque the bolts to 88 N·m in sequence."],
     ["N.m, full stop", "en", "Torque the bolts to 88 N.m in sequence."],
     ["N m, plain space", "en", "Torque the bolts to 88 N m in sequence."],
@@ -410,7 +407,7 @@ describe("a figure written into a sentence is still an inlined value (PRC-03)", 
     }
   );
 
-  it.fails.each<[string, "en" | "es", string]>([
+  it.each<[string, "en" | "es", string]>([
     ["a count", "en", "Remove the three bolts and set them aside."],
     ["a numbered count", "en", "Remove the 3 bolts and set them aside."],
     ["a stage count", "es", "Apriete en 2 etapas, en el orden indicado."],
@@ -474,7 +471,7 @@ describe("a figure written into a sentence is still an inlined value (PRC-03)", 
     ).toEqual([]);
   });
 
-  it.fails("applies the same rule to safety notes", () => {
+  it("applies the same rule to safety notes", () => {
     const entry = makeProcedure({
       system: "brakes",
       safetyNotes: {
@@ -501,11 +498,11 @@ describe("a figure written into a sentence is still an inlined value (PRC-03)", 
  * ---------------------------------------------------------------------- */
 
 describe("the build resolves every id a procedure states (PRC-03)", () => {
-  it.fails("is clean on a corpus that holds together", () => {
+  it("is clean on a corpus that holds together", () => {
     expect(findProcedureIssues(makeCorpusFor([makeProcedure()]))).toEqual([]);
   });
 
-  it.fails.each(PROCEDURE_SPEC_KINDS)(
+  it.each(PROCEDURE_SPEC_KINDS)(
     "accepts a spec id naming a `%s` reference entry",
     (kind) => {
       const corpus = makeCorpusFor([
@@ -519,7 +516,7 @@ describe("the build resolves every id a procedure states (PRC-03)", () => {
     }
   );
 
-  it.fails.each(NON_SPEC_KINDS)(
+  it.each(NON_SPEC_KINDS)(
     "reports `wrong-spec-kind` for a spec id naming a `%s` entry",
     (kind) => {
       const corpus = {
@@ -540,7 +537,7 @@ describe("the build resolves every id a procedure states (PRC-03)", () => {
     }
   );
 
-  it.fails("reports `unknown-spec` for an id nobody wrote", () => {
+  it("reports `unknown-spec` for an id nobody wrote", () => {
     const corpus = makeCorpusFor([
       makeProcedure({
         specs: ["test-ref-nobody-wrote-this"],
@@ -558,7 +555,7 @@ describe("the build resolves every id a procedure states (PRC-03)", () => {
     expect(issues[0]?.entryId).toBe("test-g3-engine-oil-change");
   });
 
-  it.fails("reports `unknown-part` for a consumed part nobody wrote", () => {
+  it("reports `unknown-part` for a consumed part nobody wrote", () => {
     const corpus = makeCorpusFor([
       makeProcedure({
         partsConsumed: [{ part: "test-part-nobody-wrote-this" }],
@@ -570,69 +567,60 @@ describe("the build resolves every id a procedure states (PRC-03)", () => {
     expect(issueCodes(findProcedureIssues(corpus))).toEqual(["unknown-part"]);
   });
 
-  it.fails(
-    "reports `unknown-prerequisite` for a procedure nobody wrote",
-    () => {
-      const corpus = makeCorpusFor([
-        makeProcedure({
-          prerequisites: [
-            { id: "test-prereq-drain", procedure: "test-nobody-wrote-this" },
-          ],
-        }),
-      ]);
+  it("reports `unknown-prerequisite` for a procedure nobody wrote", () => {
+    const corpus = makeCorpusFor([
+      makeProcedure({
+        prerequisites: [
+          { id: "test-prereq-drain", procedure: "test-nobody-wrote-this" },
+        ],
+      }),
+    ]);
 
-      expect(issueCodes(findProcedureIssues(corpus))).toEqual([
-        "unknown-prerequisite",
-      ]);
-    }
-  );
+    expect(issueCodes(findProcedureIssues(corpus))).toEqual([
+      "unknown-prerequisite",
+    ]);
+  });
 
-  it.fails(
-    "reports `prerequisite-cycle` for two jobs requiring each other",
-    () => {
-      const corpus = makeCorpusFor([
-        makeProcedure({
-          id: "test-proc-a",
-          prerequisites: [{ id: "test-prereq-b", procedure: "test-proc-b" }],
-        }),
-        makeProcedure({
-          id: "test-proc-b",
-          prerequisites: [{ id: "test-prereq-a", procedure: "test-proc-a" }],
-        }),
-      ]);
+  it("reports `prerequisite-cycle` for two jobs requiring each other", () => {
+    const corpus = makeCorpusFor([
+      makeProcedure({
+        id: "test-proc-a",
+        prerequisites: [{ id: "test-prereq-b", procedure: "test-proc-b" }],
+      }),
+      makeProcedure({
+        id: "test-proc-b",
+        prerequisites: [{ id: "test-prereq-a", procedure: "test-proc-a" }],
+      }),
+    ]);
 
-      const issues = findProcedureIssues(corpus);
+    const issues = findProcedureIssues(corpus);
 
-      expect(issues.length).toBeGreaterThan(0);
-      expect(new Set(issueCodes(issues))).toEqual(
-        new Set(["prerequisite-cycle"])
-      );
-      // Both halves of the loop are named — an error naming one of two files
-      // sends the author to the one that is probably fine.
-      expect(
-        issues.flatMap((issue) => [issue.entryId, ...issue.relatedEntryIds])
-      ).toEqual(expect.arrayContaining(["test-proc-a", "test-proc-b"]));
-    }
-  );
+    expect(issues.length).toBeGreaterThan(0);
+    expect(new Set(issueCodes(issues))).toEqual(
+      new Set(["prerequisite-cycle"])
+    );
+    // Both halves of the loop are named — an error naming one of two files
+    // sends the author to the one that is probably fine.
+    expect(
+      issues.flatMap((issue) => [issue.entryId, ...issue.relatedEntryIds])
+    ).toEqual(expect.arrayContaining(["test-proc-a", "test-proc-b"]));
+  });
 
-  it.fails(
-    "reports `duplicate-entry-id` before anything derived from it",
-    () => {
-      // Staged the way `findPartIssues` stages its checks: while two entries
-      // share an id, every pointer question has two answers, and reporting the
-      // symptom next to the cause sends an author chasing the symptom.
-      const corpus = makeCorpusFor([
-        makeProcedure({ id: "test-proc-same" }),
-        makeProcedure({ id: "test-proc-same", specs: ["test-ref-nobody"] }),
-      ]);
+  it("reports `duplicate-entry-id` before anything derived from it", () => {
+    // Staged the way `findPartIssues` stages its checks: while two entries
+    // share an id, every pointer question has two answers, and reporting the
+    // symptom next to the cause sends an author chasing the symptom.
+    const corpus = makeCorpusFor([
+      makeProcedure({ id: "test-proc-same" }),
+      makeProcedure({ id: "test-proc-same", specs: ["test-ref-nobody"] }),
+    ]);
 
-      expect(new Set(issueCodes(findProcedureIssues(corpus)))).toEqual(
-        new Set(["duplicate-entry-id"])
-      );
-    }
-  );
+    expect(new Set(issueCodes(findProcedureIssues(corpus)))).toEqual(
+      new Set(["duplicate-entry-id"])
+    );
+  });
 
-  it.fails("is clean on a corpus that states no specs at all", () => {
+  it("is clean on a corpus that states no specs at all", () => {
     // A fluid top-up with no torque figure is a real procedure. A rule that
     // required a spec would make the collection narrower than PRC-01 asks.
     expect(

@@ -28,6 +28,7 @@ import { glossaryEntrySchema } from "./schemas/glossary";
 import { modsSchema } from "./schemas/mods";
 import { partsSchema } from "./schemas/parts";
 import { problemsEntrySchema } from "./schemas/problems";
+import { proceduresSchema } from "./schemas/procedures";
 import { referenceEntrySchema } from "./schemas/reference";
 import { vehiclesEntrySchema } from "./schemas/vehicles";
 
@@ -163,8 +164,14 @@ export const collections = {
   problems: entryCollection("problems", problemsEntrySchema(baseProse)),
   /** PRT-01…03 — parts, fitment, supersession chains (T501). */
   parts: entryCollection("parts", partsSchema),
-  /** PRC-01…03 — step-by-step procedures. */
-  procedures: entryCollection("procedures", baseEntrySchema()),
+  /**
+   * PRC-01…03 — step-by-step procedures: prerequisites, tools (with the
+   * special/SST flag), parts consumed, and every torque or fluid figure cited
+   * as a `reference` entry id rather than typed into a sentence (T502).
+   * Cross-entry resolution of those ids is the build's, in
+   * `src/integrations/validate-procedures.ts`.
+   */
+  procedures: entryCollection("procedures", proceduresSchema),
   /**
    * MOD-01, MOD-02 — modifications, their typed prerequisites and what they
    * break (T601). Cross-entry resolution of those references is the build's,

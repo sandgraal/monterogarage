@@ -1330,6 +1330,11 @@ export const RESERVED_HANDLES = [
   // `COLLECTION_ROUTE_SEGMENTS` rather than trusting it to stay complete.
   "mods",
   "modificaciones",
+  // T502's procedures collection, added when its route segment landed — the
+  // same cross-check against `COLLECTION_ROUTE_SEGMENTS` that caught `mods`
+  // named both locales here too.
+  "procedures",
+  "procedimientos",
 ] as const;
 
 /* -------------------------------------------------------------------------

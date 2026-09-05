@@ -82,13 +82,13 @@ function citationIssues(
  * ---------------------------------------------------------------------- */
 
 describe("an uncited procedure fails `check:citations` by field (REF-02)", () => {
-  it.fails("names the difficulty", () => {
+  it("names the difficulty", () => {
     expect(
       citationIssues({ sources: [] }).map((issue) => issue.field)
     ).toContain("difficulty");
   });
 
-  it.fails("names the time estimate, down to the figure inside it", () => {
+  it("names the time estimate, down to the figure inside it", () => {
     // `time.value`, not `time`: SCF-04 wants the field, and a band states two
     // figures that an author edits separately.
     expect(
@@ -98,7 +98,7 @@ describe("an uncited procedure fails `check:citations` by field (REF-02)", () =>
     ).toContain("time.value");
   });
 
-  it.fails("names both ends of a time band", () => {
+  it("names both ends of a time band", () => {
     const fields = citationIssues({
       sources: [],
       time: { min: 30, max: 90, unit: "min" },
@@ -108,7 +108,7 @@ describe("an uncited procedure fails `check:citations` by field (REF-02)", () =>
     expect(fields).toContain("time.max");
   });
 
-  it.fails("names a consumed part's quantity, with its index", () => {
+  it("names a consumed part's quantity, with its index", () => {
     expect(
       citationIssues({
         sources: [],
@@ -117,19 +117,16 @@ describe("an uncited procedure fails `check:citations` by field (REF-02)", () =>
     ).toContain("partsConsumed[0].quantity");
   });
 
-  it.fails(
-    "says the figure and the rule in the message, not just the field",
-    () => {
-      const [issue] = citationIssues({ sources: [], difficulty: 3 });
+  it("says the figure and the rule in the message, not just the field", () => {
+    const [issue] = citationIssues({ sources: [], difficulty: 3 });
 
-      // The message an author reads has to carry the value, so they can tell
-      // which of several numbers is meant, and the requirement, so they know it
-      // is not negotiable.
-      expect(issue?.message).toMatch(/difficulty/);
-      expect(issue?.message).toMatch(/3/);
-      expect(issue?.message).toMatch(/REF-02/);
-    }
-  );
+    // The message an author reads has to carry the value, so they can tell
+    // which of several numbers is meant, and the requirement, so they know it
+    // is not negotiable.
+    expect(issue?.message).toMatch(/difficulty/);
+    expect(issue?.message).toMatch(/3/);
+    expect(issue?.message).toMatch(/REF-02/);
+  });
 });
 
 /* -------------------------------------------------------------------------
@@ -137,13 +134,13 @@ describe("an uncited procedure fails `check:citations` by field (REF-02)", () =>
  * ---------------------------------------------------------------------- */
 
 describe("what a cited procedure is allowed to do", () => {
-  it.fails("is clean once the entry cites one source", () => {
+  it("is clean once the entry cites one source", () => {
     // The control that keeps the rule from being "procedures may not carry
     // numbers". REF-02 asks for a citation, not for silence.
     expect(citationIssues({ sources: [makeSource()] })).toEqual([]);
   });
 
-  it.fails("is clean when a job states no optional figure at all", () => {
+  it("is clean when a job states no optional figure at all", () => {
     expect(
       citationIssues({
         sources: [makeSource()],
@@ -152,7 +149,7 @@ describe("what a cited procedure is allowed to do", () => {
     ).toEqual([]);
   });
 
-  it.fails("does not treat the fitment year range as an uncited spec", () => {
+  it("does not treat the fitment year range as an uncited spec", () => {
     // `fitment` is part of the fixed entry envelope, which
     // `scripts/check-citations.mjs` deliberately never scans: those numbers
     // say which trucks the entry is about, not what the entry asserts.

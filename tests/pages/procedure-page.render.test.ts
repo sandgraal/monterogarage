@@ -366,28 +366,25 @@ const SAFETY_NOTES = {
 
 describe("the safety notice is bilingual on either page (PRC-02, PRB-03)", () => {
   for (const pageLocale of LOCALES) {
-    it.fails(
-      `states the notice in every language on the ${pageLocale} page`,
-      async () => {
-        const doc = await renderPage(pageLocale, {
-          system: "brakes",
-          safetyNotes: SAFETY_NOTES,
-        });
-        const said = textByLocale(doc, ".safety", ".safety__line");
+    it(`states the notice in every language on the ${pageLocale} page`, async () => {
+      const doc = await renderPage(pageLocale, {
+        system: "brakes",
+        safetyNotes: SAFETY_NOTES,
+      });
+      const said = textByLocale(doc, ".safety", ".safety__line");
 
-        for (const locale of LOCALES) {
-          // The mutation this kills is the one that survived T401's whole
-          // pipeline: `readingOrder = [locale]`, which deletes the second
-          // language from the notice a reader who does not read the page's
-          // language depends on.
-          expect(said[locale], `missing ${locale} safety line`).toEqual([
-            t(locale).safetyNoticeBody,
-          ]);
-        }
+      for (const locale of LOCALES) {
+        // The mutation this kills is the one that survived T401's whole
+        // pipeline: `readingOrder = [locale]`, which deletes the second
+        // language from the notice a reader who does not read the page's
+        // language depends on.
+        expect(said[locale], `missing ${locale} safety line`).toEqual([
+          t(locale).safetyNoticeBody,
+        ]);
       }
-    );
+    });
 
-    it.fails(`names the system in the ${pageLocale} heading`, async () => {
+    it(`names the system in the ${pageLocale} heading`, async () => {
       const doc = await renderPage(pageLocale, {
         system: "brakes",
         safetyNotes: SAFETY_NOTES,
@@ -403,26 +400,23 @@ describe("the safety notice is bilingual on either page (PRC-02, PRB-03)", () =>
     });
   }
 
-  it.fails(
-    "labels the notice by an id derived from the system (PR #72)",
-    async () => {
-      // Two notices on one page must not share one id: `aria-labelledby`
-      // resolves to the first, so one notice would announce the other's system.
-      // The default `SafetyNotice.astro` emits is `safety-notice-<system>`.
-      const doc = await renderPage("en", {
-        system: "steering",
-        safetyNotes: SAFETY_NOTES,
-      });
-      const band = doc.querySelector(".safety");
+  it("labels the notice by an id derived from the system (PR #72)", async () => {
+    // Two notices on one page must not share one id: `aria-labelledby`
+    // resolves to the first, so one notice would announce the other's system.
+    // The default `SafetyNotice.astro` emits is `safety-notice-<system>`.
+    const doc = await renderPage("en", {
+      system: "steering",
+      safetyNotes: SAFETY_NOTES,
+    });
+    const band = doc.querySelector(".safety");
 
-      expect(band?.getAttribute("aria-labelledby")).toBe(
-        "safety-notice-steering"
-      );
-      expect(doc.querySelector(".safety__title")?.id).toBe(
-        "safety-notice-steering"
-      );
-    }
-  );
+    expect(band?.getAttribute("aria-labelledby")).toBe(
+      "safety-notice-steering"
+    );
+    expect(doc.querySelector(".safety__title")?.id).toBe(
+      "safety-notice-steering"
+    );
+  });
 });
 
 /* -------------------------------------------------------------------------
@@ -430,7 +424,7 @@ describe("the safety notice is bilingual on either page (PRC-02, PRB-03)", () =>
  * ---------------------------------------------------------------------- */
 
 describe("the notice is conditioned on src/lib/safety.ts, not on the template (PRC-02)", () => {
-  it.fails.each(GLOSSARY_SYSTEMS)(
+  it.each(GLOSSARY_SYSTEMS)(
     "a `%s` procedure shows the notice iff the entry is safety-critical",
     async (system) => {
       const safetyCritical = (
@@ -449,22 +443,19 @@ describe("the notice is conditioned on src/lib/safety.ts, not on the template (P
     }
   );
 
-  it.fails(
-    "shows the notice on a promoted procedure (SRS, jacking, towing)",
-    async () => {
-      // The case `system` alone cannot reach — AGENTS.md's safety-critical
-      // categories with no `GLOSSARY_SYSTEMS` id of their own.
-      const doc = await renderPage("en", {
-        system: "engine",
-        safetyCritical: true,
-        safetyNotes: SAFETY_NOTES,
-      });
+  it("shows the notice on a promoted procedure (SRS, jacking, towing)", async () => {
+    // The case `system` alone cannot reach — AGENTS.md's safety-critical
+    // categories with no `GLOSSARY_SYSTEMS` id of their own.
+    const doc = await renderPage("en", {
+      system: "engine",
+      safetyCritical: true,
+      safetyNotes: SAFETY_NOTES,
+    });
 
-      expect(doc.querySelector(".safety")).not.toBeNull();
-    }
-  );
+    expect(doc.querySelector(".safety")).not.toBeNull();
+  });
 
-  it.fails("shows no notice on an ordinary job", async () => {
+  it("shows no notice on an ordinary job", async () => {
     // The positive control. A page that always drew the band would satisfy
     // every assertion above and make the notice meaningless.
     const doc = await renderPage("en");
@@ -478,7 +469,7 @@ describe("the notice is conditioned on src/lib/safety.ts, not on the template (P
  * ---------------------------------------------------------------------- */
 
 describe("the confidence caveat is the shared component (PRC-02, PRB-04)", () => {
-  it.fails.each(CONFIDENCE_TIERS)(
+  it.each(CONFIDENCE_TIERS)(
     "a `%s` procedure shows the caveat iff src/lib/confidence.ts says so",
     async (tier) => {
       const doc = await renderPage("en", {
@@ -492,7 +483,7 @@ describe("the confidence caveat is the shared component (PRC-02, PRB-04)", () =>
     }
   );
 
-  it.fails.each(LOCALES)(
+  it.each(LOCALES)(
     "states the caveat in both languages on the %s page",
     async (pageLocale) => {
       const doc = await renderPage(pageLocale, {
@@ -518,7 +509,7 @@ describe("the confidence caveat is the shared component (PRC-02, PRB-04)", () =>
  * ---------------------------------------------------------------------- */
 
 describe("the entry's own safety notes render (PRC-01)", () => {
-  it.fails.each(LOCALES)(
+  it.each(LOCALES)(
     "renders the entry's own safety note on the %s page",
     async (locale) => {
       const doc = await renderPage(locale, {
@@ -530,7 +521,7 @@ describe("the entry's own safety notes render (PRC-01)", () => {
     }
   );
 
-  it.fails("does not leak the other locale's note into the page", async () => {
+  it("does not leak the other locale's note into the page", async () => {
     // Unlike the standing notice, the entry's own note is page-locale prose:
     // both locales' sentences in one column is how a bilingual page becomes
     // an unreadable one (the F8 reading recorded on T401).

@@ -114,7 +114,7 @@ function standalone(): Record<string, unknown> {
  * ---------------------------------------------------------------------- */
 
 describe("a complete procedure entry (PRC-01)", () => {
-  it.fails("accepts the nine things PRC-01 asks for, with no complaint", () => {
+  it("accepts the nine things PRC-01 asks for, with no complaint", () => {
     // The positive control for this entire file. If it ever passes while a
     // rejection grader below also passes, one of the two is wrong.
     expect(procedureIssuePaths(makeProcedure())).toEqual([]);
@@ -128,7 +128,7 @@ describe("a complete procedure entry (PRC-01)", () => {
    * real, and `prerequisites: []` is the common case. See the acceptance
    * below, which is the other half of this rule.
    */
-  it.fails.each(["system", "difficulty", "time", "steps"])(
+  it.each(["system", "difficulty", "time", "steps"])(
     "requires `%s` and reports it by name (SCF-04)",
     (field) => {
       const issues = issuesUnder(without(makeProcedure(), field), field);
@@ -136,7 +136,7 @@ describe("a complete procedure entry (PRC-01)", () => {
     }
   );
 
-  it.fails.each(["prerequisites", "tools", "partsConsumed", "specs"])(
+  it.each(["prerequisites", "tools", "partsConsumed", "specs"])(
     "lets `%s` be absent — a job may need none of them",
     (field) => {
       // Built from the standalone fixture, not from the full one: dropping
@@ -150,7 +150,7 @@ describe("a complete procedure entry (PRC-01)", () => {
     }
   );
 
-  it.fails("names an unknown field rather than silently stripping it", () => {
+  it("names an unknown field rather than silently stripping it", () => {
     const outcome = parseProcedure(
       makeProcedure({ extraShared: { dificulty: 3 } })
     );
@@ -169,7 +169,7 @@ describe("a complete procedure entry (PRC-01)", () => {
  * ---------------------------------------------------------------------- */
 
 describe("steps (PRC-01)", () => {
-  it.fails("rejects a procedure with no steps at all", () => {
+  it("rejects a procedure with no steps at all", () => {
     // A procedure that does not say what to do is not a procedure; it is a
     // title. The same reasoning as `problems`' "at least one symptom".
     expect(
@@ -177,7 +177,7 @@ describe("steps (PRC-01)", () => {
     ).toBeGreaterThan(0);
   });
 
-  it.fails("accepts a single-step procedure", () => {
+  it("accepts a single-step procedure", () => {
     expect(
       procedureIssuePaths(
         makeProcedure({ steps: [{ id: "test-step-only" }], specs: [] })
@@ -185,7 +185,7 @@ describe("steps (PRC-01)", () => {
     ).toEqual([]);
   });
 
-  it.fails.each(["en", "es"])(
+  it.each(["en", "es"])(
     "rejects a step whose %s sentence is missing",
     (locale) => {
       const entry = makeProcedure({
@@ -205,21 +205,18 @@ describe("steps (PRC-01)", () => {
     }
   );
 
-  it.fails(
-    "rejects a step sentence keyed to a step that does not exist",
-    () => {
-      const entry = makeProcedure({
-        stepProse: { en: { "test-step-ghost": "TEST orphan sentence." } },
-      });
-      // `stepProse` only overrides declared ids, so add the orphan directly.
-      const prose = (
-        entry as { prose: Record<string, { steps: Record<string, string> }> }
-      ).prose;
-      prose["en"]!.steps["test-step-ghost"] = "TEST orphan sentence.";
+  it("rejects a step sentence keyed to a step that does not exist", () => {
+    const entry = makeProcedure({
+      stepProse: { en: { "test-step-ghost": "TEST orphan sentence." } },
+    });
+    // `stepProse` only overrides declared ids, so add the orphan directly.
+    const prose = (
+      entry as { prose: Record<string, { steps: Record<string, string> }> }
+    ).prose;
+    prose["en"]!.steps["test-step-ghost"] = "TEST orphan sentence.";
 
-      expect(issuesUnder(entry, "prose.en.steps").length).toBeGreaterThan(0);
-    }
-  );
+    expect(issuesUnder(entry, "prose.en.steps").length).toBeGreaterThan(0);
+  });
 });
 
 /* -------------------------------------------------------------------------
@@ -250,7 +247,7 @@ describe("steps (PRC-01)", () => {
  * ---------------------------------------------------------------------- */
 
 describe("no list repeats an id (PRC-01)", () => {
-  it.fails.each<[string, Record<string, unknown>]>([
+  it.each<[string, Record<string, unknown>]>([
     [
       "steps",
       {
@@ -284,7 +281,7 @@ describe("no list repeats an id (PRC-01)", () => {
     ).toBeGreaterThan(0);
   });
 
-  it.fails.each<[string, Record<string, unknown>]>([
+  it.each<[string, Record<string, unknown>]>([
     [
       "steps",
       {
@@ -329,11 +326,11 @@ describe("no list repeats an id (PRC-01)", () => {
  * ---------------------------------------------------------------------- */
 
 describe("tools, and the special/SST flag (PRC-01)", () => {
-  it.fails("accepts a job that needs no tools at all", () => {
+  it("accepts a job that needs no tools at all", () => {
     expect(procedureIssuePaths(makeProcedure({ tools: [] }))).toEqual([]);
   });
 
-  it.fails("accepts an ordinary tool with no flag", () => {
+  it("accepts an ordinary tool with no flag", () => {
     expect(
       procedureIssuePaths(
         makeProcedure({ tools: [{ id: "test-tool-socket" }] })
@@ -341,7 +338,7 @@ describe("tools, and the special/SST flag (PRC-01)", () => {
     ).toEqual([]);
   });
 
-  it.fails("accepts a special tool carrying its SST number", () => {
+  it("accepts a special tool carrying its SST number", () => {
     expect(
       procedureIssuePaths(
         makeProcedure({
@@ -353,7 +350,7 @@ describe("tools, and the special/SST flag (PRC-01)", () => {
     ).toEqual([]);
   });
 
-  it.fails("rejects an SST number on a tool not flagged special", () => {
+  it("rejects an SST number on a tool not flagged special", () => {
     /*
      * A Mitsubishi special service tool *is* the "special tool" PRC-01 wants
      * flagged. An entry that records the number but leaves `special` off
@@ -372,7 +369,7 @@ describe("tools, and the special/SST flag (PRC-01)", () => {
     expect(issues.length).toBeGreaterThan(0);
   });
 
-  it.fails("accepts a special tool with no SST number", () => {
+  it("accepts a special tool with no SST number", () => {
     // A slide hammer is a special tool nobody has a Mitsubishi number for.
     expect(
       procedureIssuePaths(
@@ -381,7 +378,7 @@ describe("tools, and the special/SST flag (PRC-01)", () => {
     ).toEqual([]);
   });
 
-  it.fails.each(["en", "es"])(
+  it.each(["en", "es"])(
     "rejects a tool with no %s name — a tool list is prose too",
     (locale) => {
       const entry = makeProcedure({
@@ -400,7 +397,7 @@ describe("tools, and the special/SST flag (PRC-01)", () => {
  * ---------------------------------------------------------------------- */
 
 describe("parts consumed (PRC-01)", () => {
-  it.fails("accepts a part consumed with no stated quantity", () => {
+  it("accepts a part consumed with no stated quantity", () => {
     // "How many" is often not what a catalogue states, and a guessed count is
     // an invented fact — the reasoning `parts`' `quantityPerVehicle` records.
     expect(
@@ -410,7 +407,7 @@ describe("parts consumed (PRC-01)", () => {
     ).toEqual([]);
   });
 
-  it.fails.each<[unknown]>([[0], [-1], [1.5]])(
+  it.each<[unknown]>([[0], [-1], [1.5]])(
     "rejects a consumed quantity of %s",
     (quantity) => {
       const issues = issuesUnder(
@@ -429,7 +426,7 @@ describe("parts consumed (PRC-01)", () => {
     }
   );
 
-  it.fails("accepts a whole positive quantity", () => {
+  it("accepts a whole positive quantity", () => {
     expect(
       procedureIssuePaths(
         makeProcedure({
@@ -439,7 +436,7 @@ describe("parts consumed (PRC-01)", () => {
     ).toEqual([]);
   });
 
-  it.fails("rejects a part number written where a part id belongs", () => {
+  it("rejects a part number written where a part id belongs", () => {
     /*
      * The mistake an author will actually make. `TEST-P0001` is uppercase and
      * an entry id is lowercase kebab-case, so the two cannot be confused
@@ -469,7 +466,7 @@ describe("parts consumed (PRC-01)", () => {
  * ---------------------------------------------------------------------- */
 
 describe("difficulty is the shared 1–5 scale (PRC-01)", () => {
-  it.fails.each<[unknown, boolean]>([
+  it.each<[unknown, boolean]>([
     [DIFFICULTY_MIN - 1, false],
     [DIFFICULTY_MIN, true],
     [2, true],
@@ -495,7 +492,7 @@ describe("difficulty is the shared 1–5 scale (PRC-01)", () => {
  * ---------------------------------------------------------------------- */
 
 describe("the time estimate is a real quantity (PRC-01)", () => {
-  it.fails.each<[string, unknown, boolean]>([
+  it.each<[string, unknown, boolean]>([
     ["a nominal", { value: 45, unit: "min" }, true],
     ["a nominal in hours", { value: 3, unit: "h" }, true],
     ["a band", { min: 30, max: 90, unit: "min" }, true],
@@ -529,21 +526,18 @@ describe("the time estimate is a real quantity (PRC-01)", () => {
  * ---------------------------------------------------------------------- */
 
 describe("prerequisites (PRC-01)", () => {
-  it.fails(
-    "accepts a prerequisite that is a condition, not a procedure",
-    () => {
-      // "Engine cold. Truck level, on its jack stands." A prerequisite is not
-      // always another job on this site, and a shape that assumed it was would
-      // force authors to invent entries for sentences.
-      expect(
-        procedureIssuePaths(
-          makeProcedure({ prerequisites: [{ id: "test-prereq-cold" }] })
-        )
-      ).toEqual([]);
-    }
-  );
+  it("accepts a prerequisite that is a condition, not a procedure", () => {
+    // "Engine cold. Truck level, on its jack stands." A prerequisite is not
+    // always another job on this site, and a shape that assumed it was would
+    // force authors to invent entries for sentences.
+    expect(
+      procedureIssuePaths(
+        makeProcedure({ prerequisites: [{ id: "test-prereq-cold" }] })
+      )
+    ).toEqual([]);
+  });
 
-  it.fails("accepts a prerequisite that names another procedure", () => {
+  it("accepts a prerequisite that names another procedure", () => {
     expect(
       procedureIssuePaths(
         makeProcedure({
@@ -559,7 +553,7 @@ describe("prerequisites (PRC-01)", () => {
     ).toEqual([]);
   });
 
-  it.fails("rejects a procedure that requires itself", () => {
+  it("rejects a procedure that requires itself", () => {
     const issues = issuesUnder(
       makeProcedure({
         id: "test-g3-engine-oil-change",
@@ -576,7 +570,7 @@ describe("prerequisites (PRC-01)", () => {
     expect(issues.length).toBeGreaterThan(0);
   });
 
-  it.fails.each(["en", "es"])(
+  it.each(["en", "es"])(
     "rejects a prerequisite with no %s sentence",
     (locale) => {
       const entry = makeProcedure({
@@ -602,7 +596,7 @@ describe("prerequisites (PRC-01)", () => {
  * ---------------------------------------------------------------------- */
 
 describe("a step references only what the entry declares (PRC-01)", () => {
-  it.fails("rejects a step spec id the entry never listed in `specs`", () => {
+  it("rejects a step spec id the entry never listed in `specs`", () => {
     const issues = issuesUnder(
       makeProcedure({
         steps: [{ id: "test-step-torque", specs: ["test-ref-fluid"] }],
@@ -614,7 +608,7 @@ describe("a step references only what the entry declares (PRC-01)", () => {
     expect(issues.length).toBeGreaterThan(0);
   });
 
-  it.fails("accepts a step spec id the entry did list", () => {
+  it("accepts a step spec id the entry did list", () => {
     expect(
       procedureIssuePaths(
         makeProcedure({
@@ -625,7 +619,7 @@ describe("a step references only what the entry declares (PRC-01)", () => {
     ).toEqual([]);
   });
 
-  it.fails("rejects a step part id the entry never consumes", () => {
+  it("rejects a step part id the entry never consumes", () => {
     const issues = issuesUnder(
       makeProcedure({
         steps: [{ id: "test-step-fit", parts: ["test-part-gasket"] }],
@@ -638,7 +632,7 @@ describe("a step references only what the entry declares (PRC-01)", () => {
     expect(issues.length).toBeGreaterThan(0);
   });
 
-  it.fails("accepts a step part id the entry does consume", () => {
+  it("accepts a step part id the entry does consume", () => {
     expect(
       procedureIssuePaths(
         makeProcedure({
@@ -680,18 +674,18 @@ describe("the collection has a bilingual route (I18N-01, I18N-05)", () => {
     )["procedures"];
   }
 
-  it.fails("registers a `procedures` route segment", () => {
+  it("registers a `procedures` route segment", () => {
     // Without a row the collection has no URL in either locale, so the page
     // T502 writes builds nothing and `check:hreflang` never sees it.
     expect(segments()).toBeDefined();
   });
 
-  it.fails.each(LOCALES)("carries a %s segment", (locale) => {
+  it.each(LOCALES)("carries a %s segment", (locale) => {
     expect(typeof segments()?.[locale]).toBe("string");
     expect(segments()?.[locale]).not.toBe("");
   });
 
-  it.fails("does not put the English word in the Spanish URL", () => {
+  it("does not put the English word in the Spanish URL", () => {
     const row = segments();
 
     // The whole of I18N-01 in one assertion: `/es/procedures/` would be the
@@ -701,16 +695,13 @@ describe("the collection has a bilingual route (I18N-01, I18N-05)", () => {
     expect(row?.["es"]).not.toBe("procedures");
   });
 
-  it.fails.each(LOCALES)(
-    "uses a lowercase, hyphen-safe %s segment",
-    (locale) => {
-      // Segments are "lowercase, hyphenated, and never URL-encoded" —
-      // `src/i18n/routes.ts`' own rule for this registry.
-      expect(segments()?.[locale]).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
-    }
-  );
+  it.each(LOCALES)("uses a lowercase, hyphen-safe %s segment", (locale) => {
+    // Segments are "lowercase, hyphenated, and never URL-encoded" —
+    // `src/i18n/routes.ts`' own rule for this registry.
+    expect(segments()?.[locale]).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+  });
 
-  it.fails("opens a `procedures` namespace in the slug registry", () => {
+  it("opens a `procedures` namespace in the slug registry", () => {
     /*
      * `parts: {}` is the precedent: T501 registered an empty namespace so the
      * build's "every entry has a slug row, every row names an entry" check has

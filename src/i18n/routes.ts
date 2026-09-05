@@ -146,6 +146,35 @@ export const COLLECTION_ROUTE_SEGMENTS = {
    * holding.
    */
   mods: { en: "mods", es: "modificaciones" },
+  /**
+   * T502 — the procedures index and, under it, one page per job (PRC-01…03).
+   *
+   * **The ES segment is `procedimientos`.** Unlike `taller` and `repuestos`,
+   * this is not a case where the glossary rules on the exact word: no glossary
+   * entry is headed "procedure", and `procedimiento` appears in **no** entry's
+   * `aliases`, so GLO-02's canonical-over-variant rule is not engaged in either
+   * direction. The choice therefore rests on three other grounds, the same
+   * three the `problemas` note above records for its own case:
+   *
+   * 1. **It is the word the corpus already uses.** `procedimiento` is what the
+   *    merged ES prose reaches for unprompted — the FSM section index describes
+   *    "los procedimientos sobre el vehículo para revisar y cambiar el aceite",
+   *    a torque entry cites "el procedimiento de eje interno", and a brakes
+   *    problem entry tells a reader to find a mechanic "que tenga el
+   *    procedimiento de fábrica". A URL segment that disagreed with the site's
+   *    own prose would be the reader's first false note.
+   * 2. **Symmetry (I18N-01).** `procedures` / `procedimientos` are the same
+   *    concept at the same scope in both languages — neither locale's segment
+   *    is narrower than the other's, which is the asymmetry `fallas` would have
+   *    introduced for `problems`.
+   * 3. **It is not the English word wearing an accent.** The alternative a
+   *    hurried author reaches for is `/es/procedures/`, which is exactly what
+   *    `repuestos` and `taller` were chosen to avoid.
+   *
+   * Plural on both sides, matching every other collection here: the segment
+   * names the section, and the section is a list.
+   */
+  procedures: { en: "procedures", es: "procedimientos" },
 } as const satisfies Readonly<Record<string, Readonly<Record<Locale, string>>>>;
 
 export type CollectionRouteId = keyof typeof COLLECTION_ROUTE_SEGMENTS;

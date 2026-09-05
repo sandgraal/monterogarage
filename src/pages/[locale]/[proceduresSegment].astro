@@ -1,0 +1,583 @@
+---
+/**
+ * The procedures index (T502, PRC-01, PRC-02).
+ *
+ * ## One page, two URLs, one component (I18N-01)
+ *
+ * The seam T205 built for the glossary and T501 reused for the parts index:
+ * the segment is translated (`/en/procedures/` and `/es/procedimientos/`), so
+ * this file is parameterized on it and `getStaticPaths` reads both values from
+ * `src/i18n/routes.ts`' registry. Neither locale is a redirect of the other.
+ *
+ * ## Two filters, two shapes — T204's rule, restated
+ *
+ * The system pills **hide** what does not match: a reader who picks "brakes"
+ * asked for a shorter list. The vehicle selector does not hide anything — a job
+ * that does not fit the reader's truck stays on the page at 55% opacity with a
+ * "filtered" tag, exactly as the Selector artboard draws it ("never hidden
+ * silently"), **and a job matched only provisionally says so**. That is T204's
+ * provisional-match indicator, and it is the binding condition under which
+ * T203's permissive fitment semantics were accepted: a partial match is a
+ * match the site is not certain of, and a listing that quietly dropped or
+ * quietly kept it would be the site deciding for the reader.
+ *
+ * It matters more here than on any other listing. A reader ruling a *job* in or
+ * out is deciding whether to take something apart this afternoon, and "we think
+ * this probably applies to your truck" is a materially different sentence from
+ * "this applies to your truck". Whether an entry fits is `matchesVehicle` and
+ * only `matchesVehicle` (FIT-01), through `src/lib/vehicle-listing.ts`; whether
+ * the fit was provisional is `provisionalMatchFacets`, rendered per row by the
+ * same view the parts and mods listings use.
+ *
+ * ## Empty today, and correct empty
+ *
+ * T504 authors the entries. Until then this page renders its heading, its intro
+ * and `proceduresEmpty` — no toolbar, no dead controls — which is also the
+ * state SCF-06 audits it in, since `collectionSampleTargets` picks a
+ * collection's index page as its representative when the collection has no
+ * entry pages yet.
+ *
+ * refs specs/001-foundation (PRC-01, PRC-02, I18N-01, I18N-04, I18N-08, FIT-03)
+ */
+import { getCollection } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ConfidenceCaveat from "../../components/ConfidenceCaveat.astro";
+import VehicleFitSummary from "../../components/VehicleFitSummary.astro";
+import {
+  LOCALE_BCP47,
+  isLocale,
+  localeHref,
+  type Locale,
+} from "../../i18n/routing";
+import {
+  collectionRouteParams,
+  collectionRoutePaths,
+  entryRoutePath,
+} from "../../i18n/routes";
+import { generationLabel, glossarySystemLabel, t } from "../../i18n/ui";
+import { formatCount } from "../../lib/glossary-filter";
+import { needsConfidenceCaveat } from "../../lib/confidence";
+import { isSafetyCritical } from "../../lib/safety";
+import { fixTimeLabel } from "../../lib/problems";
+import { buildTaxonomy, expandGenerations } from "../../lib/fitment";
+import { buildFitmentTable } from "../../lib/vehicle-listing";
+import { selectorTaxonomyData } from "../../lib/vehicle-taxonomy";
+import { DIFFICULTY_MAX } from "../../schemas/problems";
+import { GLOSSARY_SYSTEMS, type GlossarySystem } from "../../schemas/glossary";
+import { GENERATION_IDS, type GenerationId } from "../../schemas/vehicles";
+
+export function getStaticPaths() {
+  return collectionRouteParams("procedures", "proceduresSegment");
+}
+
+const { locale: param } = Astro.params;
+if (!isLocale(param)) {
+  throw new Error(`Unknown locale segment: ${String(param)}`);
+}
+const locale: Locale = param;
+const strings = t(locale);
+const bcp47 = LOCALE_BCP47[locale];
+const routes = collectionRoutePaths("procedures");
+
+const collator = new Intl.Collator(bcp47, { sensitivity: "base" });
+const numbers = new Intl.NumberFormat(bcp47);
+
+/** A `GENERATION_IDS` value if `id` is one, else the raw string unchanged. */
+function isKnownGeneration(id: string): id is GenerationId {
+  return (GENERATION_IDS as readonly string[]).includes(id);
+}
+
+/**
+ * The same taxonomy the selector ships to the browser, built here so the
+ * *server* render answers generation questions the same way the client does —
+ * one engine, one answer, whichever side of the wire asks (FIT-01).
+ */
+const taxonomy = buildTaxonomy(
+  selectorTaxonomyData(
+    (await getCollection("vehicles")).map((entry) => entry.data)
+  ).nodes
+);
+
+const entries = await getCollection("procedures");
+
+const procedures = entries
+  .map((entry) => {
+    const { id, system, difficulty, time, confidence, fitment, prose } =
+      entry.data;
+    const local = prose[locale];
+
+    return {
+      id,
+      domId: `procedure-${id.replace(/\//g, "--")}`,
+      /*
+       * `entryRoutePath` returns a **locale-independent** route — that is its
+       * contract, because `BaseLayout` needs the whole set to build hreflang
+       * pairs — so an `href` needs `localeHref` on top. Without it every card
+       * links to a 404, which is the defect the T501 render grader caught.
+       */
+      href: (() => {
+        const path = entryRoutePath("procedures", id, locale);
+        return path === null ? null : localeHref(locale, path);
+      })(),
+      system,
+      systemLabel: glossarySystemLabel(strings, system),
+      safetyCritical: isSafetyCritical(entry.data),
+      difficultyLabel: strings.proceduresDifficultyTemplate
+        .replace("{value}", numbers.format(difficulty))
+        .replace("{max}", numbers.format(DIFFICULTY_MAX)),
+      timeLabel: fixTimeLabel(time, bcp47),
+      fitment,
+      genLabels: expandGenerations(fitment.gens, taxonomy).map((gen) =>
+        isKnownGeneration(gen) ? generationLabel(strings, gen) : gen
+      ),
+      confidence,
+      showCaveat: needsConfidenceCaveat(confidence),
+      title: local.title,
+      summary: local.summary,
+    };
+  })
+  .sort((a, b) => collator.compare(a.title, b.title));
+
+/** Canonical taxonomy order, not alphabetical — the glossary page's rule. */
+const systemOptions = (GLOSSARY_SYSTEMS as readonly GlossarySystem[])
+  .filter((system) => procedures.some((entry) => entry.system === system))
+  .map((system) => ({
+    code: system,
+    label: glossarySystemLabel(strings, system),
+  }));
+
+/**
+ * One entry per *distinct* fitment, so a listing whose rows mostly share one
+ * does not repeat it in every card's attribute (T204 review, F3). This is also
+ * what carries the provisional-match indicator: the view reads the table, not
+ * each card's own copy of a fitment.
+ */
+const fitmentTable = buildFitmentTable(
+  procedures.map((entry) => entry.fitment)
+);
+---
+
+<BaseLayout
+  locale={locale}
+  routePathByLocale={routes}
+  title={`${strings.proceduresHeading} — ${strings.siteTagline}`}
+  description={strings.proceduresIntro}
+>
+  <section class="procedures" data-procedures>
+    <div class="procedures__intro">
+      <h1>{strings.proceduresHeading}</h1>
+      <p>{strings.proceduresIntro}</p>
+    </div>
+
+    {
+      procedures.length === 0 ? (
+        <p class="procedures__empty">{strings.proceduresEmpty}</p>
+      ) : (
+        <>
+          <div class="procedures__toolbar" data-procedures-toolbar>
+            <div class="procedures__filter-group">
+              <span class="procedures__filter-label">
+                {strings.proceduresFilterSystemLabel}
+              </span>
+              <div
+                class="procedures__pills"
+                role="group"
+                aria-label={strings.proceduresFilterSystemLabel}
+              >
+                <button
+                  type="button"
+                  data-facet="system"
+                  data-value=""
+                  aria-pressed="true"
+                >
+                  {strings.proceduresFilterSystemAll}
+                </button>
+                {systemOptions.map((option) => (
+                  <button
+                    type="button"
+                    data-facet="system"
+                    data-value={option.code}
+                    aria-pressed="false"
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <p
+            class="procedures__count"
+            data-procedures-count
+            data-count-template={strings.proceduresCountTemplate}
+            data-total={String(procedures.length)}
+            aria-live="polite"
+          >
+            {formatCount(
+              strings.proceduresCountTemplate,
+              procedures.length,
+              procedures.length
+            )}
+          </p>
+
+          <VehicleFitSummary locale={locale} fitments={fitmentTable.table} />
+
+          <ul class="procedures__list" data-procedures-list>
+            {procedures.map((entry) => (
+              <li
+                class="procedure-card"
+                id={entry.domId}
+                data-system={entry.system}
+                data-fitment={fitmentTable.indexOf(entry.fitment)}
+              >
+                <div class="procedure-card__head">
+                  <h2 class="procedure-card__title">
+                    {entry.href === null ? (
+                      entry.title
+                    ) : (
+                      <a href={entry.href}>{entry.title}</a>
+                    )}
+                  </h2>
+                  <span class="procedure-card__system">
+                    {entry.systemLabel}
+                  </span>
+                </div>
+
+                <p class="procedure-card__summary">{entry.summary}</p>
+
+                <div class="procedure-card__tags">
+                  {entry.safetyCritical && (
+                    <span class="tag tag--safety">
+                      {strings.safetyCriticalChipLabel}
+                    </span>
+                  )}
+                  <span class="tag datum">{entry.difficultyLabel}</span>
+                  {entry.timeLabel !== "" && (
+                    <span class="tag datum">
+                      {strings.proceduresTimeLabel} {entry.timeLabel}
+                    </span>
+                  )}
+                  {entry.genLabels.map((label) => (
+                    <span class="tag datum">{label}</span>
+                  ))}
+                </div>
+
+                {entry.showCaveat && (
+                  <ConfidenceCaveat locale={locale} tier={entry.confidence} />
+                )}
+              </li>
+            ))}
+          </ul>
+
+          <p class="procedures__none" data-procedures-none hidden>
+            {strings.proceduresNoResults}
+          </p>
+        </>
+      )
+    }
+  </section>
+</BaseLayout>
+
+<script>
+  import {
+    EMPTY_PROCEDURES_FILTER,
+    matchesProceduresFilter,
+    type ProceduresFilterState,
+  } from "../../lib/procedures/filter";
+  import { formatCount } from "../../lib/glossary-filter";
+  import { buildTaxonomy } from "../../lib/fitment";
+  import { readSelectorPayload } from "../../lib/vehicle-taxonomy";
+  import { createVehicleListingView } from "../../lib/vehicle-listing";
+  import {
+    onVehicleSelectionChange,
+    readVehicleSelection,
+    type StoredVehicleSelection,
+  } from "../../lib/vehicle-selection";
+
+  /**
+   * Client-side filtering and the vehicle fit view. Enhancement only — the
+   * toolbar is laid out only when the document is marked script-capable, so a
+   * visitor with no JavaScript sees every procedure and no dead control. DOM
+   * wiring only: `matchesProceduresFilter` owns the pill rule,
+   * `src/lib/vehicle-listing.ts` owns the vehicle filter and T204's
+   * provisional-match tag, and `src/lib/fitment/` owns every fitment answer
+   * (FIT-01).
+   */
+  function enhance(root: HTMLElement): void {
+    const toolbar = root.querySelector<HTMLElement>(
+      "[data-procedures-toolbar]"
+    );
+    const count = root.querySelector<HTMLElement>("[data-procedures-count]");
+    const none = root.querySelector<HTMLElement>("[data-procedures-none]");
+    const cards = [...root.querySelectorAll<HTMLElement>(".procedure-card")];
+    if (!toolbar || !count || !none) return;
+
+    const template = count.dataset.countTemplate ?? "";
+    const total = Number(count.dataset.total ?? cards.length);
+    const state: ProceduresFilterState = { ...EMPTY_PROCEDURES_FILTER };
+
+    const payload = readSelectorPayload(document);
+    // The same nodes the selector shipped, read once. Without a selector on the
+    // page there is no taxonomy and no vehicle filter — the pills still work,
+    // and `buildTaxonomy([])` gives the generation facet its "no expansion"
+    // reading rather than throwing.
+    const taxonomy = buildTaxonomy(payload?.nodes ?? []);
+
+    const vehicle = createVehicleListingView({
+      root,
+      cards,
+      taxonomy,
+      lang: document.documentElement.lang,
+    });
+
+    function applyVehicle(selection: StoredVehicleSelection | null): void {
+      vehicle?.apply(selection);
+    }
+
+    function apply(): void {
+      let shown = 0;
+      for (const card of cards) {
+        const visible = matchesProceduresFilter(
+          { system: card.dataset.system ?? "" },
+          state
+        );
+        card.hidden = !visible;
+        if (visible) shown += 1;
+      }
+      count!.textContent = formatCount(template, shown, total);
+      none!.hidden = shown > 0;
+      applyVehicle(readVehicleSelection(window));
+    }
+
+    const buttons = [
+      ...toolbar.querySelectorAll<HTMLButtonElement>('[data-facet="system"]'),
+    ];
+    for (const button of buttons) {
+      button.addEventListener("click", () => {
+        const value = button.dataset.value ?? "";
+        state.system = value;
+        for (const sibling of buttons) {
+          sibling.setAttribute(
+            "aria-pressed",
+            String((sibling.dataset.value ?? "") === value)
+          );
+        }
+        apply();
+      });
+    }
+
+    // The selector lives in the site chrome and knows nothing about this page;
+    // it announces, and the listing re-filters (FIT-03).
+    onVehicleSelectionChange(window, (selection) => applyVehicle(selection));
+
+    apply();
+  }
+
+  for (const root of document.querySelectorAll<HTMLElement>(
+    "[data-procedures]"
+  )) {
+    enhance(root);
+  }
+</script>
+
+<style>
+  /*
+   * Tokens from specs/001-foundation/design/HANDOFF-DESIGN.md, scoped to this
+   * page — site-wide chrome tokens belong to the task that restyles the
+   * chrome, not to a collection page (the glossary, community and parts pages'
+   * identical note).
+   */
+  .procedures {
+    --paper: #f7f4ee;
+    --panel: #ffffff;
+    --panel-soft: #fbf9f4;
+    --ink: #2b2620;
+    --muted: #6e6559;
+    --muted-strong: #55493c;
+    --line: #e4ddd1;
+    --chip: #efe9dd;
+    --rust-deep: #93441f;
+    --safety-text: #7a2e2e;
+    --safety-bg: #f6e3d8;
+    --safety-border: #e4c4b0;
+
+    font-family: Archivo, "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-width: 75rem;
+  }
+
+  .datum {
+    font-family:
+      "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  .procedures__intro {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .procedures__intro h1 {
+    margin: 0;
+    font-size: 1.875rem;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+  }
+
+  .procedures__intro p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--muted);
+    max-width: 62ch;
+  }
+
+  .procedures__empty {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--muted);
+  }
+
+  /*
+   * The toolbar is a control that does nothing without JavaScript, so it is
+   * laid out only once the document says it has some — the rule every other
+   * listing on this site follows.
+   */
+  .procedures__toolbar {
+    display: none;
+  }
+
+  :global(html.js) .procedures__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .procedures__filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .procedures__filter-label {
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+  }
+
+  .procedures__pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+
+  .procedures__pills button {
+    font: inherit;
+    font-size: 0.8125rem;
+    background: var(--panel-soft);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.375rem 0.75rem;
+    color: var(--muted-strong);
+    cursor: pointer;
+    min-height: 2.75rem;
+  }
+
+  .procedures__pills button[aria-pressed="true"] {
+    background: var(--chip);
+    border-color: var(--muted);
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .procedures__count {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--muted);
+  }
+
+  .procedures__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  }
+
+  .procedure-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1rem 1.125rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .procedure-card[hidden] {
+    display: none;
+  }
+
+  .procedure-card__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .procedure-card__title {
+    margin: 0;
+    font-size: 1.0625rem;
+    font-weight: 700;
+  }
+
+  .procedure-card__title a {
+    color: var(--rust-deep);
+  }
+
+  .procedure-card__system {
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+  }
+
+  .procedure-card__summary {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--muted-strong);
+  }
+
+  .procedure-card__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+
+  .tag {
+    font-size: 0.75rem;
+    background: var(--chip);
+    border-radius: 4px;
+    padding: 0.125rem 0.5rem;
+    color: var(--muted-strong);
+  }
+
+  .tag--safety {
+    font-weight: 700;
+    color: var(--safety-text);
+    background: var(--safety-bg);
+    border: 1px solid var(--safety-border);
+  }
+
+  .procedures__none {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--muted);
+  }
+</style>

@@ -81,7 +81,7 @@ function refineIssues(entry: unknown): { path: string; message: string }[] {
  * ---------------------------------------------------------------------- */
 
 describe("`safetyCritical: false` cannot demote a safety-critical system (PRC-02)", () => {
-  it.fails.each(SAFETY_CRITICAL_SYSTEMS)(
+  it.each(SAFETY_CRITICAL_SYSTEMS)(
     "rejects `safetyCritical: false` on `%s`",
     (system) => {
       const entry = makeProcedure({ system, safetyCritical: false });
@@ -95,7 +95,7 @@ describe("`safetyCritical: false` cannot demote a safety-critical system (PRC-02
     }
   );
 
-  it.fails.each(SAFETY_CRITICAL_SYSTEMS)(
+  it.each(SAFETY_CRITICAL_SYSTEMS)(
     "says which system made `%s` safety-critical, so the message is actionable",
     (system) => {
       const [issue] = refineIssues(
@@ -109,7 +109,7 @@ describe("`safetyCritical: false` cannot demote a safety-critical system (PRC-02
     }
   );
 
-  it.fails.each(ORDINARY_SYSTEMS)(
+  it.each(ORDINARY_SYSTEMS)(
     "accepts `safetyCritical: false` on `%s`, which is not on the list",
     (system) => {
       expect(
@@ -118,7 +118,7 @@ describe("`safetyCritical: false` cannot demote a safety-critical system (PRC-02
     }
   );
 
-  it.fails.each(ORDINARY_SYSTEMS)(
+  it.each(ORDINARY_SYSTEMS)(
     "accepts `safetyCritical: true` on `%s` — the flag is a promotion",
     (system) => {
       expect(
@@ -127,7 +127,7 @@ describe("`safetyCritical: false` cannot demote a safety-critical system (PRC-02
     }
   );
 
-  it.fails.each(SAFETY_CRITICAL_SYSTEMS)(
+  it.each(SAFETY_CRITICAL_SYSTEMS)(
     "accepts `%s` with no flag at all — the system already says it",
     (system) => {
       // The default matters: AGENTS.md's list is a list of *systems*, so
@@ -149,7 +149,7 @@ describe("`safetyCritical: false` cannot demote a safety-critical system (PRC-02
  * ---------------------------------------------------------------------- */
 
 describe("a parsed procedure answers `isSafetyCritical` (PRC-02)", () => {
-  it.fails.each(SAFETY_CRITICAL_SYSTEMS)(
+  it.each(SAFETY_CRITICAL_SYSTEMS)(
     "a `%s` procedure is safety-critical to src/lib/safety.ts",
     (system) => {
       expect(
@@ -158,7 +158,7 @@ describe("a parsed procedure answers `isSafetyCritical` (PRC-02)", () => {
     }
   );
 
-  it.fails("an `engine` procedure is not, unless it says so", () => {
+  it("an `engine` procedure is not, unless it says so", () => {
     expect(isSafetyCritical(parsedProcedureData(makeProcedure()))).toBe(false);
     expect(
       isSafetyCritical(
@@ -190,7 +190,7 @@ describe("a jacking or towing procedure carries the flag (PRC-02, T207 F3)", () 
     es: "Remolcar el carro",
   } as const;
 
-  it.fails.each<[string, Record<"en" | "es", string>]>([
+  it.each<[string, Record<"en" | "es", string>]>([
     ["jacking", jackingTitles],
     ["towing", towingTitles],
   ])(
@@ -202,7 +202,7 @@ describe("a jacking or towing procedure carries the flag (PRC-02, T207 F3)", () 
     }
   );
 
-  it.fails.each<[string, Record<"en" | "es", string>]>([
+  it.each<[string, Record<"en" | "es", string>]>([
     ["jacking", jackingTitles],
     ["towing", towingTitles],
   ])(
@@ -216,7 +216,7 @@ describe("a jacking or towing procedure carries the flag (PRC-02, T207 F3)", () 
     }
   );
 
-  it.fails("does not demand the flag when the system already covers it", () => {
+  it("does not demand the flag when the system already covers it", () => {
     // Reporting here would be a second complaint about a page that already
     // renders the notice — one mistake, one error, and this is not even a
     // mistake.
@@ -227,7 +227,7 @@ describe("a jacking or towing procedure carries the flag (PRC-02, T207 F3)", () 
     ).toEqual([]);
   });
 
-  it.fails("leaves an ordinary job alone", () => {
+  it("leaves an ordinary job alone", () => {
     // The positive control for the detector's *narrowness*. A rule that
     // flagged every procedure would satisfy both requirements above and make
     // the flag meaningless.
@@ -267,7 +267,7 @@ describe("a jacking or towing procedure carries the flag (PRC-02, T207 F3)", () 
 describe("a safety-critical procedure writes its own safety notes (PRC-01, PRC-02)", () => {
   const NOTES = DEFAULT_SAFETY_NOTES;
 
-  it.fails.each(SAFETY_CRITICAL_SYSTEMS)(
+  it.each(SAFETY_CRITICAL_SYSTEMS)(
     "rejects a `%s` procedure with no safety notes",
     (system) => {
       const entry = makeProcedure({ system, omitSafetyNotes: true });
@@ -280,7 +280,7 @@ describe("a safety-critical procedure writes its own safety notes (PRC-01, PRC-0
     }
   );
 
-  it.fails.each(["en", "es"])(
+  it.each(["en", "es"])(
     "reports the locale whose safety note is missing, and only that one",
     (locale) => {
       const other = locale === "en" ? "es" : "en";
@@ -296,18 +296,15 @@ describe("a safety-critical procedure writes its own safety notes (PRC-01, PRC-0
     }
   );
 
-  it.fails(
-    "accepts a safety-critical procedure whose notes are bilingual",
-    () => {
-      expect(
-        procedureIssuePaths(
-          makeProcedure({ system: "brakes", safetyNotes: NOTES })
-        )
-      ).toEqual([]);
-    }
-  );
+  it("accepts a safety-critical procedure whose notes are bilingual", () => {
+    expect(
+      procedureIssuePaths(
+        makeProcedure({ system: "brakes", safetyNotes: NOTES })
+      )
+    ).toEqual([]);
+  });
 
-  it.fails("accepts a promoted procedure whose notes are bilingual", () => {
+  it("accepts a promoted procedure whose notes are bilingual", () => {
     expect(
       procedureIssuePaths(
         makeProcedure({
@@ -319,13 +316,13 @@ describe("a safety-critical procedure writes its own safety notes (PRC-01, PRC-0
     ).toEqual([]);
   });
 
-  it.fails("lets an ordinary procedure omit them", () => {
+  it("lets an ordinary procedure omit them", () => {
     expect(
       procedureIssuePaths(makeProcedure({ omitSafetyNotes: true }))
     ).toEqual([]);
   });
 
-  it.fails("lets an ordinary procedure carry them anyway", () => {
+  it("lets an ordinary procedure carry them anyway", () => {
     expect(procedureIssuePaths(makeProcedure({ safetyNotes: NOTES }))).toEqual(
       []
     );
