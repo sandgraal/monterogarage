@@ -60,11 +60,14 @@
  *    is the one property the spec implies rather than states, and it is flagged
  *    as an open question in T2-401's report.
  *
- * ## Expected-failure convention
+ * ## Expected-failure convention — **activated by T2-402 (2026-09-03)**
  *
- * `it.fails` is the marker; T2-402 activates a grader by deleting exactly that
- * `.fails`. The reserved-list superset check is **unmarked** — it is a claim
- * about `contract.ts` and `src/i18n/routes.ts`, both of which exist today.
+ * `it.fails` was the marker; T2-402 activated each grader by deleting exactly
+ * that `.fails`. The reserved-list superset check was always **unmarked** — it
+ * is a claim about `contract.ts` and `src/i18n/routes.ts`, both of which
+ * existed already. The seam control ("every entry point throws the named seam
+ * error") went with the seam it controlled: a grader whose assertion is "this
+ * is still unimplemented" is one that must fail the moment it is implemented.
  *
  * refs specs/002-montero-garage (SHR-01, SHR-02, SHR-04), 001 (I18N-01, I18N-05)
  */
@@ -90,7 +93,6 @@ import {
 } from "./harness.ts";
 import { columnDefinition, createTableBody, migrationSql } from "./sql.ts";
 import {
-  NOT_IMPLEMENTED,
   handleIssues,
   handlePath,
   normalizeHandle,
@@ -197,22 +199,11 @@ describe("the reserved set covers the site's own namespace", () => {
 });
 
 /* =========================================================================
- * The format rules. Marked — `handles.ts` is a seam.
+ * The format rules.
  * ====================================================================== */
 
 describe("normalizeHandle folds a candidate to one canonical form", () => {
-  it("the seam is honest about what it waits for", () => {
-    // Unmarked: the control for every marker below. They must fail because the
-    // module throws a named error, not because an assertion happened to be
-    // false against an accidental value.
-    expect(() => normalizeHandle("Gitana")).toThrow(NOT_IMPLEMENTED);
-    expect(() => handleIssues("Gitana")).toThrow(NOT_IMPLEMENTED);
-    expect(() => handlePath({ handle: "gitana", locale: "es" })).toThrow(
-      NOT_IMPLEMENTED
-    );
-  });
-
-  it.fails.each<[string, string]>([
+  it.each<[string, string]>([
     ["Gitana", "gitana"],
     ["GITANA", "gitana"],
     ["  gitana  ", "gitana"],
@@ -221,7 +212,7 @@ describe("normalizeHandle folds a candidate to one canonical form", () => {
     expect(normalizeHandle(input)).toBe(expected);
   });
 
-  it.fails("is idempotent — folding a folded handle changes nothing", () => {
+  it("is idempotent — folding a folded handle changes nothing", () => {
     // The property that makes a unique index on the folded value meaningful. If
     // folding twice differed from folding once, two rows could disagree about
     // which one they are.
@@ -230,7 +221,7 @@ describe("normalizeHandle folds a candidate to one canonical form", () => {
     );
   });
 
-  it.fails("does NOT validate — it returns a string for anything", () => {
+  it("does NOT validate — it returns a string for anything", () => {
     // Canonicalisation and validation are separate on purpose: a
     // `normalizeHandle` that threw would make `handleIssues` unable to report
     // *why* a candidate failed, and a form that can only say "invalid" makes
@@ -240,7 +231,7 @@ describe("normalizeHandle folds a candidate to one canonical form", () => {
 });
 
 describe("handleIssues names every reason, not the first one", () => {
-  it.fails.each<[string, string]>([
+  it.each<[string, string]>([
     ["", "empty"],
     ["a", "too-short"],
     ["a".repeat(HANDLE_LENGTH.max + 1), "too-long"],
@@ -258,7 +249,7 @@ describe("handleIssues names every reason, not the first one", () => {
     expect(handleIssues(input)).toContain(issue);
   });
 
-  it.fails("reports MORE than one reason when more than one applies", () => {
+  it("reports MORE than one reason when more than one applies", () => {
     // An array rather than a first-failure, so a grader can tell a length rule
     // from a reservation rule. Without that, a reservation rule could be
     // deleted and nothing would notice — the length rule would still answer.
@@ -268,18 +259,16 @@ describe("handleIssues names every reason, not the first one", () => {
     );
   });
 
-  it.fails.each<[string]>([
-    ["gitana"],
-    ["gitana-blanca"],
-    ["montero2002"],
-    ["g1"],
-  ])("POSITIVE CONTROL: accepts %s", (input) => {
-    // Every rejection above is only meaningful because these pass. A
-    // validator that refused everything would satisfy the whole table.
-    expect(handleIssues(input)).toEqual([]);
-  });
+  it.each<[string]>([["gitana"], ["gitana-blanca"], ["montero2002"], ["g1"]])(
+    "POSITIVE CONTROL: accepts %s",
+    (input) => {
+      // Every rejection above is only meaningful because these pass. A
+      // validator that refused everything would satisfy the whole table.
+      expect(handleIssues(input)).toEqual([]);
+    }
+  );
 
-  it.fails("screens the reserved list AFTER folding, not before", () => {
+  it("screens the reserved list AFTER folding, not before", () => {
     // `Admin` is `admin`. A reservation check that ran on the raw input would
     // be defeated by the shift key.
     expect(handleIssues("ADMIN")).toContain("reserved");
@@ -287,7 +276,7 @@ describe("handleIssues names every reason, not the first one", () => {
 });
 
 describe("handlePath is the stable URL SHR-02 promises", () => {
-  it.fails("is per-locale and carries the handle", () => {
+  it("is per-locale and carries the handle", () => {
     const es = handlePath({ handle: "gitana", locale: "es" });
     const en = handlePath({ handle: "gitana", locale: "en" });
 
@@ -297,7 +286,7 @@ describe("handlePath is the stable URL SHR-02 promises", () => {
     expect(en.startsWith("/en/")).toBe(true);
   });
 
-  it.fails("differs between locales — I18N-01 privileges neither", () => {
+  it("differs between locales — I18N-01 privileges neither", () => {
     // If the two were identical, one locale's word would be serving both, which
     // is the asymmetry I18N-01 exists to prevent.
     expect(handlePath({ handle: "gitana", locale: "es" })).not.toBe(
@@ -307,17 +296,17 @@ describe("handlePath is the stable URL SHR-02 promises", () => {
 });
 
 /* =========================================================================
- * The schema. Marked — `profiles.handle` is pending T2-402.
+ * The schema.
  * ====================================================================== */
 
 describe("the database is what enforces uniqueness (SHR-02)", () => {
-  it.fails("profiles carries a handle column", () => {
+  it("profiles carries a handle column", () => {
     const body = createTableBody(migrationSql(), "profiles");
 
     expect(columnDefinition(body ?? "", "handle")).not.toBeNull();
   });
 
-  it.fails("the handle is unique, case-insensitively, in the SCHEMA", () => {
+  it("the handle is unique, case-insensitively, in the SCHEMA", () => {
     // Not in the form. A `select … where handle = $1` before an insert is a
     // check-then-act race that two signups one millisecond apart both win.
     // Either spelling is fine — `citext`, or a unique index on `lower(handle)`
@@ -340,7 +329,7 @@ describe.skipIf(!live.available)(
     // Sequential, not concurrent — see the file header. This proves the
     // constraint is in the schema (a form-only check fails it); it does not
     // prove behaviour under two overlapping transactions.
-    it.fails("a second account cannot take a handle already held", async () => {
+    it("a second account cannot take a handle already held", async () => {
       const scenario = await provisionScenario(stackOf(live));
       try {
         const handle = testHandle("a", scenario.runId);
@@ -367,45 +356,42 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails(
-      "two accounts cannot hold handles differing only in case",
-      async () => {
-        // The impersonation kit. Written as its own grader because a schema with
-        // a plain `unique (handle)` passes the one above and fails this one — and
-        // that is the schema somebody writes first.
-        const scenario = await provisionScenario(stackOf(live));
-        try {
-          const handle = testHandle("a", scenario.runId);
+    it("two accounts cannot hold handles differing only in case", async () => {
+      // The impersonation kit. Written as its own grader because a schema with
+      // a plain `unique (handle)` passes the one above and fails this one — and
+      // that is the schema somebody writes first.
+      const scenario = await provisionScenario(stackOf(live));
+      try {
+        const handle = testHandle("a", scenario.runId);
 
-          const claimed = await updateRows(
-            scenario,
-            scenario.ownerA,
-            "profiles",
-            `id=eq.${scenario.ownerA.userId}`,
-            { handle }
-          );
-          const shouted = await updateRows(
-            scenario,
-            scenario.ownerB,
-            "profiles",
-            `id=eq.${scenario.ownerB.userId}`,
-            { handle: handle.toUpperCase() }
-          );
+        const claimed = await updateRows(
+          scenario,
+          scenario.ownerA,
+          "profiles",
+          `id=eq.${scenario.ownerA.userId}`,
+          { handle }
+        );
+        const shouted = await updateRows(
+          scenario,
+          scenario.ownerB,
+          "profiles",
+          `id=eq.${scenario.ownerB.userId}`,
+          { handle: handle.toUpperCase() }
+        );
 
-          // The precondition, asserted rather than assumed. Without it this
-          // grader **passes today** for entirely the wrong reason: there is no
-          // `handle` column, so PostgREST refuses *both* writes and "the second
-          // one was refused" is trivially true. An `it.fails` that passes is a
-          // reported failure whose message is about the wrong thing.
-          expect(claimed.ok).toBe(true);
-          expect(shouted.ok).toBe(false);
-        } finally {
-          await teardownScenario(scenario);
-        }
+        // The precondition, asserted rather than assumed. Without it this
+        // grader **passes today** for entirely the wrong reason: there is no
+        // `handle` column, so PostgREST refuses *both* writes and "the second
+        // one was refused" is trivially true. An `it.fails` that passes is a
+        // reported failure whose message is about the wrong thing.
+        expect(claimed.ok).toBe(true);
+        expect(shouted.ok).toBe(false);
+      } finally {
+        await teardownScenario(scenario);
       }
-    );
+    });
 
-    it.fails.each(["admin", "api", "es", "taller"])(
+    it.each(["admin", "api", "es", "taller"])(
       "the database refuses the reserved handle %s",
       async (handle) => {
         // Reserved in the schema, not only in the form. SHR-01's posture is
@@ -439,133 +425,119 @@ describe.skipIf(!live.available)(
       }
     );
 
-    it.fails(
-      "a released handle is not immediately takeable by ANOTHER account",
-      async () => {
-        // ## The property SHR-02 implies rather than states
-        //
-        // "a stable public URL under their handle". If owner A renames from H1 to
-        // H2 and owner B may then claim H1, every link A already shared — in a
-        // WhatsApp thread, on a forum, printed on an invoice — silently starts
-        // pointing at B's garage. The URL did not change; what it means did.
-        //
-        // Recorded as an open question for the owner in T2-401's report, because
-        // the spec does not say it outright and the alternatives (forbid renames;
-        // retire the old handle; 410 the old URL) are a product decision. What is
-        // *not* a product decision is that a stranger must not inherit it.
-        const scenario = await provisionScenario(stackOf(live));
-        try {
-          const released = testHandle("a", scenario.runId);
+    it("a released handle is not immediately takeable by ANOTHER account", async () => {
+      // ## The property SHR-02 implies rather than states
+      //
+      // "a stable public URL under their handle". If owner A renames from H1 to
+      // H2 and owner B may then claim H1, every link A already shared — in a
+      // WhatsApp thread, on a forum, printed on an invoice — silently starts
+      // pointing at B's garage. The URL did not change; what it means did.
+      //
+      // Recorded as an open question for the owner in T2-401's report, because
+      // the spec does not say it outright and the alternatives (forbid renames;
+      // retire the old handle; 410 the old URL) are a product decision. What is
+      // *not* a product decision is that a stranger must not inherit it.
+      const scenario = await provisionScenario(stackOf(live));
+      try {
+        const released = testHandle("a", scenario.runId);
 
-          const claimed = await updateRows(
-            scenario,
-            scenario.ownerA,
-            "profiles",
-            `id=eq.${scenario.ownerA.userId}`,
-            { handle: released }
-          );
-          const renamed = await updateRows(
-            scenario,
-            scenario.ownerA,
-            "profiles",
-            `id=eq.${scenario.ownerA.userId}`,
-            { handle: testHandle("a2", scenario.runId) }
-          );
+        const claimed = await updateRows(
+          scenario,
+          scenario.ownerA,
+          "profiles",
+          `id=eq.${scenario.ownerA.userId}`,
+          { handle: released }
+        );
+        const renamed = await updateRows(
+          scenario,
+          scenario.ownerA,
+          "profiles",
+          `id=eq.${scenario.ownerA.userId}`,
+          { handle: testHandle("a2", scenario.runId) }
+        );
 
-          const stolen = await updateRows(
-            scenario,
-            scenario.ownerB,
-            "profiles",
-            `id=eq.${scenario.ownerB.userId}`,
-            { handle: released }
-          );
+        const stolen = await updateRows(
+          scenario,
+          scenario.ownerB,
+          "profiles",
+          `id=eq.${scenario.ownerB.userId}`,
+          { handle: released }
+        );
 
-          // Both preconditions asserted: a rename that never happened would
-          // make "the old handle is not takeable" true for the dullest of
-          // reasons.
-          expect(claimed.ok).toBe(true);
-          expect(renamed.ok).toBe(true);
-          expect(stolen.ok).toBe(false);
-        } finally {
-          await teardownScenario(scenario);
-        }
+        // Both preconditions asserted: a rename that never happened would
+        // make "the old handle is not takeable" true for the dullest of
+        // reasons.
+        expect(claimed.ok).toBe(true);
+        expect(renamed.ok).toBe(true);
+        expect(stolen.ok).toBe(false);
+      } finally {
+        await teardownScenario(scenario);
       }
-    );
+    });
 
-    it.fails(
-      "POSITIVE CONTROL: the original owner CAN reclaim it",
-      async () => {
-        // Without this, the grader above is satisfied by a schema where a handle
-        // is permanent and a rename is impossible — which would fail SHR-02 in
-        // the other direction and look like success.
-        const scenario = await provisionScenario(stackOf(live));
-        try {
-          const first = testHandle("a", scenario.runId);
+    it("POSITIVE CONTROL: the original owner CAN reclaim it", async () => {
+      // Without this, the grader above is satisfied by a schema where a handle
+      // is permanent and a rename is impossible — which would fail SHR-02 in
+      // the other direction and look like success.
+      const scenario = await provisionScenario(stackOf(live));
+      try {
+        const first = testHandle("a", scenario.runId);
 
-          await updateRows(
-            scenario,
-            scenario.ownerA,
-            "profiles",
-            `id=eq.${scenario.ownerA.userId}`,
-            { handle: first }
-          );
-          await updateRows(
-            scenario,
-            scenario.ownerA,
-            "profiles",
-            `id=eq.${scenario.ownerA.userId}`,
-            { handle: testHandle("a2", scenario.runId) }
-          );
-          const reclaimed = await updateRows(
-            scenario,
-            scenario.ownerA,
-            "profiles",
-            `id=eq.${scenario.ownerA.userId}`,
-            { handle: first }
-          );
+        await updateRows(
+          scenario,
+          scenario.ownerA,
+          "profiles",
+          `id=eq.${scenario.ownerA.userId}`,
+          { handle: first }
+        );
+        await updateRows(
+          scenario,
+          scenario.ownerA,
+          "profiles",
+          `id=eq.${scenario.ownerA.userId}`,
+          { handle: testHandle("a2", scenario.runId) }
+        );
+        const reclaimed = await updateRows(
+          scenario,
+          scenario.ownerA,
+          "profiles",
+          `id=eq.${scenario.ownerA.userId}`,
+          { handle: first }
+        );
 
-          expect(reclaimed.ok).toBe(true);
-        } finally {
-          await teardownScenario(scenario);
-        }
+        expect(reclaimed.ok).toBe(true);
+      } finally {
+        await teardownScenario(scenario);
       }
-    );
+    });
 
-    it.fails(
-      "a vehicle can be published under the handle (SHR-02)",
-      async () => {
-        // The point of the whole file. Every rule above is a constraint, and a
-        // set of constraints with no working case is a feature nobody can use.
-        const scenario = await provisionScenario(stackOf(live));
-        try {
-          const claimed = await updateRows(
-            scenario,
-            scenario.ownerA,
-            "profiles",
-            `id=eq.${scenario.ownerA.userId}`,
-            { handle: testHandle("a", scenario.runId) }
-          );
-          const vehicle = await insertRow(
-            scenario,
-            scenario.ownerA,
-            "vehicles",
-            {
-              owner_id: scenario.ownerA.userId,
-              display_name: testVehicleName("a"),
-              ...TEST_TAXONOMY_IDENTITY,
-              is_showcase_public: true,
-            }
-          );
+    it("a vehicle can be published under the handle (SHR-02)", async () => {
+      // The point of the whole file. Every rule above is a constraint, and a
+      // set of constraints with no working case is a feature nobody can use.
+      const scenario = await provisionScenario(stackOf(live));
+      try {
+        const claimed = await updateRows(
+          scenario,
+          scenario.ownerA,
+          "profiles",
+          `id=eq.${scenario.ownerA.userId}`,
+          { handle: testHandle("a", scenario.runId) }
+        );
+        const vehicle = await insertRow(scenario, scenario.ownerA, "vehicles", {
+          owner_id: scenario.ownerA.userId,
+          display_name: testVehicleName("a"),
+          ...TEST_TAXONOMY_IDENTITY,
+          is_showcase_public: true,
+        });
 
-          // The handle is the half that does not exist yet; publishing a
-          // vehicle already works. Asserting only the second would make this
-          // grader pass today and say nothing about SHR-02.
-          expect(claimed.ok).toBe(true);
-          expect(vehicle.ok).toBe(true);
-        } finally {
-          await teardownScenario(scenario);
-        }
+        // The handle is the half that does not exist yet; publishing a
+        // vehicle already works. Asserting only the second would make this
+        // grader pass today and say nothing about SHR-02.
+        expect(claimed.ok).toBe(true);
+        expect(vehicle.ok).toBe(true);
+      } finally {
+        await teardownScenario(scenario);
       }
-    );
+    });
   }
 );

@@ -31,12 +31,16 @@
  * `toBeNull()`. This is the same "unknown is not zero" rule the constitution
  * names, one surface over.
  *
- * ## Expected-failure convention
+ * ## Expected-failure convention — **activated by T2-402 (2026-09-03)**
  *
- * `it.fails` is the marker; the seam is `src/lib/garage/visibility.ts`, whose
- * functions throw `not implemented: T2-401`. The unmarked control in each
- * describe asserts they throw *that*, so a marker can never be satisfied by an
- * accidental value.
+ * `it.fails` was the marker while `src/lib/garage/visibility.ts` was a seam
+ * whose functions threw `not implemented: T2-401`, and an unmarked control
+ * asserted they threw *that*, so a marker could never be satisfied by an
+ * accidental value. T2-402 filled the seam: every marker below is deleted and
+ * the graders now assert the requirement directly. The seam control went with
+ * the seam — a control that asserts "this still throws" is exactly the grader
+ * that must fail once the thing is built, and leaving it would make a green
+ * suite impossible rather than meaningful.
  *
  * refs specs/002-montero-garage (SHR-02, SHR-03, SHR-06, SHR-09, GAR-04′)
  */
@@ -45,7 +49,6 @@ import type { RecordRow } from "../../src/lib/garage/record.ts";
 import type { VehicleRow } from "../../src/lib/garage/vehicle.ts";
 import type { ReceiptRow } from "../../src/lib/garage/receipt.ts";
 import {
-  NOT_IMPLEMENTED,
   isEligibleForCommunityEvidence,
   maskRecordForPrincipal,
   maskRecordsForPrincipal,
@@ -139,39 +142,11 @@ const grantee = (
 });
 
 /* =========================================================================
- * The seam control. **Unmarked.**
- * ====================================================================== */
-
-describe("the visibility seam is honest about what it waits for", () => {
-  it("every entry point throws the named seam error", () => {
-    // The control for every marker in this file. Without it, an `it.fails` is
-    // equally satisfied by a function that returns `undefined` and an assertion
-    // that happens to be false — which proves nothing about the requirement.
-    const input = { record: record(), vehicle: vehicle(), principal: OWNER };
-
-    expect(() => maskRecordForPrincipal(input)).toThrow(NOT_IMPLEMENTED);
-    expect(() =>
-      maskRecordsForPrincipal({
-        records: [record()],
-        vehicle: vehicle(),
-        principal: OWNER,
-      })
-    ).toThrow(NOT_IMPLEMENTED);
-    expect(() => visibleReceipts({ receipts: [receipt()], ...input })).toThrow(
-      NOT_IMPLEMENTED
-    );
-    expect(() => isEligibleForCommunityEvidence(input)).toThrow(
-      NOT_IMPLEMENTED
-    );
-  });
-});
-
-/* =========================================================================
- * SHR-03 — the world's view. Marked.
+ * SHR-03 — the world's view.
  * ====================================================================== */
 
 describe("the public work-log (SHR-02, SHR-03)", () => {
-  it.fails("a private record is not visible to the world at all", () => {
+  it("a private record is not visible to the world at all", () => {
     // SHR-01's default, at the render layer. The database is the enforcement
     // boundary; this is the second wall, and it exists because a page that
     // somehow receives a wider row must still not be able to render it.
@@ -184,7 +159,7 @@ describe("the public work-log (SHR-02, SHR-03)", () => {
     ).toBeNull();
   });
 
-  it.fails("no record is visible when the WORK-LOG itself is private", () => {
+  it("no record is visible when the WORK-LOG itself is private", () => {
     // Two switches, and the vehicle's is the outer one. A record marked
     // `is_public` on a vehicle whose work-log was never published is a record
     // the owner staged, not one they released.
@@ -197,7 +172,7 @@ describe("the public work-log (SHR-02, SHR-03)", () => {
     ).toBeNull();
   });
 
-  it.fails("a public record is visible — POSITIVE CONTROL", () => {
+  it("a public record is visible — POSITIVE CONTROL", () => {
     // Without this, every denial above is satisfied by a function that returns
     // `null` for everything, i.e. a work-log page nobody can publish.
     const masked = maskRecordForPrincipal({
@@ -211,7 +186,7 @@ describe("the public work-log (SHR-02, SHR-03)", () => {
     expect(masked?.title).toBe(record().title);
   });
 
-  it.fails("a public record OMITS its cost until the cost is opened", () => {
+  it("a public record OMITS its cost until the cost is opened", () => {
     // SHR-03. Asserted as key absence: `cost_amount: null` would say the job
     // was free, which is a different and untrue claim.
     const masked = maskRecordForPrincipal({
@@ -224,7 +199,7 @@ describe("the public work-log (SHR-02, SHR-03)", () => {
     expect(Object.hasOwn(masked ?? {}, "cost_currency")).toBe(false);
   });
 
-  it.fails("the cost appears once the record's own cost flag is open", () => {
+  it("the cost appears once the record's own cost flag is open", () => {
     const masked = maskRecordForPrincipal({
       record: record({ is_public: true, is_cost_public: true }),
       vehicle: vehicle({ is_worklog_public: true }),
@@ -235,7 +210,7 @@ describe("the public work-log (SHR-02, SHR-03)", () => {
     expect(masked?.cost_amount).toBe(245_000);
   });
 
-  it.fails("the mask never leaks the visibility flags themselves", () => {
+  it("the mask never leaks the visibility flags themselves", () => {
     // A published record carrying `is_public` and `is_cost_public` tells a
     // reader which of the owner's *other* decisions they are not seeing. Small,
     // and exactly the kind of thing that ships because nobody asked.
@@ -249,7 +224,7 @@ describe("the public work-log (SHR-02, SHR-03)", () => {
     expect(Object.hasOwn(masked ?? {}, "is_cost_public")).toBe(false);
   });
 
-  it.fails("the owner sees everything, unmasked", () => {
+  it("the owner sees everything, unmasked", () => {
     // The third principal, and the one that must not be affected by any of the
     // above. An owner who cannot see their own costs has had their garage
     // broken by a privacy feature.
@@ -263,48 +238,42 @@ describe("the public work-log (SHR-02, SHR-03)", () => {
     expect(masked?.cost_currency).toBe("CRC");
   });
 
-  it.fails(
-    "the timeline mask drops hidden records rather than nulling them",
-    () => {
-      // A list with holes in it is a list that leaks a count. "Three records, two
-      // of which you may not see" is information the owner did not publish.
-      const timeline = maskRecordsForPrincipal({
-        records: [
-          record({ id: "r1", is_public: true }),
-          record({ id: "r2", is_public: false }),
-        ],
-        vehicle: vehicle({ is_worklog_public: true }),
-        principal: WORLD,
-      });
+  it("the timeline mask drops hidden records rather than nulling them", () => {
+    // A list with holes in it is a list that leaks a count. "Three records, two
+    // of which you may not see" is information the owner did not publish.
+    const timeline = maskRecordsForPrincipal({
+      records: [
+        record({ id: "r1", is_public: true }),
+        record({ id: "r2", is_public: false }),
+      ],
+      vehicle: vehicle({ is_worklog_public: true }),
+      principal: WORLD,
+    });
 
-      expect(timeline).toHaveLength(1);
-      expect(timeline[0]?.id).toBe("r1");
-    }
-  );
+    expect(timeline).toHaveLength(1);
+    expect(timeline[0]?.id).toBe("r1");
+  });
 });
 
 /* =========================================================================
- * SHR-06 — the grantee's view, same function. Marked.
+ * SHR-06 — the grantee's view, same function.
  * ====================================================================== */
 
 describe("a grant holder is a principal, not a second code path (SHR-06)", () => {
-  it.fails(
-    "sees a record the world cannot — that is what the grant buys",
-    () => {
-      // The grant's whole purpose: "hand my mechanic this truck's whole history".
-      // A private record on a private work-log, visible to the holder and nobody
-      // else.
-      const masked = maskRecordForPrincipal({
-        record: record({ is_public: false }),
-        vehicle: vehicle({ is_worklog_public: false }),
-        principal: grantee(true, true),
-      });
+  it("sees a record the world cannot — that is what the grant buys", () => {
+    // The grant's whole purpose: "hand my mechanic this truck's whole history".
+    // A private record on a private work-log, visible to the holder and nobody
+    // else.
+    const masked = maskRecordForPrincipal({
+      record: record({ is_public: false }),
+      vehicle: vehicle({ is_worklog_public: false }),
+      principal: grantee(true, true),
+    });
 
-      expect(masked).not.toBeNull();
-    }
-  );
+    expect(masked).not.toBeNull();
+  });
 
-  it.fails.each<[boolean, boolean]>([
+  it.each<[boolean, boolean]>([
     [false, false],
     [true, false],
     [false, true],
@@ -333,7 +302,7 @@ describe("a grant holder is a principal, not a second code path (SHR-06)", () =>
     }
   );
 
-  it.fails("a grant on another vehicle shows nothing of this one", () => {
+  it("a grant on another vehicle shows nothing of this one", () => {
     // A grant admits its holder to ONE vehicle (SHR-05). The failure mode — a
     // reader that resolves the token to an *owner* and then reads that owner's
     // records — returns exactly the right answer for the single-vehicle case
@@ -352,30 +321,27 @@ describe("a grant holder is a principal, not a second code path (SHR-06)", () =>
     ).toBeNull();
   });
 
-  it.fails(
-    "a receipt is invisible to the world even on a public record",
-    () => {
-      // GAR-05′: receipts are "never publicly accessible unless the specific
-      // record's cost visibility is opened", and SHR-03 says the same from the
-      // other side. The world is not a grantee and has no `includes_receipts`.
-      expect(
-        visibleReceipts({
-          receipts: [receipt()],
-          record: record({ is_public: true, is_cost_public: false }),
-          vehicle: vehicle({ is_worklog_public: true }),
-          principal: WORLD,
-        })
-      ).toEqual([]);
-    }
-  );
+  it("a receipt is invisible to the world even on a public record", () => {
+    // GAR-05′: receipts are "never publicly accessible unless the specific
+    // record's cost visibility is opened", and SHR-03 says the same from the
+    // other side. The world is not a grantee and has no `includes_receipts`.
+    expect(
+      visibleReceipts({
+        receipts: [receipt()],
+        record: record({ is_public: true, is_cost_public: false }),
+        vehicle: vehicle({ is_worklog_public: true }),
+        principal: WORLD,
+      })
+    ).toEqual([]);
+  });
 });
 
 /* =========================================================================
- * SHR-09 — a grant is not publication. Marked.
+ * SHR-09 — a grant is not publication.
  * ====================================================================== */
 
 describe("SHR-09: a grant never makes a record community-eligible", () => {
-  it.fails("a record visible only to a grantee is NOT eligible", () => {
+  it("a record visible only to a grantee is NOT eligible", () => {
     // > That path keys on a *public* work-log; a record visible to one grantee
     // > is not public, and treating it as such would put a private work-log on
     // > a public problem page.
@@ -392,7 +358,7 @@ describe("SHR-09: a grant never makes a record community-eligible", () => {
     ).toBe(false);
   });
 
-  it.fails("eligibility does not depend on WHO is asking", () => {
+  it("eligibility does not depend on WHO is asking", () => {
     // The structural form of SHR-09. If eligibility varied by principal, then
     // "can this person see it" and "is this public" would be the same question
     // — which is precisely the conflation the requirement forbids.
@@ -412,23 +378,20 @@ describe("SHR-09: a grant never makes a record community-eligible", () => {
     ).toBe(isEligibleForCommunityEvidence({ ...input, principal: WORLD }));
   });
 
-  it.fails(
-    "a public record on a PUBLIC work-log IS eligible — POSITIVE CONTROL",
-    () => {
-      // GAR-04′ is a feature. Without this, every denial above is satisfied by a
-      // function that returns `false` and a community-evidence surface that never
-      // shows anything.
-      expect(
-        isEligibleForCommunityEvidence({
-          record: record({ is_public: true }),
-          vehicle: vehicle({ is_worklog_public: true }),
-          principal: WORLD,
-        })
-      ).toBe(true);
-    }
-  );
+  it("a public record on a PUBLIC work-log IS eligible — POSITIVE CONTROL", () => {
+    // GAR-04′ is a feature. Without this, every denial above is satisfied by a
+    // function that returns `false` and a community-evidence surface that never
+    // shows anything.
+    expect(
+      isEligibleForCommunityEvidence({
+        record: record({ is_public: true }),
+        vehicle: vehicle({ is_worklog_public: true }),
+        principal: WORLD,
+      })
+    ).toBe(true);
+  });
 
-  it.fails("a record with no problem reference is never eligible", () => {
+  it("a record with no problem reference is never eligible", () => {
     // GAR-04′ surfaces a record *on a problem page*. A record that references
     // no problem has no page to appear on, and a surface that showed it anyway
     // would be publishing a work-log entry with no reason at all.
