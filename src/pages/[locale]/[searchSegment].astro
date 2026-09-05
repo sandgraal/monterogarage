@@ -46,6 +46,15 @@
  * only once `BaseLayout` marks the document `html.js`, so a visitor with no
  * JavaScript sees the complete, unfiltered result list and no dead control.
  *
+ * **One difference from those two (PR #106 code review, SCF-06):**
+ * `matchesSearchFilter` does not normalize the query text itself — the
+ * `input` handler below calls `normalizeForSearch` exactly once per
+ * keystroke and stores the result in `state.normalizedQuery`, so the
+ * per-card loop that follows (221 cards at this index's current size) never
+ * repeats that work. `glossary-filter.ts` and `problems-filter.ts` still
+ * normalize inside their own `matchesFilter`, once per card per keystroke —
+ * fine at their smaller scale, and not this task's collection to change.
+ *
  * ## Haystack built from the rendered card (SCF-06)
  *
  * As with every other filtered listing on this site, the search index is
@@ -379,6 +388,7 @@ const typeOptions = (SEARCH_DOCUMENT_TYPES as readonly SearchDocumentType[])
     type SearchFilterState,
   } from "../../lib/search";
   import { formatCount } from "../../lib/glossary-filter";
+  import { normalizeForSearch } from "../../lib/text";
 
   /**
    * Client-side filtering (T702). Enhancement only — the toolbar is laid out
@@ -423,7 +433,7 @@ const typeOptions = (SEARCH_DOCUMENT_TYPES as readonly SearchDocumentType[])
     const buttons = [
       ...toolbar.querySelectorAll<HTMLButtonElement>("[data-type]"),
     ];
-    let state: SearchFilterState = { type: "", query: "" };
+    let state: SearchFilterState = { type: "", normalizedQuery: "" };
 
     function apply(): void {
       let shown = 0;
@@ -451,7 +461,12 @@ const typeOptions = (SEARCH_DOCUMENT_TYPES as readonly SearchDocumentType[])
     }
 
     input.addEventListener("input", () => {
-      state = { ...state, query: input.value };
+      // Normalized exactly once per keystroke, here — not inside
+      // `matchesSearchFilter`, which would otherwise redo the same
+      // NFD-decompose-and-strip-marks work once per rendered card (221 at
+      // this index's current size) on every single keystroke (PR #106 code
+      // review, SCF-06's Lighthouse performance budget).
+      state = { ...state, normalizedQuery: normalizeForSearch(input.value) };
       apply();
     });
 

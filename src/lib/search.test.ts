@@ -8,6 +8,7 @@ import {
   type SearchFilterCard,
   type SearchHaystackSource,
 } from "./search";
+import { normalizeForSearch } from "./text";
 
 /** A haystack source with every field defaulted to empty, one override at a time. */
 function source(
@@ -23,6 +24,14 @@ function source(
     ...overrides,
   };
 }
+
+/**
+ * Pre-normalizes `raw` the way `[searchSegment].astro`'s `input` listener
+ * does — once, before calling `matchesSearchFilter` — never inside the
+ * function under test (PR #106 code review: normalizing inside
+ * `matchesSearchFilter` redid the same work once per card per keystroke).
+ */
+const q = (raw: string): string => normalizeForSearch(raw);
 
 describe("SEARCH_DOCUMENT_TYPES / isSearchDocumentType", () => {
   it("accepts every declared type", () => {
@@ -128,78 +137,119 @@ describe("matchesSearchFilter", () => {
 
   it("is permissive on the initial state — every card matches", () => {
     expect(
-      cards.every((card) => matchesSearchFilter(card, { type: "", query: "" }))
+      cards.every((card) =>
+        matchesSearchFilter(card, { type: "", normalizedQuery: "" })
+      )
     ).toBe(true);
   });
 
-  it("a whitespace-only query is treated as empty (permissive)", () => {
-    expect(matchesSearchFilter(glossaryCard, { type: "", query: "   " })).toBe(
-      true
-    );
+  it("an empty normalizedQuery is permissive regardless of what produced it", () => {
+    // The caller (the page's `input` handler) is responsible for turning a
+    // whitespace-only box into `""` via `normalizeForSearch` before calling
+    // in — this module only ever sees the already-normalized result.
+    expect(
+      matchesSearchFilter(glossaryCard, {
+        type: "",
+        normalizedQuery: q("   "),
+      })
+    ).toBe(true);
   });
 
   it("SRCH-02: a regional alias substring finds the canonical entry's card", () => {
-    expect(matchesSearchFilter(glossaryCard, { type: "", query: "rin" })).toBe(
-      true
-    );
+    expect(
+      matchesSearchFilter(glossaryCard, { type: "", normalizedQuery: q("rin") })
+    ).toBe(true);
   });
 
   it("an accented query finds an unaccented match and vice versa", () => {
     expect(
-      matchesSearchFilter(glossaryCard, { type: "", query: "neumatico" })
+      matchesSearchFilter(glossaryCard, {
+        type: "",
+        normalizedQuery: q("neumatico"),
+      })
+    ).toBe(true);
+    // The accented spelling normalizes to the same thing, so it matches too —
+    // this is exercising the caller's `normalizeForSearch` call, not a second
+    // one inside `matchesSearchFilter` (there is none any more).
+    expect(
+      matchesSearchFilter(glossaryCard, {
+        type: "",
+        normalizedQuery: q("neumático"),
+      })
     ).toBe(true);
   });
 
   it("SRCH-01: an OEM part number is searchable regardless of case", () => {
-    expect(matchesSearchFilter(partCard, { type: "", query: "md976075" })).toBe(
-      true
-    );
-    expect(matchesSearchFilter(partCard, { type: "", query: "MD976075" })).toBe(
-      true
-    );
+    expect(
+      matchesSearchFilter(partCard, {
+        type: "",
+        normalizedQuery: q("md976075"),
+      })
+    ).toBe(true);
+    expect(
+      matchesSearchFilter(partCard, {
+        type: "",
+        normalizedQuery: q("MD976075"),
+      })
+    ).toBe(true);
   });
 
   it("a partial part number still matches (substring, not whole-word)", () => {
-    expect(matchesSearchFilter(partCard, { type: "", query: "97607" })).toBe(
-      true
-    );
+    expect(
+      matchesSearchFilter(partCard, { type: "", normalizedQuery: q("97607") })
+    ).toBe(true);
   });
 
   it("an aftermarket cross-reference number is searchable too", () => {
-    expect(matchesSearchFilter(partCard, { type: "", query: "wpm-050" })).toBe(
-      true
-    );
+    expect(
+      matchesSearchFilter(partCard, {
+        type: "",
+        normalizedQuery: q("wpm-050"),
+      })
+    ).toBe(true);
   });
 
   it("SRCH-01: a symptom phrase is searchable", () => {
     expect(
-      matchesSearchFilter(problemCard, { type: "", query: "grinding" })
+      matchesSearchFilter(problemCard, {
+        type: "",
+        normalizedQuery: q("grinding"),
+      })
     ).toBe(true);
   });
 
   it("a query with no match anywhere excludes the card", () => {
     expect(
-      matchesSearchFilter(glossaryCard, { type: "", query: "carburador" })
+      matchesSearchFilter(glossaryCard, {
+        type: "",
+        normalizedQuery: q("carburador"),
+      })
     ).toBe(false);
   });
 
   it("the type facet excludes a card of a different type even with an empty query", () => {
     expect(
-      matchesSearchFilter(glossaryCard, { type: "parts", query: "" })
+      matchesSearchFilter(glossaryCard, { type: "parts", normalizedQuery: "" })
     ).toBe(false);
-    expect(matchesSearchFilter(partCard, { type: "parts", query: "" })).toBe(
-      true
-    );
+    expect(
+      matchesSearchFilter(partCard, { type: "parts", normalizedQuery: "" })
+    ).toBe(true);
   });
 
   it("the type facet and the query AND together", () => {
     // The query matches the part card's text but the type facet asks only
     // for glossary results — both must hold.
     expect(
-      matchesSearchFilter(partCard, { type: "glossary", query: "water pump" })
+      matchesSearchFilter(partCard, {
+        type: "glossary",
+        normalizedQuery: q("water pump"),
+      })
     ).toBe(false);
     expect(
-      matchesSearchFilter(partCard, { type: "parts", query: "water pump" })
+      matchesSearchFilter(partCard, {
+        type: "parts",
+        normalizedQuery: q("water pump"),
+      })
     ).toBe(true);
   });
 
@@ -210,8 +260,35 @@ describe("matchesSearchFilter", () => {
     expect(
       matchesSearchFilter(
         { type: "parts", haystack: engineHaystack },
-        { type: "problems", query: "engine" }
+        { type: "problems", normalizedQuery: q("engine") }
       )
+    ).toBe(false);
+  });
+
+  /* -----------------------------------------------------------------------
+   * PR #106 code review: matchesSearchFilter no longer normalizes. These
+   * lock that contract in — a regression that reintroduces an internal
+   * normalizeForSearch call would still pass every test above (normalized
+   * input round-trips through normalizeForSearch unchanged), so a test that
+   * hands the function *un-normalized* text is the only way to catch it.
+   * -------------------------------------------------------------------- */
+  it("does not itself normalize: an un-normalized (accented/uppercase) query is compared literally", () => {
+    // The haystack is already normalized (lowercase, unaccented) by
+    // buildSearchHaystack. A caller that forgot to normalize the query
+    // first gets a literal, case-sensitive substring comparison — which is
+    // exactly what should happen, so the bug is visible in the page script
+    // that forgot to normalize, not swallowed silently here.
+    expect(
+      matchesSearchFilter(glossaryCard, {
+        type: "",
+        normalizedQuery: "Neumático",
+      })
+    ).toBe(false);
+    expect(
+      matchesSearchFilter(glossaryCard, {
+        type: "",
+        normalizedQuery: "NEUMATICO",
+      })
     ).toBe(false);
   });
 });
@@ -224,18 +301,24 @@ describe("countSearchMatches", () => {
   ];
 
   it("counts zero over an empty document set", () => {
-    expect(countSearchMatches([], { type: "", query: "" })).toBe(0);
+    expect(countSearchMatches([], { type: "", normalizedQuery: "" })).toBe(0);
   });
 
   it("counts every card on the permissive state", () => {
-    expect(countSearchMatches(cards, { type: "", query: "" })).toBe(3);
+    expect(countSearchMatches(cards, { type: "", normalizedQuery: "" })).toBe(
+      3
+    );
   });
 
   it("counts only the cards that satisfy both facets", () => {
-    expect(countSearchMatches(cards, { type: "parts", query: "" })).toBe(2);
-    expect(countSearchMatches(cards, { type: "parts", query: "md" })).toBe(1);
-    expect(countSearchMatches(cards, { type: "glossary", query: "md" })).toBe(
-      0
-    );
+    expect(
+      countSearchMatches(cards, { type: "parts", normalizedQuery: "" })
+    ).toBe(2);
+    expect(
+      countSearchMatches(cards, { type: "parts", normalizedQuery: "md" })
+    ).toBe(1);
+    expect(
+      countSearchMatches(cards, { type: "glossary", normalizedQuery: "md" })
+    ).toBe(0);
   });
 });

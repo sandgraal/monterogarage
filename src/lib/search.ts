@@ -165,12 +165,29 @@ export interface SearchFilterCard {
   readonly haystack: string;
 }
 
-/** The active filter state. `""` is permissive for both facets. */
+/**
+ * The active filter state. `""` is permissive for both facets.
+ *
+ * **`normalizedQuery` is already normalized** (`normalizeForSearch`) by the
+ * caller — this module never calls `normalizeForSearch` on it. That is a
+ * deliberate performance fix (code review on PR #106, SCF-06): the search
+ * box's `input` handler fires once per keystroke and calls
+ * {@link matchesSearchFilter} once per rendered card — 221 cards at this
+ * index's current size — so normalizing inside this function meant redoing
+ * the same NFD-decompose-and-strip-marks work 221 times over for one
+ * keystroke instead of once. `[searchSegment].astro`'s `input` listener now
+ * normalizes exactly once per event, before the per-card loop, and every
+ * card compares against that one already-normalized string.
+ */
 export interface SearchFilterState {
   /** A `SearchDocumentType`, or `""` for "every type". */
   readonly type: string;
-  /** Raw text from the search box; normalized here, not by the caller. */
-  readonly query: string;
+  /**
+   * Pre-normalized query text, or `""` for "no query" (permissive). Passing
+   * raw, un-normalized text here is a caller bug, not something this
+   * function corrects — see the interface docs above for why.
+   */
+  readonly normalizedQuery: string;
 }
 
 /**
@@ -179,16 +196,16 @@ export interface SearchFilterState {
  * Both facets are ANDed and both are permissive when empty — the same
  * contract `glossary-filter.ts`'s `matchesFilter` and `problems-filter.ts`'s
  * `matchesFilter` state, so the enhancement reproduces the server-rendered,
- * unfiltered listing on load.
+ * unfiltered listing on load. Unlike those two, this function does not
+ * itself call `normalizeForSearch` — see `SearchFilterState`'s docs.
  */
 export function matchesSearchFilter(
   card: SearchFilterCard,
   state: SearchFilterState
 ): boolean {
   if (state.type !== "" && card.type !== state.type) return false;
-  const query = normalizeForSearch(state.query);
-  if (query === "") return true;
-  return card.haystack.includes(query);
+  if (state.normalizedQuery === "") return true;
+  return card.haystack.includes(state.normalizedQuery);
 }
 
 /** How many of `cards` the filter keeps. */
