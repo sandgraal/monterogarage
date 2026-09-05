@@ -52,6 +52,16 @@ import {
   type ReceiptRow,
   type ReceiptWrite,
 } from "../garage/receipt.ts";
+import {
+  RECORD_MEDIA_BUCKET,
+  mediaIssue,
+  mediaObjectPath,
+  mediaPathBelongsTo,
+  mediaWriteFromFile,
+  randomMediaId,
+  type ChosenMedia,
+  type RecordMediaRow,
+} from "../garage/record-media.ts";
 import type { VehicleRow, VehicleWrite } from "../garage/vehicle.ts";
 import type { RecordRow, RecordWrite } from "../garage/record.ts";
 
@@ -73,6 +83,12 @@ const RECORD_COLUMNS =
 /** The receipt columns the page reads (GAR-05′). */
 const RECEIPT_COLUMNS =
   "id, record_id, storage_path, vendor, issued_on, amount, currency";
+
+/**
+ * The media columns the page reads (GAR-06′) — the contract's four, minus the
+ * `created_at` the migration keeps for its own sake.
+ */
+const RECORD_MEDIA_COLUMNS = "id, record_id, storage_path, media_kind";
 
 /** How long a photo's signed URL lives. */
 export const PHOTO_URL_TTL_SECONDS = 60 * 10;
@@ -124,6 +140,14 @@ function asReceipt(data: unknown): ReceiptRow {
 
 function asReceipts(data: unknown): ReceiptRow[] {
   return (data ?? []) as ReceiptRow[];
+}
+
+function asMedia(data: unknown): RecordMediaRow {
+  return data as RecordMediaRow;
+}
+
+function asMediaRows(data: unknown): RecordMediaRow[] {
+  return (data ?? []) as RecordMediaRow[];
 }
 
 export type GarageResult<T> =
@@ -345,6 +369,11 @@ export async function deleteVehicle(id: string): Promise<GarageResult<null>> {
     await client.storage.from(RECEIPTS_BUCKET).remove(receipts);
   }
 
+  const media = await vehicleMediaPaths(client, userId, id);
+  if (media.length > 0) {
+    await client.storage.from(RECORD_MEDIA_BUCKET).remove(media);
+  }
+
   const { error } = await client.from("vehicles").delete().eq("id", id);
   if (error) return failed();
   return { ok: true, value: null };
@@ -415,7 +444,7 @@ export async function uploadVehiclePhoto(
     .upload(path, file, { contentType: file.type, upsert: false });
   if (uploaded.error) return failed();
 
-  return setPhotoPaths(client, vehicle.id, [...vehicle.photo_paths, path]);
+  return appendPhotoPath(client, vehicle, path);
 }
 
 /**
@@ -434,10 +463,11 @@ export async function removeVehiclePhoto(
   if (!open.ok) return open;
   const { client } = open.value;
 
-  const updated = await setPhotoPaths(
+  const updated = await mutatePhotoPaths(
     client,
-    vehicle.id,
-    vehicle.photo_paths.filter((entry) => entry !== path)
+    "remove_vehicle_photo",
+    vehicle,
+    path
   );
   if (!updated.ok) return updated;
 
@@ -445,19 +475,56 @@ export async function removeVehiclePhoto(
   return updated;
 }
 
-async function setPhotoPaths(
+function appendPhotoPath(
   client: SupabaseClient,
-  vehicleId: string,
-  paths: readonly string[]
+  vehicle: VehicleRow,
+  path: string
 ): Promise<GarageResult<VehicleRow>> {
-  const { data, error } = await client
-    .from("vehicles")
-    .update({ photo_paths: paths })
-    .eq("id", vehicleId)
-    .select(VEHICLE_COLUMNS)
-    .single();
-  if (error || !data) return failed();
-  return { ok: true, value: asRow(data) };
+  return mutatePhotoPaths(client, "append_vehicle_photo", vehicle, path);
+}
+
+/**
+ * Add or drop one entry of `vehicles.photo_paths`, **atomically**.
+ *
+ * ## The bug this replaces (found by T2-304, ticketed on T2-305)
+ *
+ * The previous version read `vehicle.photo_paths`, computed the new array in
+ * the browser, and sent the whole thing back with an `update`. Two uploads
+ * overlapping — which is what happens when a reader picks two photos in a row,
+ * or has the garage open in two tabs — both start from the array as it was
+ * before either of them, and the second write erases the first one's entry.
+ * What is left behind is a real storage object that no row names: invisible to
+ * its owner, still counted against their quota, and reachable again only by the
+ * account purge. It happened for real while seeding Gitana Blanca and was
+ * recovered by hand with direct SQL.
+ *
+ * The fix is `array_append` / `array_remove` inside a single `update`, which
+ * reads and writes under the row lock Postgres already takes — so a concurrent
+ * append waits and then appends to the array the first one left. That has to
+ * live in the database: PostgREST cannot express a column expression in an
+ * update, and a client-side upload queue is a promise one tab makes that a
+ * second tab has never heard of.
+ *
+ * Both routines are `security invoker`, so `vehicles`' own policy still decides
+ * whose row this is — exactly as it did for the `update` they replace. A caller
+ * who does not own the vehicle updates no row and gets `null` back, which this
+ * reports as a failure.
+ *
+ * The RPC returns just the resulting `photo_paths`, not the row, so the page's
+ * `VEHICLE_COLUMNS` stays the only place that says what a vehicle row contains.
+ */
+async function mutatePhotoPaths(
+  client: SupabaseClient,
+  routine: "append_vehicle_photo" | "remove_vehicle_photo",
+  vehicle: VehicleRow,
+  path: string
+): Promise<GarageResult<VehicleRow>> {
+  const { data, error } = await client.rpc(routine, {
+    p_vehicle_id: vehicle.id,
+    p_path: path,
+  });
+  if (error || !Array.isArray(data)) return failed();
+  return { ok: true, value: { ...vehicle, photo_paths: data as string[] } };
 }
 
 /**
@@ -590,6 +657,23 @@ export async function deleteRecord(id: string): Promise<GarageResult<null>> {
       .filter((path) => receiptPathBelongsTo(userId, path));
     if (paths.length > 0) {
       await client.storage.from(RECEIPTS_BUCKET).remove(paths);
+    }
+  }
+
+  // Media objects, for the same reason and with one difference: these DO have
+  // a belt behind them. `on_record_deleted` sweeps `<owner>/<vehicle>/<record>/`
+  // when the row goes, because the media path carries the record id and the
+  // receipt path does not. This call still runs first, because the trigger can
+  // only remove the object *rows* — the bytes in the storage backend are the
+  // Storage API's, and reaching them from inside Postgres would mean keeping a
+  // service key in the database.
+  const media = await listRecordMedia([id]);
+  if (media.ok) {
+    const paths = media.value
+      .map((entry) => entry.storage_path)
+      .filter((path) => mediaPathBelongsTo(userId, id, path));
+    if (paths.length > 0) {
+      await client.storage.from(RECORD_MEDIA_BUCKET).remove(paths);
     }
   }
 
@@ -801,6 +885,225 @@ export async function signReceiptUrls(
   const { data, error } = await client.storage
     .from(RECEIPTS_BUCKET)
     .createSignedUrls([...paths], RECEIPT_URL_TTL_SECONDS);
+  if (error || !data) return signed;
+
+  for (const entry of data) {
+    if (entry.error !== null || !entry.signedUrl || !entry.path) continue;
+    signed.set(entry.path, entry.signedUrl);
+  }
+  return signed;
+}
+
+/* -------------------------------------------------------------------------
+ * Record media (GAR-06′)
+ * ---------------------------------------------------------------------- */
+
+/**
+ * How long a media attachment's signed URL lives.
+ *
+ * **Thirty minutes, not the ten a photo or a receipt gets, and the difference
+ * is the one thing about video that is genuinely different.** A signed URL is
+ * checked when the request is made; a browser streaming a fifty-megabyte video
+ * makes range requests for as long as playback lasts, so a ten-minute
+ * signature can expire *mid-playback* on a slow connection and the player
+ * stops with an error that looks like a broken file. Thirty minutes is still
+ * short enough to be an access control on a signed-in surface, and long enough
+ * that nobody watches a repair video across the boundary.
+ *
+ * This is not, and must not become, the answer for a public work-log page: a
+ * URL long-lived enough to sit in a static page's markup has stopped being an
+ * access control at all. That is T2-401/T2-402's question.
+ */
+export const RECORD_MEDIA_URL_TTL_SECONDS = 60 * 30;
+
+/**
+ * The media attached to a set of records, in one request.
+ *
+ * One request rather than one per record, for the reason `listReceipts`
+ * records: a timeline of forty entries would otherwise open forty connections
+ * to render a row of chips.
+ */
+export async function listRecordMedia(
+  recordIds: readonly string[]
+): Promise<GarageResult<RecordMediaRow[]>> {
+  if (recordIds.length === 0) return { ok: true, value: [] };
+  const open = await session();
+  if (!open.ok) return open;
+  const { data, error } = await open.value.client
+    .from("record_media")
+    .select(RECORD_MEDIA_COLUMNS)
+    .in("record_id", [...recordIds]);
+  if (error) return failed();
+  return { ok: true, value: asMediaRows(data) };
+}
+
+/**
+ * Every media object path belonging to one vehicle.
+ *
+ * Two requests rather than one embedded resource, matching
+ * `vehicleReceiptPaths`: the record ids first, then the paths. An embedded
+ * filter would do it in one, at the price of a query whose correctness depends
+ * on PostgREST's foreign-key introspection agreeing with what the reader of
+ * this file assumes.
+ *
+ * A path that does not live under `<owner>/…/<its own record>/` is dropped
+ * rather than sent. `storage_path` is a column a client wrote, and asking the
+ * storage API to delete an arbitrary name on the owner's behalf is a request
+ * that should never be made, whatever the policies would do with it.
+ */
+async function vehicleMediaPaths(
+  client: SupabaseClient,
+  ownerId: string,
+  vehicleId: string
+): Promise<string[]> {
+  const records = await client
+    .from("records")
+    .select("id")
+    .eq("vehicle_id", vehicleId);
+  if (records.error || !records.data) return [];
+  const ids = (records.data as unknown as { id: string }[]).map(
+    (row) => row.id
+  );
+  if (ids.length === 0) return [];
+
+  const media = await client
+    .from("record_media")
+    .select("record_id, storage_path")
+    .in("record_id", ids);
+  if (media.error || !media.data) return [];
+  return (
+    media.data as unknown as { record_id: string; storage_path: string }[]
+  )
+    .filter((row) =>
+      mediaPathBelongsTo(ownerId, row.record_id, row.storage_path)
+    )
+    .map((row) => row.storage_path);
+}
+
+/**
+ * Attach one media file to a record: the object first, then the row.
+ *
+ * The order receipts already established, for the same reason. A row written
+ * before a failed upload points at bytes that do not exist, and the page would
+ * offer a player that plays nothing. This way a failed insert leaves an orphan
+ * object — and, as with receipts, that case is cleaned up immediately, because
+ * the path is known and there is no array to reconcile to discover it.
+ *
+ * There is nothing to validate beside the file, and that is the requirement
+ * rather than an omission: GAR-06′ says an attachment is "independent of a
+ * receipt's vendor/date/amount fields", and the WhatsApp voice note that
+ * motivated it cannot be filed at all if the form asks for a vendor first. The
+ * kind is read from the declared MIME type, not chosen by the reader.
+ *
+ * `rejected` means the file itself was refused — wrong type, or too large.
+ */
+export async function uploadRecordMedia(
+  vehicleId: string,
+  recordId: string,
+  file: File
+): Promise<GarageResult<RecordMediaRow>> {
+  const open = await session();
+  if (!open.ok) return open;
+  const { client, userId } = open.value;
+
+  if (mediaIssue(file as ChosenMedia) !== null) {
+    return { ok: false, reason: "rejected" };
+  }
+
+  let path: string;
+  try {
+    path = mediaObjectPath({
+      ownerId: userId,
+      vehicleId,
+      recordId,
+      mimeType: file.type,
+      randomId: randomMediaId(),
+    });
+  } catch {
+    return { ok: false, reason: "rejected" };
+  }
+
+  const write = mediaWriteFromFile(recordId, path, file.type);
+  if (write === null) return { ok: false, reason: "rejected" };
+
+  const uploaded = await client.storage
+    .from(RECORD_MEDIA_BUCKET)
+    .upload(path, file, { contentType: file.type, upsert: false });
+  if (uploaded.error) return failed();
+
+  const { data, error } = await client
+    .from("record_media")
+    .insert(write)
+    .select(RECORD_MEDIA_COLUMNS)
+    .single();
+  if (error || !data) {
+    // The bytes are stored and nothing points at them. Take them back out
+    // rather than leave a file the owner can neither see nor delete.
+    await client.storage.from(RECORD_MEDIA_BUCKET).remove([path]);
+    return failed();
+  }
+  return { ok: true, value: asMedia(data) };
+}
+
+/**
+ * Remove one attachment: the object first, then the row.
+ *
+ * The receipts order, and for the receipts reason (T2-302 review, F2). A
+ * photo's index is `vehicles.photo_paths`, an array that survives the object,
+ * so the photo path can drop the reference first. A media attachment's index is
+ * the row itself — delete it first and a failed object delete leaves bytes that
+ * nothing can name again until `on_record_deleted` or the account purge sweeps
+ * the prefix.
+ *
+ * The object's failure stops the row, and here that is not belt-and-braces:
+ * nothing else revisits a *single* object, so proceeding past a reported
+ * failure would manufacture exactly the unreachable bytes the ordering exists
+ * to prevent. An object that is already gone does not take this branch — the
+ * Storage API reports no error for a key that is not there.
+ */
+export async function removeRecordMedia(
+  media: RecordMediaRow
+): Promise<GarageResult<null>> {
+  const open = await session();
+  if (!open.ok) return open;
+  const { client, userId } = open.value;
+
+  if (mediaPathBelongsTo(userId, media.record_id, media.storage_path)) {
+    const removed = await client.storage
+      .from(RECORD_MEDIA_BUCKET)
+      .remove([media.storage_path]);
+    if (removed.error) return failed();
+  }
+
+  const { error } = await client
+    .from("record_media")
+    .delete()
+    .eq("id", media.id);
+  if (error) return failed();
+  return { ok: true, value: null };
+}
+
+/**
+ * Short-lived signed URLs for media objects, keyed by object path.
+ *
+ * Signed, because the bucket is private and must stay that way (SHR-01), and
+ * this is the owner looking at their own record. GAR-06′ says an attachment is
+ * "never publicly accessible unless the record's visibility is opened", and
+ * nothing here is that: opening a record is a *sharing* decision with its own
+ * surface (SHR-02, SHR-06), and a URL long-lived enough for a public page has
+ * stopped being an access control.
+ */
+export async function signRecordMediaUrls(
+  paths: readonly string[]
+): Promise<Map<string, string>> {
+  const signed = new Map<string, string>();
+  if (paths.length === 0) return signed;
+  const client = await getSupabaseClient();
+  if (!client) return signed;
+
+  const { data, error } = await client.storage
+    .from(RECORD_MEDIA_BUCKET)
+    .createSignedUrls([...paths], RECORD_MEDIA_URL_TTL_SECONDS);
   if (error || !data) return signed;
 
   for (const entry of data) {

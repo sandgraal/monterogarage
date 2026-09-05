@@ -79,6 +79,10 @@ import {
   RECEIPT_MIME_TYPES,
 } from "../../lib/garage/receipt";
 import {
+  MAX_MEDIA_BYTES,
+  MEDIA_ACCEPT_TYPES,
+} from "../../lib/garage/record-media";
+import {
   MAX_RECORD_BODY_LENGTH,
   MAX_RECORD_TITLE_LENGTH,
   RECORD_CURRENCIES,
@@ -160,6 +164,15 @@ const receiptTooLarge = strings.garageReceiptSizeRejectedTemplate.replace(
     unitDisplay: "short",
     maximumFractionDigits: 0,
   }).format(MAX_RECEIPT_BYTES / 1024 / 1024)
+);
+const mediaTooLarge = strings.garageMediaSizeRejectedTemplate.replace(
+  "{size}",
+  new Intl.NumberFormat(LOCALE_BCP47[locale], {
+    style: "unit",
+    unit: "megabyte",
+    unitDisplay: "short",
+    maximumFractionDigits: 0,
+  }).format(MAX_MEDIA_BYTES / 1024 / 1024)
 );
 
 /** The four `record_kind` values with the reader's name for each. */
@@ -309,6 +322,13 @@ const hasReferences = Object.values(referenceCatalogue).some(
     data-string-receipt-issue-date={strings.garageReceiptIssueDate}
     data-string-receipt-untitled={strings.garageReceiptUntitled}
     data-string-receipt-counts-unavailable={strings.garageReceiptCountsUnavailable}
+    data-string-media-uploading={strings.garageMediaUploading}
+    data-string-media-type={strings.garageMediaTypeRejected}
+    data-string-media-size={mediaTooLarge}
+    data-string-media-remove-confirm={strings.garageMediaRemoveConfirm}
+    data-string-media-label-photo={strings.garageMediaLabelPhotoTemplate}
+    data-string-media-label-video={strings.garageMediaLabelVideoTemplate}
+    data-string-media-label-audio={strings.garageMediaLabelAudioTemplate}
     data-string-current-odometer-unknown={strings.garageCurrentOdometerUnknown}
     data-string-current-odometer-on={strings.garageCurrentOdometerOnTemplate}
     data-string-service-last={strings.garageCurrentServiceLastTemplate}
@@ -1257,6 +1277,70 @@ const hasReferences = Object.values(referenceCatalogue).some(
                 </div>
               </div>
 
+              {/* ------------------------------------------------------ */}
+              {/* Media attachments (GAR-06′)                             */}
+              {/* ------------------------------------------------------ */}
+              {/*
+               * Alongside receipts and deliberately not inside them. GAR-06′
+               * says an attachment is "independent of a receipt's
+               * vendor/date/amount fields", and a section sharing the receipts
+               * form's four typed inputs would make the WhatsApp voice note
+               * that motivated the requirement impossible to file without
+               * inventing a vendor. The visual distinction is the point of the
+               * `--media` modifier: same shell, no financial fields, its own
+               * heading, and a hint saying what belongs here instead.
+               */}
+              <div class="garage__receipts garage__receipts--media">
+                <h3>{strings.garageMediaHeading}</h3>
+                <p class="garage__fineprint">
+                  {strings.garageMediaPrivateNote}
+                </p>
+
+                <p class="garage__empty-note" data-garage-media-need-record>
+                  {strings.garageMediaNeedRecord}
+                </p>
+
+                <ul class="garage__media-list" data-garage-media-list />
+                <p class="garage__empty-note" data-garage-media-empty hidden>
+                  {strings.garageMediaEmpty}
+                </p>
+
+                <div class="garage__receipt-form" data-garage-media-form hidden>
+                  <p class="garage__field">
+                    <label class="garage__label" for="garage-media-file">
+                      {strings.garageMediaFileLabel}
+                    </label>
+                    <input
+                      class="garage__file"
+                      id="garage-media-file"
+                      type="file"
+                      accept={MEDIA_ACCEPT_TYPES.join(",")}
+                      aria-describedby="garage-media-hint"
+                      data-garage-media-file
+                    />
+                    <span class="garage__hint" id="garage-media-hint">
+                      {strings.garageMediaHint}
+                    </span>
+                  </p>
+
+                  <div class="garage__actions">
+                    <button
+                      class="garage__button garage__button--alt"
+                      type="button"
+                      data-garage-media-attach
+                    >
+                      {strings.garageMediaAttach}
+                    </button>
+                  </div>
+                  <p
+                    class="garage__message"
+                    data-garage-media-message
+                    role="status"
+                    aria-live="polite"
+                  />
+                </div>
+              </div>
+
               <p
                 class="garage__message"
                 data-garage-record-message
@@ -1432,6 +1516,55 @@ const hasReferences = Object.values(referenceCatalogue).some(
             </template>
 
             {/*
+             * One media attachment, with all three players in the template and
+             * the two the row is not removed at paint time.
+             *
+             * A photo, a video and a voice note are three different elements
+             * and there is no honest way to render one as another — an
+             * `<audio>` for a video plays sound over a blank rectangle, which
+             * is why `media_kind` is a closed set in the schema rather than
+             * free text. `preload="none"` on both players is deliberate: a
+             * record with four videos would otherwise open four signed-URL
+             * range requests the moment the form is opened, for files the
+             * reader may never play.
+             */}
+            <template data-garage-media-template>
+              <li class="garage__media">
+                <span class="garage__media-text" data-media-label />
+                <img class="garage__media-image" data-media-image alt="" />
+                <video
+                  class="garage__media-player"
+                  data-media-video
+                  controls
+                  preload="none"
+                />
+                <audio
+                  class="garage__media-player"
+                  data-media-audio
+                  controls
+                  preload="none"
+                />
+                <span class="garage__media-actions">
+                  <a
+                    class="garage__link"
+                    data-media-open
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    {strings.garageMediaOpen}
+                  </a>
+                  <button
+                    class="garage__link garage__link--danger"
+                    type="button"
+                    data-media-remove
+                  >
+                    {strings.garageMediaRemove}
+                  </button>
+                </span>
+              </li>
+            </template>
+
+            {/*
              * What a record may point at (GAR-02′), inlined once per page.
              * `set:html` on a `<script type="application/json">` is JSON, not
              * markup: the browser never executes it, and `JSON.stringify`
@@ -1472,15 +1605,19 @@ const hasReferences = Object.values(referenceCatalogue).some(
     deleteRecord,
     deleteVehicle,
     listReceipts,
+    listRecordMedia,
     listRecords,
     listVehicles,
     removeReceipt,
+    removeRecordMedia,
     removeVehiclePhoto,
     signPhotoUrls,
     signReceiptUrls,
+    signRecordMediaUrls,
     updateRecord,
     updateVehicle,
     uploadReceipt,
+    uploadRecordMedia,
     uploadVehiclePhoto,
   } from "../../lib/supabase/garage";
   import {
@@ -1525,6 +1662,12 @@ const hasReferences = Object.values(referenceCatalogue).some(
     type ReceiptDraft,
     type ReceiptRow,
   } from "../../lib/garage/receipt";
+  import {
+    mediaIssue,
+    sortRecordMedia,
+    type MediaKind,
+    type RecordMediaRow,
+  } from "../../lib/garage/record-media";
   import {
     EMPTY_DRAFT,
     draftFromVehicleRow,
@@ -1740,6 +1883,14 @@ const hasReferences = Object.values(referenceCatalogue).some(
       ),
       receiptAttach: query<HTMLButtonElement>("[data-garage-receipt-attach]"),
       receiptMessage: query<HTMLElement>("[data-garage-receipt-message]"),
+      mediaTemplate: query<HTMLTemplateElement>("[data-garage-media-template]"),
+      mediaList: query<HTMLUListElement>("[data-garage-media-list]"),
+      mediaEmpty: query<HTMLElement>("[data-garage-media-empty]"),
+      mediaNeedRecord: query<HTMLElement>("[data-garage-media-need-record]"),
+      mediaForm: query<HTMLElement>("[data-garage-media-form]"),
+      mediaFile: query<HTMLInputElement>("[data-garage-media-file]"),
+      mediaAttach: query<HTMLButtonElement>("[data-garage-media-attach]"),
+      mediaMessage: query<HTMLElement>("[data-garage-media-message]"),
     };
 
     const payload = readSelectorPayload(document) as SelectorPayload | null;
@@ -1808,6 +1959,7 @@ const hasReferences = Object.values(referenceCatalogue).some(
     let recordsStatus: "loading" | "loaded" | "failed" = "loading";
     let editingRecord: RecordRow | null = null;
     let receipts: ReceiptRow[] = [];
+    let media: RecordMediaRow[] = [];
     let currency = readCurrency(window, locale);
     /*
      * The unit the time field is currently written in.
@@ -2866,8 +3018,10 @@ const hasReferences = Object.values(referenceCatalogue).some(
     async function openRecordForm(row: RecordRow | null): Promise<void> {
       editingRecord = row;
       receipts = [];
+      media = [];
       say(els.recordMessage, "");
       say(els.receiptMessage, "");
+      say(els.mediaMessage, "");
       say(
         els.recordHeading,
         (row === null ? text.stringRecordFormNew : text.stringRecordFormEdit) ??
@@ -2879,6 +3033,11 @@ const hasReferences = Object.values(referenceCatalogue).some(
       if (els.receiptsEmpty) els.receiptsEmpty.hidden = true;
       els.receiptList?.replaceChildren();
       clearReceiptDraft();
+      if (els.mediaNeedRecord) els.mediaNeedRecord.hidden = row !== null;
+      if (els.mediaForm) els.mediaForm.hidden = row === null;
+      if (els.mediaEmpty) els.mediaEmpty.hidden = true;
+      els.mediaList?.replaceChildren();
+      if (els.mediaFile) els.mediaFile.value = "";
 
       applyRecordDraft(
         row === null
@@ -2899,7 +3058,10 @@ const hasReferences = Object.values(referenceCatalogue).some(
       show("record");
       els.recordTitle?.focus();
 
-      if (row !== null) await paintReceipts(row);
+      if (row !== null) {
+        await paintReceipts(row);
+        await paintMedia(row);
+      }
     }
 
     /**
@@ -3061,6 +3223,153 @@ const hasReferences = Object.values(referenceCatalogue).some(
       clearReceiptDraft();
       await paintReceipts(row);
       if (opened !== null) await loadRecords(opened);
+    }
+
+    /* --------------------------------------------- media attachments (GAR-06′) */
+
+    /**
+     * `Voice note 2` — the kind, and its number within that kind.
+     *
+     * An attachment has no vendor, date or amount to be named by; GAR-06′ says
+     * so, and that is the requirement rather than an omission. So the label is
+     * the honest minimum, and it carries the index because "Remove" beside
+     * three identical "Photo" rows is a button nobody using a screen reader
+     * can aim at the one they mean.
+     */
+    function mediaLabel(kind: MediaKind, index: number): string {
+      const template =
+        (kind === "photo"
+          ? text.stringMediaLabelPhoto
+          : kind === "video"
+            ? text.stringMediaLabelVideo
+            : text.stringMediaLabelAudio) ?? kind;
+      return template.replace("{index}", String(index));
+    }
+
+    /**
+     * Paint one record's attachments.
+     *
+     * The same two-request shape as `paintReceipts` — rows, then signatures —
+     * and the same two staleness checks, because both awaits can outlive the
+     * form they were opened for. Each row renders as exactly one of three
+     * elements and the other two are removed: an `<audio>` showing a video is a
+     * blank rectangle that makes noise, which is the failure `media_kind`
+     * exists as a closed set to prevent.
+     */
+    async function paintMedia(row: RecordRow): Promise<void> {
+      if (!els.mediaList) return;
+      const listed = await listRecordMedia([row.id]);
+      if (editingRecord?.id !== row.id) return;
+      if (!listed.ok) {
+        say(els.mediaMessage, text.stringError ?? "");
+        return;
+      }
+      media = sortRecordMedia(listed.value);
+      els.mediaList.replaceChildren();
+      if (els.mediaEmpty) els.mediaEmpty.hidden = media.length > 0;
+      if (media.length === 0) return;
+
+      const urls = await signRecordMediaUrls(
+        media.map((entry) => entry.storage_path)
+      );
+      if (editingRecord?.id !== row.id) return;
+
+      const seen = new Map<string, number>();
+      for (const entry of media) {
+        const item = els.mediaTemplate?.content.firstElementChild?.cloneNode(
+          true
+        ) as HTMLElement | null;
+        if (!item) continue;
+
+        const index = (seen.get(entry.media_kind) ?? 0) + 1;
+        seen.set(entry.media_kind, index);
+        const label = mediaLabel(entry.media_kind, index);
+        say(item.querySelector<HTMLElement>("[data-media-label]"), label);
+
+        const url = urls.get(entry.storage_path);
+        const image =
+          item.querySelector<HTMLImageElement>("[data-media-image]");
+        const video =
+          item.querySelector<HTMLVideoElement>("[data-media-video]");
+        const audio =
+          item.querySelector<HTMLAudioElement>("[data-media-audio]");
+        const player =
+          entry.media_kind === "photo"
+            ? image
+            : entry.media_kind === "video"
+              ? video
+              : audio;
+        for (const other of [image, video, audio]) {
+          if (other !== null && other !== player) other.remove();
+        }
+        if (player !== null && player !== undefined) {
+          if (url === undefined) {
+            // No signature, nothing to point the element at. An `<img>` with no
+            // `src` is a broken-image icon and an empty player is a control
+            // that does nothing when pressed; the label alone is the honest
+            // render.
+            player.remove();
+          } else {
+            player.setAttribute("src", url);
+            if (player === image) player.setAttribute("alt", label);
+          }
+        }
+
+        const open = item.querySelector<HTMLAnchorElement>("[data-media-open]");
+        if (open) {
+          if (url === undefined) open.remove();
+          else {
+            open.href = url;
+            open.setAttribute("aria-label", `${open.textContent} — ${label}`);
+          }
+        }
+
+        const drop = item.querySelector<HTMLButtonElement>(
+          "[data-media-remove]"
+        );
+        drop?.setAttribute("aria-label", `${drop.textContent} — ${label}`);
+        drop?.addEventListener("click", () => {
+          if (!window.confirm(text.stringMediaRemoveConfirm ?? "")) return;
+          void dropMedia(row, entry).catch(() => unreachable(els.mediaMessage));
+        });
+
+        els.mediaList.append(item);
+      }
+    }
+
+    async function dropMedia(
+      row: RecordRow,
+      entry: RecordMediaRow
+    ): Promise<void> {
+      say(els.mediaMessage, "");
+      const result = await removeRecordMedia(entry);
+      if (!result.ok) {
+        say(els.mediaMessage, text.stringError ?? "");
+        return;
+      }
+      await paintMedia(row);
+    }
+
+    /**
+     * Attach one file. There is nothing to validate beside it, and that is
+     * GAR-06′'s point: the voice note the shop sent has no vendor.
+     */
+    async function attachMedia(row: RecordRow, file: File): Promise<void> {
+      if (opened === null) return;
+      say(els.mediaMessage, text.stringMediaUploading ?? "");
+      const result = await uploadRecordMedia(opened.id, row.id, file);
+      if (!result.ok) {
+        say(
+          els.mediaMessage,
+          (result.reason === "rejected"
+            ? text.stringMediaType
+            : text.stringError) ?? ""
+        );
+        return;
+      }
+      say(els.mediaMessage, "");
+      if (els.mediaFile) els.mediaFile.value = "";
+      await paintMedia(row);
     }
 
     /* ------------------------------------------------------------ requests */
@@ -3330,6 +3639,27 @@ const hasReferences = Object.values(referenceCatalogue).some(
       }
       void attachReceipt(editingRecord, file).catch(() =>
         unreachable(els.receiptMessage)
+      );
+    });
+
+    els.mediaAttach?.addEventListener("click", () => {
+      const file = els.mediaFile?.files?.[0];
+      if (!file || editingRecord === null) return;
+      // Refused here as well as in `uploadRecordMedia`, so the reader is told
+      // which of the two things was wrong. The upload path can only say
+      // "rejected".
+      const issue = mediaIssue(file);
+      if (issue !== null) {
+        say(
+          els.mediaMessage,
+          (issue === "too-large"
+            ? text.stringMediaSize
+            : text.stringMediaType) ?? ""
+        );
+        return;
+      }
+      void attachMedia(editingRecord, file).catch(() =>
+        unreachable(els.mediaMessage)
       );
     });
 
@@ -4132,6 +4462,72 @@ const hasReferences = Object.values(referenceCatalogue).some(
     font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
     font-size: 0.8125rem;
     color: var(--muted-strong);
+  }
+
+  /*
+   * Media attachments (GAR-06′) — "alongside but visually distinct from
+   * receipts", which the task asks for and which is also the requirement: an
+   * attachment that reads as a receipt is a financial claim about a photo of a
+   * broken bracket.
+   *
+   * The distinction is structural rather than decorative. Receipts are a
+   * dense monospace line — vendor, date, amount — because they are read as
+   * data. These are a stack: a name, then the thing itself. The dashed rule
+   * and the inset are the only chrome, so the two sections are told apart at a
+   * glance without a second colour to explain.
+   */
+  .garage__receipts--media {
+    padding-top: 0.75rem;
+    border-top: 1px dashed var(--line);
+  }
+
+  .garage__media-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .garage__media {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.625rem 0.875rem;
+    background: var(--panel-soft);
+    border: 1px dashed var(--line);
+    border-radius: 6px;
+  }
+
+  .garage__media-text {
+    font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+    font-size: 0.8125rem;
+    color: var(--muted-strong);
+  }
+
+  .garage__media-image,
+  .garage__media-player {
+    display: block;
+    width: 100%;
+    /* A tall phone photo must not push the whole grid row down with it. */
+    max-height: 14rem;
+    border-radius: 4px;
+  }
+
+  .garage__media-image {
+    object-fit: cover;
+  }
+
+  /* An `<audio>` element has no picture to fit; its own height is correct. */
+  .garage__media-player[data-media-audio] {
+    max-height: none;
+  }
+
+  .garage__media-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
   }
 
   .garage__photos {

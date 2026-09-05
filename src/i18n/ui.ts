@@ -556,6 +556,38 @@ export interface UiStrings
   readonly garageReceiptIssueVendorLong: string;
   readonly garageReceiptIssueDate: string;
   readonly garageReceiptUntitled: string;
+  /* Record media attachments — T2-305, GAR-06′ */
+  readonly garageMediaHeading: string;
+  readonly garageMediaEmpty: string;
+  readonly garageMediaPrivateNote: string;
+  readonly garageMediaNeedRecord: string;
+  readonly garageMediaFileLabel: string;
+  readonly garageMediaHint: string;
+  readonly garageMediaAttach: string;
+  readonly garageMediaUploading: string;
+  readonly garageMediaOpen: string;
+  readonly garageMediaRemove: string;
+  readonly garageMediaRemoveConfirm: string;
+  readonly garageMediaTypeRejected: string;
+  /** `{size}` is the size limit, formatted by `Intl` in the page. */
+  readonly garageMediaSizeRejectedTemplate: string;
+  /*
+   * One whole template per kind, `{index}` being its number within that kind.
+   *
+   * An attachment carries no vendor, date or amount to name it by (GAR-06′),
+   * so "Voice note 2" is all there honestly is — and a remove button whose
+   * accessible name is just "Remove" beside three others is a button nobody
+   * using a screen reader can aim.
+   *
+   * Three templates rather than a shared `"{kind} {index}"` plus three nouns,
+   * because the composition is not the same in both languages and the shared
+   * half would have been a locale-independent value sitting in a per-locale
+   * record — which `ui.test.ts` refuses, rightly: anything identical in both
+   * locales belongs in `src/site.ts`, not here.
+   */
+  readonly garageMediaLabelPhotoTemplate: string;
+  readonly garageMediaLabelVideoTemplate: string;
+  readonly garageMediaLabelAudioTemplate: string;
   /* Vehicle selector — T204, FIT-03 */
   readonly vehicleSelectorLabel: string;
   readonly vehicleSelectorIdle: string;
@@ -1137,6 +1169,27 @@ const en: UiStrings = {
   garageReceiptIssueDate:
     "Give the receipt's date as year-month-day, or leave it empty.",
   garageReceiptUntitled: "Receipt",
+  garageMediaHeading: "Photos, video and voice notes",
+  garageMediaEmpty: "Nothing else is attached to this record.",
+  garageMediaPrivateNote:
+    "These are held in private storage, like the receipts above. Nobody without your session can open one, and the links this page uses expire on their own.",
+  garageMediaNeedRecord:
+    "Save the record first; then you can attach photos, video and voice notes to it.",
+  garageMediaFileLabel: "The file",
+  garageMediaHint:
+    "Anything that documents the job and is not a receipt: a photo of the part that failed, a video of the noise, the voice note the shop sent you.",
+  garageMediaAttach: "Attach file",
+  garageMediaUploading: "Uploading…",
+  garageMediaOpen: "Open",
+  garageMediaRemove: "Remove",
+  garageMediaRemoveConfirm:
+    "Remove this attachment? The file goes with it, and that cannot be undone.",
+  garageMediaTypeRejected:
+    "That file is not one this site stores here. Photos, video and audio all work; a receipt goes in the section above.",
+  garageMediaSizeRejectedTemplate: "That file is larger than {size}.",
+  garageMediaLabelPhotoTemplate: "Photo {index}",
+  garageMediaLabelVideoTemplate: "Video clip {index}",
+  garageMediaLabelAudioTemplate: "Voice note {index}",
   vehicleSelectorLabel: "Your vehicle",
   vehicleSelectorIdle: "Browsing all vehicles",
   vehicleSelectorOpen: "Select your vehicle",
@@ -1652,6 +1705,27 @@ const es: UiStrings = {
   garageReceiptIssueDate:
     "Indique la fecha de la factura en año-mes-día, o déjela vacía.",
   garageReceiptUntitled: "Factura",
+  garageMediaHeading: "Fotos, videos y notas de voz",
+  garageMediaEmpty: "Esta ficha no tiene nada más adjunto.",
+  garageMediaPrivateNote:
+    "Esto se guarda en almacenamiento privado, igual que las facturas de arriba. Nadie sin su sesión puede abrirlo, y los enlaces que usa esta página vencen solos.",
+  garageMediaNeedRecord:
+    "Guarde primero la ficha; después puede adjuntarle fotos, videos y notas de voz.",
+  garageMediaFileLabel: "El archivo",
+  garageMediaHint:
+    "Cualquier cosa que documente el trabajo y no sea una factura: una foto de la pieza que falló, un video del ruido, la nota de voz que le mandó el taller.",
+  garageMediaAttach: "Adjuntar el archivo",
+  garageMediaUploading: "Subiendo…",
+  garageMediaOpen: "Abrir",
+  garageMediaRemove: "Quitar",
+  garageMediaRemoveConfirm:
+    "¿Quitar este adjunto? El archivo se va con él, y eso no se puede deshacer.",
+  garageMediaTypeRejected:
+    "Ese archivo no es de los que el sitio guarda aquí. Sirven fotos, videos y audio; una factura va en la sección de arriba.",
+  garageMediaSizeRejectedTemplate: "Ese archivo pasa de {size}.",
+  garageMediaLabelPhotoTemplate: "Foto {index}",
+  garageMediaLabelVideoTemplate: "Video {index}",
+  garageMediaLabelAudioTemplate: "Nota de voz {index}",
   vehicleSelectorLabel: "Su vehículo",
   vehicleSelectorIdle: "Está viendo todos los vehículos",
   vehicleSelectorOpen: "Elija su vehículo",
