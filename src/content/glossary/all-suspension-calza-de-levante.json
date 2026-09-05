@@ -8,13 +8,13 @@
     {
       "term": "espaciador",
       "locale": "es",
-      "countries": ["CR", "MX", "ES"],
+      "countries": ["MX", "ES"],
       "falseFriend": true
     },
     {
       "term": "espaciadores",
       "locale": "es",
-      "countries": ["CR", "MX", "ES"],
+      "countries": ["MX", "ES"],
       "falseFriend": true
     },
     {
@@ -49,16 +49,30 @@
       "kind": "vendor"
     },
     {
-      "title": "Gaval Parts 4x4 — «Kits de Suspensión Vs Kits de Levante con calzas»: the Spanish-language shop's own contrast, including «El rango del resorte no se cambia, el carro va a tener la misma articulación y el mismo performance y confort que la suspension original» and «Al agregar calzas sin cambiar amortiguadores, disminuye el recorrido de la suspensión»",
+      "title": "Gaval Parts 4x4 — «Kits de Suspensión Vs Kits de Levante con calzas», the Spanish-language attestation for «calza» as the name of this part, including the shop's own «El rango del resorte no se cambia, el carro va a tener la misma articulación y el mismo performance y confort que la suspension original». (The article also uses «espaciadores» loosely for the same part; the same shop's own product shelf, cited below, reserves that word for wheel spacers — which is why this entry treats espaciador as a variant to recognize, not to use.)",
       "url": "https://gavalparts.com/blogs/noticias/kits-de-suspension-vs-kits-de-levante-con-calzas",
       "archiveUrl": "https://web.archive.org/web/20251009224213id_/https://gavalparts.com/blogs/noticias/kits-de-suspension-vs-kits-de-levante-con-calzas",
       "accessed": "2026-09-05",
       "kind": "vendor"
     },
     {
-      "title": "REACSA (Costa Rica) — product category «Espaciadores de Aros», listing wheel spacers priced in colones («ESPACIADOR AROS 30MM (5X127) CENTRO 71.5 MM JEEP», «ESPACIADOR AROS 30MM (5X139,7) CENTRO 108MM SUZUKI JIMNY»). The attestation for the false-friend warning on this entry: in Costa Rica «espaciador» is also the retail word for the part that pushes an aro outboard, which is not this part",
+      "title": "REACSA (Costa Rica) — product category «Espaciadores de Aros», listing wheel spacers priced in colones («ESPACIADOR AROS 30MM (5X127) CENTRO 71.5 MM JEEP», «ESPACIADOR AROS 30MM (5X139,7) CENTRO 108MM SUZUKI JIMNY»). The attestation for the false-friend warning on this entry: in Costa Rican retail «espaciador» is the word for the part that pushes an aro outboard, not for the part this entry defines",
       "url": "https://www.reacsa.co.cr/product-category/autoaccesorios/espaciadores-de-aros/",
-      "archiveUrl": "https://web.archive.org/web/20260905193113id_/https://www.reacsa.co.cr/product-category/autoaccesorios/espaciadores-de-aros/",
+      "archiveUrl": "https://web.archive.org/web/20260905193113/https://www.reacsa.co.cr/product-category/autoaccesorios/espaciadores-de-aros/",
+      "accessed": "2026-09-05",
+      "kind": "vendor"
+    },
+    {
+      "title": "Gaval Parts 4x4 — product page «Espaciadores en 2 in de grosor», describing them as «Espaciadores de Aluminio para Aros en 2 pulgadas de espesor, en diferentes medidas de bocina (Bolt Pattern)» and listing them by bolt pattern (5x4.5 Jeep, 6x5.5 Toyota/Isuzu/Mitsubishi…). The same shop whose blog is cited above for lift spacers sells «espaciadores» that are wheel spacers, which is the false friend this entry warns about",
+      "url": "https://gavalparts.com/products/espaciadores-en-2-in-de-grosor",
+      "archiveUrl": "https://web.archive.org/web/20250913104217/https://gavalparts.com/products/espaciadores-en-2-in-de-grosor",
+      "accessed": "2026-09-05",
+      "kind": "vendor"
+    },
+    {
+      "title": "REACSA (Costa Rica) — product category «Kits Levante y Suspensión», where every lift product is shelved as «KIT LEVANTE …» (2\" DMAX, 2\" L200, RC 2.5\" Grand Cherokee…) and the only «ESPACIADOR» on the shelf is «ESPACIADOR AROS RC 1.5\" JEEP WRANGLER JK / UNLIMITED (07-18)», i.e. a wheel spacer. The attestation that Costa Rican shops name this part «kit levante» and reserve «espaciador» for the wheel spacer",
+      "url": "https://www.reacsa.co.cr/product-category/autoaccesorios/kit-levante-y-suspension/",
+      "archiveUrl": "https://web.archive.org/web/20260317091038/https://www.reacsa.co.cr/product-category/autoaccesorios/kit-levante-y-suspension/",
       "accessed": "2026-09-05",
       "kind": "vendor"
     }
@@ -66,11 +80,11 @@
   "prose": {
     "en": {
       "title": "lift spacer",
-      "summary": "A spacer fitted above a front strut or a coil spring that raises the body without changing the spring itself. It is the cheap, reversible half of a lift: the spring rate, the articulation and the load capacity stay exactly as they were, and what changes is where the suspension sits in its own arc. In Costa Rica it is sold as a calza, and it is also called an espaciador — but be careful with that second word, because Costa Rican shops also sell «espaciadores de aros», the very different part that pushes a wheel outboard. Confirm which of the two the parts counter has in mind before you pay."
+      "summary": "A spacer fitted above a front strut or a coil spring that raises the body without changing the spring itself. It is the cheap, reversible half of a lift: the spring rate, the articulation and the load capacity stay exactly as they were, and what changes is where the suspension sits in its own arc. In Costa Rica it is sold as a calza, and shops shelve lift parts as «kit levante». Do not walk in and ask for an espaciador — Costa Rican shops use that word for «espaciadores de aros», the very different part that pushes a wheel outboard, and you would be sold the wrong thing. Elsewhere in the region espaciador does name this part, which is why it is recorded here as a variant to recognize rather than one to use."
     },
     "es": {
       "title": "calza de levante",
-      "summary": "La pieza que se monta encima del amortiguador delantero o del resorte para subir la carrocería sin cambiar el resorte. Es la mitad barata y reversible de un levante: la dureza del resorte, la articulación y la capacidad de carga quedan igual que estaban, y lo que cambia es en qué punto de su propio recorrido trabaja la suspensión. En Costa Rica también se le dice espaciador, pero ojo con esa segunda palabra, porque en el país se venden además los «espaciadores de aros», que son la pieza —muy distinta— que separa el aro hacia afuera. Confirme en la repuestera de cuál de las dos le están hablando antes de pagar."
+      "summary": "La pieza que se monta encima del amortiguador delantero o del resorte para subir la carrocería sin cambiar el resorte. Es la mitad barata y reversible de un levante: la dureza del resorte, la articulación y la capacidad de carga quedan igual que estaban, y lo que cambia es en qué punto de su propio recorrido trabaja la suspensión. En Costa Rica se vende como calza, y las casas del país rotulan lo de subir el carro como «kit levante». No llegue pidiendo un espaciador: aquí esa palabra se usa para los «espaciadores de aros», que son la pieza —muy distinta— que separa el aro hacia afuera, y le van a vender lo que no era. En otros países de la región espaciador sí nombra esta pieza, y por eso queda registrada aquí como una variante para reconocer y no para usar."
     }
   }
 }
