@@ -78,9 +78,15 @@ import { validateSlugRegistry, type SlugRegistry } from "../schemas/slugs.ts";
  *
  * `mods` is populated by T602's wave-1 set. The ES slugs are a Costa Rican
  * reader's own words rather than the English one transliterated, per the note
- * above: `levante-de-suspension`, `estribos-de-acero`,
+ * above: `levante-de-suspension`, `barras-laterales-de-acero`,
  * `bloqueo-del-diferencial-trasero`. They are unaccented because they are URLs,
  * which is the same call `problems` and `glossary` already made.
+ *
+ * `barras-laterales-de-acero` rather than `estribos-de-acero` on purpose: the
+ * merged `problems` content already uses `estribos` for the *sills* — the
+ * structural rocker panels that rust — and this entry's whole argument is that
+ * a bolt-on side rail is not a structure. Reusing the word would have inverted
+ * an established term on a safety-critical page (T602 bilingual review, #8).
  */
 export const ENTRY_SLUGS: Readonly<
   Record<string, Readonly<Record<string, Readonly<Record<Locale, string>>>>>
@@ -120,7 +126,7 @@ export const ENTRY_SLUGS: Readonly<
     },
     "gen3-body-steel-side-rails": {
       en: "steel-side-rails",
-      es: "estribos-de-acero",
+      es: "barras-laterales-de-acero",
     },
     "gen3-body-steel-front-bumper": {
       en: "steel-front-bumper",
