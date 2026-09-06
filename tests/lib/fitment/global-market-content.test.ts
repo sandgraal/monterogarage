@@ -235,18 +235,15 @@ describe("the shipped entries this rule is about", () => {
  * ---------------------------------------------------------------------- */
 
 describe("every shipped global-market entry fits the trucks it names", () => {
-  it.fails.each(GLOBAL_ONLY)(
-    "$id fits a truck in every market it names",
-    (row) => {
-      const missed = row.selections.filter(
-        (selection) => !entryAppliesTo(row.entry, selection, taxonomy)
-      );
-      expect(
-        missed.map((selection) => `${selection.gen}/${selection.market}`),
-        `${row.id} (markets ${JSON.stringify(row.markets)}) did not fit`
-      ).toEqual([]);
-    }
-  );
+  it.each(GLOBAL_ONLY)("$id fits a truck in every market it names", (row) => {
+    const missed = row.selections.filter(
+      (selection) => !entryAppliesTo(row.entry, selection, taxonomy)
+    );
+    expect(
+      missed.map((selection) => `${selection.gen}/${selection.market}`),
+      `${row.id} (markets ${JSON.stringify(row.markets)}) did not fit`
+    ).toEqual([]);
+  });
 
   /**
    * The same property as the table above, collapsed to one number so the
@@ -263,7 +260,7 @@ describe("every shipped global-market entry fits the trucks it names", () => {
    * entries keep their own marker, `MIXED_WITH_UNLISTED` below; reversing the
    * absorbing-`global` interpretation touches that block and nothing here.
    */
-  it.fails('the 89 `markets: ["global"]` entries, as one number', () => {
+  it('the 89 `markets: ["global"]` entries, as one number', () => {
     const misses = GLOBAL_ONLY.flatMap((row) =>
       row.selections
         .filter((selection) => !entryAppliesTo(row.entry, selection, taxonomy))
@@ -276,7 +273,7 @@ describe("every shipped global-market entry fits the trucks it names", () => {
     ).toBe(0);
   });
 
-  it.fails.each(GLOBAL_ONLY)(
+  it.each(GLOBAL_ONLY)(
     "$id answers exactly as it would with `markets` omitted",
     (row) => {
       // The ruling in one assertion: the two spellings are the same fitment.
@@ -399,7 +396,7 @@ describe("`global` alongside a real market, on real content", () => {
     }
   });
 
-  it.fails.each(MIXED_WITH_UNLISTED)(
+  it.each(MIXED_WITH_UNLISTED)(
     "$id reaches a market it does not list, because `global` already covers it",
     (row) => {
       const unlisted = row.selections.filter(
