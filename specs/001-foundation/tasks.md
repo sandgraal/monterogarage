@@ -34,6 +34,41 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
   - **Perf margin (T204 review, F3), measured 3 runs per page:** the webfonts plus the selector chrome cost the glossary pages some of their headroom. `/en/glossary/` and `/es/glosario/` sit at **92–93 / 90** after the two savings taken here (the per-row fit markers are built by the client instead of server-rendered into all 154 cards, −98 kB; and each card carries an index into a de-duplicated fitment table instead of its own escaped JSON, −19 kB). Every other sampled page is 98–100. **The glossary margin is 2–3 points; the next page-weight regression there lands red.** Not taken, with its measured value: moving the ~11 kB inlined taxonomy payload out to a fetched static JSON is worth a further ~2 points, but needs the selector and both listings to become async — deferred as a named follow-up rather than shipped unreviewed at the end of a review round. The reviewer's alternative ("inline only where a listing exists") provably cannot help here: the pages under budget pressure *are* the listings. The `latin-ext` font subsets were measured too — **zero** `latin-ext` codepoints appear anywhere in the built site, so they cost zero runtime bytes (their `unicode-range` already prevents the download) and are kept so a future European name in a source title does not fall back mid-word.
   - **Design-fidelity follow-up (T204 review, F7):** HANDOFF-DESIGN's site chrome puts the vehicle chip in the header, always visible. T204 ships the bar and panel at the top of `<main>` instead — a functional superset (idle CTA, full picker, active chip, clear) but not the final chrome. Header integration is recorded as a design-fidelity follow-up, not a defect. The skip link was re-anchored past the selector in the same review.
 
+- [ ] **T203a [TEST]** Graders for the `global`-market fitment bug (found 2026-09-06,
+  during T504a's authoring, owner-approved as a real bug fix rather than a
+  content sweep): `src/lib/fitment/index.ts`'s `matchesVehicle` treats a
+  present `fitment.markets` as a **direct-match facet** — `if (allowed ===
+  undefined) continue;` only skips the check when the field is entirely
+  absent, so `markets: ["global"]` is compared literally against the
+  visitor's selected market and never matches `"us"`, `"cr"`, or any real
+  selection. The module's own docstring (line ~32) already states the
+  correct semantics: *"`fitment.markets` is optional… omitting it correctly
+  means 'no market restriction'"* — but 89 existing content files (plus
+  T504's 8 new procedures) declare `markets: ["global"]` explicitly rather
+  than omitting the field, evidently believing that value means "applies
+  everywhere." Every one of those entries currently reads as "does not fit"
+  the moment a reader picks a specific market. **Owner ruling: fix the
+  engine, not the 89+ files** — `"global"` in a `markets` array must resolve
+  the same as omitting the field entirely. Grade: `matchesVehicle`/
+  `entryAppliesTo` treat `markets: ["global"]` as unrestricted for every
+  real market value in `MARKETS`; a fitment naming `"global"` **alongside**
+  other real market values (e.g. `["global", "us"]`, if such content exists
+  or could be authored) does not silently break either reading — decide and
+  grade a specific behavior for it, do not leave it ambiguous; the existing
+  T202/T203 boundary and impossible-combination graders are unaffected (no
+  regression on a fitment that validly omits `markets` or lists only real
+  values); at least one grader runs against real shipped content (a sample
+  of the 89 `markets: ["global"]` entries) rather than only synthetic
+  fixtures, so the fix is proven against the actual data it must unbreak.
+  Depends: T203 merged. *(FIT-01, FIT-03, FIT-04)*
+- [ ] **T203b [PLATFORM]** Implements the T203a seam: `"global"` inside a
+  `markets` array resolves as no market restriction, everywhere
+  `matchesVehicle`/`entryAppliesTo` are consulted (provisional-match
+  indicator logic from T204/F8 must keep working correctly — a `["global"]`
+  fitment should read as a **full** match, not a provisional one, since it
+  is not silent about market, it explicitly claims all of them). Activates
+  T203a graders. Depends: T203a merged. *(FIT-01, FIT-03, FIT-04)*
+
 ### Glossary & reference
 - [x] **T205 [PLATFORM]** Glossary schema + `check:glossary` real implementation (canonical-term conformance scan of ES prose) + public glossary page w/ system filter. Note: the T104 base schema requires `fitment`+`confidence` on every collection, glossary included; if glossary terms need that relaxed, it is a negotiated schema change (AGENTS.md stop-and-ask), not a drive-by fix. Same applies to T701 community entries. Depends: T106. *(GLO-01, GLO-02, GLO-04)*
 - [x] **T206 [CONTENT]** Glossary seed: ~150 core terms (systems, major components, tools, fluids) with CR-canonical ES, regional aliases, bilingual definitions. Binding notes (T205 reviews): list singular AND plural for every alias (the conformance scan does no stemming); `rin`, `goma`, `balatas` must exist as aliases (the search placeholder names them), `goma` with `falseFriend: true` (CR: hangover, not tire); coolant/fluid entries must agree with the chrome terms `Refrigeración` and `Líquidos`; no caveat renders on term cards (owner ruling 2026-08-28). Depends: T205. *(GLO-01, GLO-03)* Follow-up recorded at merge review (2026-08-29, both confirm passes): a small successor batch owes the four T201-ratification headwords still missing — `distancia entre ejes` (+`batalla`[es:ES]), `riel común`, `cámara de reversa`, `emblema` — plus the EN countable-noun alias plurals the bilingual pass enumerated (search-recall only; check:glossary scans ES, so zero gate exposure until T702's search index) and an optional AWD-vs-4WD contrast entry. **Extended by the T207 bilingual pass (2026-08-31):** that successor batch also owes the reference-table headwords T207's prose needed and the glossary does not yet carry — the off-road geometry group `ángulo de ataque` / `ángulo de salida` / `ángulo ventral` (one group, they are only ever read together), plus `peso bruto vehicular`, `altura libre` (the ruled canon for ground clearance, which T207 now uses) and `profundidad de vadeo`.
