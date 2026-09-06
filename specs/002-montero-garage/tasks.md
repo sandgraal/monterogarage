@@ -1393,6 +1393,13 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   is superseded and its migration file, plus the three prose references to the
   old filename (`src/lib/supabase/shares.ts`, `tests/garage/contract.ts`, this
   file), were resolved to match `main`'s on merge rather than re-diverging.
+  <br>**Also tracked, not blocking (AGENTS.md Orchestration ledger, entry
+  opened 2026-09-06):** `#125`'s `receipt-signer.test.ts` edit (adding
+  `LIVE_TEST_TIMEOUT_MS`) is the *second* implementer-role edit to that
+  grader file, after this task's own `04913f8` changed `requireSigner()`'s
+  signature and added a test case. Independently reviewed and found benign
+  both times, but recorded as debt against the separation rule — see
+  AGENTS.md for the full entry.
 
 - [ ] **T2-403 [PLATFORM]** Community evidence surfacing: opt-in per-record
   first-hand evidence on problem pages (001 GAR-04 re-cut). Depends: T2-402,
