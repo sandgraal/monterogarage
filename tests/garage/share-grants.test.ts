@@ -553,6 +553,20 @@ describe.skipIf(!live.available)(
           expect(receipts.ok).toBe(includesReceipts);
           if (includesReceipts) {
             expect(receiptRows.length).toBeGreaterThan(0);
+
+            // `receipts.ok` and the row count above are satisfied by a reader
+            // that returns every receipt row with `amount`/`currency` always
+            // attached — the exact regression the migration's own comments
+            // (T2-404 review, F1) name and fix: those two fields are the
+            // grant's *cost* decision, not its *receipt* decision, and stay
+            // gated on `includesCosts` even in this cell, where receipts are
+            // open. `createOwnedFixture` puts a non-null `amount` (123.45) on
+            // the one receipt this vehicle has, so `hasOwn` below is a real
+            // presence check, not one an empty or null field would pass by
+            // accident.
+            const receiptRow = receiptRows[0] as Record<string, unknown>;
+            expect(Object.hasOwn(receiptRow, "amount")).toBe(includesCosts);
+            expect(Object.hasOwn(receiptRow, "currency")).toBe(includesCosts);
           } else {
             expect(receiptRows).toHaveLength(0);
           }
