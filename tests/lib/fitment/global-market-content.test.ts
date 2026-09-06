@@ -26,6 +26,17 @@
  * every market its generations were sold in, the entry answers **exactly as it
  * would with `markets` omitted**.
  *
+ * ## Two authorities, kept apart
+ *
+ * The 89 follow from the **owner's ruling** verbatim; the 14 follow from
+ * **T203a's own interpretive call** that `global` is absorbing. Every
+ * decision-dependent `it.fails` here is scoped to one or the other and never
+ * to `AFFECTED` — section 2 grades `GLOBAL_ONLY`, section 3 grades the mixed
+ * entries. So if the owner ever disagrees with the absorbing reading, the
+ * reversal touches section 3 alone and no assertion silently changes meaning.
+ * (`AFFECTED` still backs the two corpus-shape checks and the `global`-market
+ * control below, none of which depend on either decision.)
+ *
  * ## How the selection for each entry is built
  *
  * Derived from the entry's own fitment, never guessed: the generation comes
@@ -237,8 +248,23 @@ describe("every shipped global-market entry fits the trucks it names", () => {
     }
   );
 
-  it.fails("the whole corpus, as one number", () => {
-    const misses = AFFECTED.flatMap((row) =>
+  /**
+   * The same property as the table above, collapsed to one number so the
+   * scale of the bug is legible in a single line of output.
+   *
+   * Scoped to `GLOBAL_ONLY` on purpose (T203a review, F2). Every assertion in
+   * this file is either a consequence of the **owner's ruling** (`["global"]`
+   * resolves as omitted) or a consequence of **T203a's own interpretive call**
+   * (`global` is absorbing, so `["global", "us"]` resolves as omitted too),
+   * and the two are quarantined from each other everywhere else — the mixed
+   * entries are graded only in section 3. An aggregate over `AFFECTED` would
+   * have silently mixed them, and would have gone red under a strict reading
+   * of the ruling for a reason its own title did not disclose. The 14 mixed
+   * entries keep their own marker, `MIXED_WITH_UNLISTED` below; reversing the
+   * absorbing-`global` interpretation touches that block and nothing here.
+   */
+  it.fails('the 89 `markets: ["global"]` entries, as one number', () => {
+    const misses = GLOBAL_ONLY.flatMap((row) =>
       row.selections
         .filter((selection) => !entryAppliesTo(row.entry, selection, taxonomy))
         .map((selection) => `${row.id} @ ${selection.gen}/${selection.market}`)
