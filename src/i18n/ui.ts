@@ -598,6 +598,23 @@ export interface UiStrings
   readonly sharePageError: string;
   readonly sharePageHistoryHeading: string;
   readonly sharePageHistoryEmpty: string;
+  /**
+   * A record the grant opened costs on, whose cost the owner left empty.
+   *
+   * The distinction this string exists to keep open: a grant that does not open
+   * costs receives no `cost_amount` key at all and renders no cost line, while
+   * a grant that *does* open costs on a record carrying no figure renders this.
+   * One says "you were not shown this"; the other says "you were shown all of
+   * it, and there is no figure here" — a warranty job, a favour, a parts swap
+   * in the owner's own driveway. Rendering both as a missing line collapses
+   * them (SHR-06), which is what T2-404's review found.
+   *
+   * It says "not recorded" rather than "free" on purpose. `cost_amount` is
+   * nullable and the owner is never made to fill it, so the honest reading of
+   * the null is the absence of a figure, not a claim about somebody else's
+   * money.
+   */
+  readonly sharePageCostNone: string;
   readonly sharePageReceiptsHeading: string;
   readonly sharePageReceiptOpen: string;
   readonly sharePageReceiptOpening: string;
@@ -1376,6 +1393,7 @@ const en: UiStrings = {
     "That did not go through. Reload in a moment; nothing about the truck has changed.",
   sharePageHistoryHeading: "What has been done",
   sharePageHistoryEmpty: "The owner has not recorded any work on this truck.",
+  sharePageCostNone: "No cost recorded for this job",
   sharePageReceiptsHeading: "Receipts",
   sharePageReceiptOpen: "Open the receipt",
   sharePageReceiptOpening: "Opening…",
@@ -2053,6 +2071,7 @@ const es: UiStrings = {
   sharePageHistoryHeading: "Lo que se le ha hecho",
   sharePageHistoryEmpty:
     "La persona dueña no ha anotado ningún trabajo en este carro.",
+  sharePageCostNone: "Sin costo anotado para este trabajo",
   sharePageReceiptsHeading: "Facturas",
   sharePageReceiptOpen: "Abrir la factura",
   sharePageReceiptOpening: "Abriendo…",

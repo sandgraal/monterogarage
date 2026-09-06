@@ -50,6 +50,31 @@
  * and why `tests/garage/receipt-signer.test.ts` reads the literal rather than
  * trusting a name.
  *
+ * ## CORS is not decoration here — without it the button does not work
+ *
+ * The caller is `src/lib/supabase/shares.ts`, running on `monterogarage.com`,
+ * POSTing to the Supabase project's origin with `content-type:
+ * application/json`, `apikey` and `authorization`. That is a **non-simple**
+ * cross-origin request three times over, so every browser sends an `OPTIONS`
+ * preflight first — and a preflight answered without
+ * `Access-Control-Allow-Origin` fails before the POST is ever attempted. A
+ * function that refuses `OPTIONS` is therefore not a stricter function; it is a
+ * function whose only caller can never reach it, and the failure shows up in
+ * the browser console rather than in any test that calls it with `fetch` from
+ * Deno or Node (T2-404 review, F2).
+ *
+ * `*` for the origin, and that is not a weakening. This function holds no
+ * ambient authority: no cookie, no session, nothing the browser attaches on its
+ * own. Authorization is entirely the bearer token in the request body, so an
+ * origin allow-list would only ever inconvenience a caller who already holds
+ * the token — while breaking every Vercel preview deploy, which is how the
+ * allow-list gets replaced with `*` in a hurry six months from now.
+ *
+ * The headers ride on **every** response, refusals included. A CORS header on
+ * the success path alone means the browser cannot read the refusal either, and
+ * an unreadable 403 surfaces to the page as a network failure — collapsing the
+ * exact distinction `ShareResult` draws between "refused" and "failed".
+ *
  * ## The refusal says nothing (SHR-08)
  *
  * Unknown token, expired grant, revoked grant, `includes_receipts = false`,
@@ -93,7 +118,23 @@ const SHARE_RECEIPTS_READER = "share_read_receipts";
 /** One refusal, for every reason. */
 const REFUSED = { error: "share unavailable" };
 
+/**
+ * The preflight answer, and the prefix of every other answer.
+ *
+ * `apikey` and `authorization` are what the Supabase client sends; `x-client-info`
+ * is what `@supabase/supabase-js` adds on its own, listed so that a future
+ * caller built on the SDK rather than raw `fetch` does not fail a preflight for
+ * a header nobody chose to send.
+ */
+const corsHeaders = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-methods": "POST, OPTIONS",
+  "access-control-allow-headers":
+    "authorization, x-client-info, apikey, content-type",
+} as const;
+
 const JSON_HEADERS = {
+  ...corsHeaders,
   "content-type": "application/json",
   // Belt for the surface the fragment already keeps out of the log: this
   // response is only ever fetched by the share page, and nothing about it
@@ -116,6 +157,12 @@ interface ResolvedReceipt {
 }
 
 Deno.serve(async (request: Request): Promise<Response> => {
+  // The preflight, answered before anything else and before any refusal: a
+  // browser sends `OPTIONS` with no body and no credentials, and treating it as
+  // "not a POST" makes the real POST unreachable.
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
   if (request.method !== "POST") return refuse();
 
   const url = Deno.env.get("SUPABASE_URL");

@@ -26,7 +26,9 @@
  * this" is answered by the shape of the data rather than by a boolean this
  * module could get wrong. `Object.hasOwn(row, "cost_amount")` is the whole
  * question, and `src/lib/garage/visibility.ts`'s `VisibleRecord` is already
- * that shape.
+ * that shape. `SharedReceipt` below carries `amount`/`currency` optionally for
+ * exactly the same reason: `includes_costs` is the money bit wherever the
+ * money lives, receipts included.
  *
  * ## Failures are values, and a failure is never an empty list
  *
@@ -111,15 +113,24 @@ export interface IssuedGrant {
   readonly token: string;
 }
 
-/** One receipt as a grant holder sees it. */
+/**
+ * One receipt as a grant holder sees it.
+ *
+ * `amount` and `currency` are **optional, not nullable**, for the same reason
+ * `VisibleRecord`'s cost keys are: `share_read_receipts` omits the pair
+ * entirely from a grant that does not open costs, and a required nullable field
+ * would have made "this receipt was for nothing" and "you were not shown the
+ * total" the same value. Which rows arrive is `includes_receipts`; whether the
+ * money rides along is `includes_costs`, and they are two questions (SHR-06).
+ */
 export interface SharedReceipt {
   readonly id: string;
   readonly record_id: string;
   readonly storage_path: string;
   readonly vendor: string | null;
   readonly issued_on: string | null;
-  readonly amount: number | null;
-  readonly currency: string | null;
+  readonly amount?: number | null;
+  readonly currency?: string | null;
 }
 
 /** The granted vehicle's identity — the taxonomy fields and the name. */
@@ -139,6 +150,30 @@ function failed<T>(): ShareResult<T> {
 
 function refused<T>(): ShareResult<T> {
   return { ok: false, reason: "refused" };
+}
+
+/**
+ * Did the *database* answer, or did the request never get there?
+ *
+ * PostgREST reports both through the same `error` object, and telling them
+ * apart is the difference between "this link is no longer valid" and "we could
+ * not check right now" — two sentences a holder must never see in place of one
+ * another (SHR-08 governs the first; AGENTS.md's "a failure is not a zero"
+ * governs the second).
+ *
+ * The discriminator is the SQLSTATE. `postgrest-js` fills `code` from the
+ * server's response body, so a genuine refusal carries `42501` — the
+ * `insufficient_privilege` every share reader raises for unknown, expired and
+ * revoked alike. When `fetch` itself rejects, the same library synthesises an
+ * error object out of the `TypeError` with `code` set to the empty string,
+ * because a request that never reached Postgres has no SQLSTATE to report.
+ *
+ * Reading the code rather than the message keeps SHR-08 intact: all three
+ * refusal causes share one SQLSTATE, so nothing here can reconstruct which one
+ * the holder hit.
+ */
+function serverAnswered(error: { readonly code?: string } | null): boolean {
+  return typeof error?.code === "string" && error.code !== "";
 }
 
 /* -------------------------------------------------------------------------
@@ -275,9 +310,19 @@ export async function revokeShareGrant(
  * tell a warning from a call — correctly, because a grader that skipped
  * comments would skip a commented-out one too.
  *
- * Any error at all becomes `refused`, undifferentiated. The database already
- * answers unknown, expired and revoked identically (SHR-08); this keeps the
- * client from re-deriving a difference out of a status code.
+ * Every error the *database* returns becomes `refused`, undifferentiated: it
+ * answers unknown, expired and revoked identically (SHR-08), and collapsing
+ * them again here keeps the client from re-deriving a difference out of a
+ * status code.
+ *
+ * ## A dropped connection is not a "no" (T2-404 review, F8)
+ *
+ * The first version stopped at `if (error) return refused()`, which told a
+ * holder on a workshop's bad wifi that their link had been revoked. That is the
+ * same class of mistake as rendering a failed fetch as `[]`: an outage
+ * reported as somebody's decision. `signSharedReceipt` below already draws the
+ * line — `catch` is `failed`, a non-`ok` response is `refused` — and this is
+ * that line, drawn where PostgREST puts it.
  */
 async function readAsHolder<T>(
   reader: string,
@@ -286,7 +331,7 @@ async function readAsHolder<T>(
   const client = await getSupabaseClient();
   if (!client) return { ok: false, reason: "unconfigured" };
   const { data, error } = await client.rpc(reader, { p_token: token });
-  if (error) return refused();
+  if (error) return serverAnswered(error) ? refused() : failed();
   // Not an array is not an empty array. A reader that answered with something
   // unexpected is a failure, and rendering it as "no records" would be the
   // failure-is-not-a-zero mistake on the one page whose whole content is

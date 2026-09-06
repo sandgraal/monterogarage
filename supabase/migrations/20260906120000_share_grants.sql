@@ -108,9 +108,9 @@ comment on column public.shares.token_hash is
 comment on column public.shares.kind is
   'SHR-05: a label over the capability columns (mechanic | buyer). Never a branch in a reader.';
 comment on column public.shares.includes_costs is
-  'SHR-06: opens the record cost fields. Independent of includes_receipts.';
+  'SHR-06: opens the money — record cost fields and the amount/currency pair on a receipt row. Independent of includes_receipts.';
 comment on column public.shares.includes_receipts is
-  'SHR-06: opens receipt metadata and the signer path. Independent of includes_costs.';
+  'SHR-06: opens receipt rows and the signer path. Independent of includes_costs: a scan is shared with its total withheld when only this bit is set.';
 comment on column public.shares.expires_at is
   'SHR-08: every grant carries an expiry. Not null — "until revoked" is a far date, not a null.';
 comment on column public.shares.revoked_at is
@@ -182,6 +182,22 @@ grant select, insert, update, delete on public.shares to service_role;
 -- table privileges directly, and so ownership is checked once, here, in a
 -- routine the graders read. The ownership test is explicit rather than
 -- inherited from RLS precisely because a definer routine does not consult RLS.
+--
+-- ## The lifetime has a ceiling and deliberately no floor (T2-404 review, F10)
+--
+-- The form offers 7, 30 and 90 days, but a form is not an enforcement mode
+-- (SHR-01). PostgREST exposes this routine directly, so `p_expires_in_hours`
+-- is a caller-controlled integer and `make_interval(hours => 87600)` mints a
+-- ten-year "expiring" grant — SHR-08's expiry requirement satisfied on paper
+-- and defeated in fact. The ceiling below is the form's own longest choice, so
+-- a direct call can do what the UI can do and nothing more.
+--
+-- There is no floor, and that asymmetry is the point rather than an oversight:
+-- a short — or negative — lifetime produces a grant that every reader refuses
+-- from the moment it exists, which cannot leak anything. Clamping it upward
+-- would be the dangerous direction, and it would also break the Tier B
+-- already-expired fixture, which asks for `-1` precisely because that is the
+-- only way to observe a real expired grant without waiting an hour.
 
 create function public.create_share_grant(
   p_vehicle_id uuid,
@@ -200,8 +216,18 @@ declare
   v_owner uuid := (select auth.uid());
   v_secret text;
   v_hours integer := coalesce(p_expires_in_hours, 24);
+  -- 90 days, in hours. The longest lifetime `SHARE_EXPIRY_DAY_CHOICES` in
+  -- `src/lib/supabase/shares.ts` offers, restated here because this routine is
+  -- reachable without that form.
+  v_max_hours constant integer := 90 * 24;
 begin
   if v_owner is null then
+    raise insufficient_privilege using message = 'share grant refused';
+  end if;
+
+  -- Same refusal as every other rejection in this routine: an owner who asked
+  -- for ten years is told no, not told which of the checks said so.
+  if v_hours > v_max_hours then
     raise insufficient_privilege using message = 'share grant refused';
   end if;
 
@@ -462,21 +488,40 @@ end;
 $$;
 
 -- --- share_read_receipts ----------------------------------------------------
--- Gated on `includes_receipts` and on nothing else. A reader that also
--- required `includes_costs` would collapse SHR-06's two decisions into one,
--- and the cell it would break — `costs=false receipts=true` — is the cell a
--- single "full access" boolean cannot express.
+-- **Which rows come back** is gated on `includes_receipts` and on nothing
+-- else. A reader that also required `includes_costs` to return the row would
+-- collapse SHR-06's two decisions into one, and the cell it would break —
+-- `costs=false receipts=true` — is the cell a single "full access" boolean
+-- cannot express. So a scan is still shared with its money withheld, exactly
+-- as a record is.
 --
--- ## `amount` and `currency` are returned, and that is not a costs leak
+-- ## `amount` and `currency` are the grant's *cost* decision, not its receipt
+-- ## decision (T2-404 review, F1)
 --
--- A receipt *is* an amount: GAR-05' says a receipt row carries vendor, date
--- and amount, and the scan this row resolves shows that amount to anybody who
--- opens it. Withholding the number from the row while handing over the
--- picture of the number would be privacy theatre with a maintenance cost. The
--- honest boundary is the one the columns already draw: `includes_costs`
--- governs the *record's* cost fields, `includes_receipts` governs the
--- receipts. Gating these two fields on `includes_costs` is the one thing that
--- is not available — it is the collapse SHR-06 forbids.
+-- The first version of this routine returned `amount` and `currency`
+-- unconditionally, and argued that a receipt *is* an amount, so withholding
+-- the number while handing over a picture of the number was theatre. That
+-- argument lost, for two reasons that are not stylistic:
+--
+-- 1. The owner's own issue panel says, in both locales, that they can "hand
+--    over the scans without the totals, or the totals without the scans". A
+--    reader that ships the totals with the scans anyway makes the checkbox
+--    beside that sentence a lie, and the checkbox is the whole of SHR-06.
+-- 2. `includes_costs` is the *money* bit, wherever the money lives. Reading it
+--    as "the money on `records` only" is the same collapse in the other
+--    direction: two columns, one of which quietly does not mean what it says.
+--
+-- So the money pair is **appended conditionally**, in the same idiom
+-- `share_read_records` uses two functions above — omitted entirely, never
+-- `null`, because `null` is a value and the value means the receipt was for
+-- nothing.
+--
+-- The residual is stated rather than hidden: a `costs=false receipts=true`
+-- grant can still open the scan and *read* the total off the image. This
+-- routine cannot redact a JPEG. What it can do is refuse to put the figure
+-- into a machine-readable field the holder can total up, sort by, or scrape —
+-- and that is the difference between a document somebody looked at and a
+-- dataset somebody has.
 --
 -- `storage_path` is returned because the Edge signer resolves it: the signer
 -- signs the path this routine hands back and never a path a caller supplied,
@@ -491,9 +536,10 @@ set search_path = ''
 as $$
 declare
   v_vehicle_id uuid;
+  v_includes_costs boolean;
 begin
-  select s.vehicle_id
-    into v_vehicle_id
+  select s.vehicle_id, s.includes_costs
+    into v_vehicle_id, v_includes_costs
     from public.shares s
    where s.token_hash = extensions.digest(p_token, 'sha256')
      and s.revoked_at is null
@@ -510,10 +556,16 @@ begin
              'record_id', rc.record_id,
              'storage_path', rc.storage_path,
              'vendor', rc.vendor,
-             'issued_on', rc.issued_on,
-             'amount', rc.amount,
-             'currency', rc.currency
+             'issued_on', rc.issued_on
            )
+           || case
+                when v_includes_costs is true then
+                  jsonb_build_object(
+                    'amount', rc.amount,
+                    'currency', rc.currency
+                  )
+                else '{}'::jsonb
+              end
       from public.receipts rc
       join public.records r on r.id = rc.record_id
      where r.vehicle_id = v_vehicle_id
@@ -553,7 +605,7 @@ comment on function public.share_read_vehicle(text) is
 comment on function public.share_read_records(text) is
   'SHR-05/SHR-06: the granted vehicle''s history. Cost fields are present only when the grant opens them — omitted, not blanked.';
 comment on function public.share_read_receipts(text) is
-  'SHR-06: receipt metadata and the storage path the Edge signer resolves, only when the grant opens receipts. Independent of includes_costs.';
+  'SHR-06: receipt metadata and the storage path the Edge signer resolves, only when the grant opens receipts. Which rows come back is independent of includes_costs; the amount/currency pair on each row is not, and is omitted rather than blanked.';
 
 -- ---------------------------------------------------------------------------
 -- The reserved-handle list catches up with the site's namespace (SHR-02)

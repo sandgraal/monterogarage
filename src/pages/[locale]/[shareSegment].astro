@@ -78,6 +78,7 @@ const configured = SUPABASE_BROWSER_CONFIG !== null;
     data-string-refused={strings.sharePageRefused}
     data-string-error={strings.sharePageError}
     data-string-history-empty={strings.sharePageHistoryEmpty}
+    data-string-cost-none={strings.sharePageCostNone}
     data-string-receipts-closed={strings.sharePageReceiptsClosed}
     data-string-receipt-open={strings.sharePageReceiptOpen}
     data-string-receipt-opening={strings.sharePageReceiptOpening}
@@ -206,11 +207,21 @@ const configured = SUPABASE_BROWSER_CONFIG !== null;
     /**
      * One record, as a list item.
      *
-     * The cost line is rendered **only when the key is present**. Not "when it
-     * is non-null" — a `null` cost on a record the grant opened means the job
-     * was free, and it is the owner's own claim about their own money. The
-     * absent key is the database saying "you were not shown this", and the two
-     * must not render alike (SHR-06).
+     * The cost line is rendered **only when the key is present**, and whenever
+     * the key is present. Not "when it is non-null" — a `null` cost on a record
+     * the grant opened is a record whose money the reader *was* shown, and
+     * there is no figure in it. The absent key is the database saying "you were
+     * not shown this", and the two must not render alike (SHR-06;
+     * `src/lib/garage/visibility.ts` settles the reading of the null).
+     *
+     * ## The condition used to disagree with this paragraph (T2-404 review, F9)
+     *
+     * It read `Object.hasOwn(row, "cost_amount") && typeof row.cost_amount ===
+     * "number"`, which drops a `null` cost on the floor and renders it exactly
+     * as a withheld one — collapsing, in the branch, the distinction the
+     * database went to the trouble of expressing in the payload. So the key
+     * presence decides *whether* there is a cost line and the value decides
+     * *what it says*: a figure, or the words for nothing.
      */
     function renderRecord(row: VisibleRecord): HTMLLIElement {
       const item = document.createElement("li");
@@ -245,18 +256,14 @@ const configured = SUPABASE_BROWSER_CONFIG !== null;
       meta.textContent = parts.join(" · ");
       item.append(meta);
 
-      if (
-        Object.hasOwn(row, "cost_amount") &&
-        typeof row.cost_amount === "number" &&
-        typeof row.cost_currency === "string"
-      ) {
+      if (Object.hasOwn(row, "cost_amount")) {
         const cost = document.createElement("p");
         cost.className = "share__record-cost";
-        cost.textContent = formatCost(
-          row.cost_amount,
-          row.cost_currency,
-          locale
-        );
+        cost.textContent =
+          typeof row.cost_amount === "number" &&
+          typeof row.cost_currency === "string"
+            ? formatCost(row.cost_amount, row.cost_currency, locale)
+            : (text.stringCostNone ?? "");
         item.append(cost);
       }
 
