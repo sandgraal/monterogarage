@@ -15,7 +15,7 @@
  * The same boundary `./garage.ts` states, and it matters more here. Every
  * decision — is this token live, has it expired, was it revoked, does the
  * grant open costs, does it open receipts, which vehicle does it reach — is
- * made inside `20260906120000_share_grants.sql`, because SHR-01 names exactly
+ * made inside `20260906120001_share_grants.sql`, because SHR-01 names exactly
  * three enforcement modes and "a check in page code" is not one of them. What
  * this module does is *ask correctly*: it POSTs the token (never a query
  * string, which would put a bearer credential into every access log between

@@ -223,7 +223,7 @@ export const RECORD_MEDIA_TABLE: TableContract = {
  * in the schema that holds bearer secrets — to keep a build quiet would
  * re-open the exact hole the sweep was added to close. Its `pending: "T2-404"`
  * markers, on the table and on all nine of its columns, were deleted by T2-404
- * in the commit that added `20260906120000_share_grants.sql` — the promotion
+ * in the commit that added `20260906120001_share_grants.sql` — the promotion
  * `ColumnContract.pending` describes, for the second time.
  */
 export const USER_TABLES: readonly TableContract[] = [
