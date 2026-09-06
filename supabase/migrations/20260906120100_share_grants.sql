@@ -512,9 +512,13 @@ $$;
 --    direction: two columns, one of which quietly does not mean what it says.
 --
 -- So the money pair is **appended conditionally**, in the same idiom
--- `share_read_records` uses two functions above — omitted entirely, never
--- `null`, because `null` is a value and the value means the receipt was for
--- nothing.
+-- `share_read_records` uses two functions above — omitted entirely, not
+-- `null`, for a grant that does not open costs. That is a claim about the
+-- *grant*, not about this *receipt*: `receipts.amount`/`receipts.currency`
+-- are themselves nullable, and a `costs=true` grant on a receipt nobody ever
+-- entered a total for still returns the pair as `null` — correctly, because
+-- here `null` means "the owner never recorded one," not "you were not shown
+-- it." Only the omitted case says the second thing.
 --
 -- The residual is stated rather than hidden: a `costs=false receipts=true`
 -- grant can still open the scan and *read* the total off the image. This

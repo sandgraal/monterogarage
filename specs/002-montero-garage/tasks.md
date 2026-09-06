@@ -1332,7 +1332,7 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   2026-09-05 amendment folded in did not, because they are blocked on a grader
   the amendment did not see. Same shape as T2-402's own partial landing, and
   for a related reason.
-  <br>*Shipped:* `20260906120000_share_grants.sql` — the `shares` table (forced
+  <br>*Shipped:* `20260906120100_share_grants.sql` — the `shares` table (forced
   RLS, owner-scoped through `vehicle_id`, `revoke`-then-`grant` ACL, cascade),
   `create_share_grant` / `revoke_share_grant` (authenticated, definer,
   `search_path = ''`), and the three anon readers `share_read_vehicle` /
