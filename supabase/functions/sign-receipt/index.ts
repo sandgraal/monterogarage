@@ -150,6 +150,66 @@ function refuse(): Response {
   });
 }
 
+/**
+ * We could not check — an outage or a stalled deploy, never a decision
+ * (T2-404 review, F9).
+ *
+ * Same shape as the "signer unconfigured" response above, and for the same
+ * reason: CORS headers still attached, because a browser that cannot read a
+ * failed response cannot tell it apart from a network error either, and a
+ * distinct status from `refuse()`'s 403 so a Supabase outage never reads to a
+ * holder — or to whoever is watching logs — as "share unavailable" the way a
+ * revoked grant does.
+ */
+function unavailable(): Response {
+  return new Response(JSON.stringify({ error: "could not check share" }), {
+    status: 500,
+    headers: JSON_HEADERS,
+  });
+}
+
+/**
+ * Did Postgres answer the RPC, or did the request never get there?
+ *
+ * The exact discriminator `src/lib/supabase/shares.ts`'s `serverAnswered`
+ * uses on the same client library, read here because this function calls
+ * `share_read_receipts` a second time rather than trusting the browser's copy
+ * (the whole point of "Postgres decides" above). `postgrest-js` fills `code`
+ * from the SQLSTATE in the server's response body, so a genuine refusal
+ * carries one (`42501`, the `insufficient_privilege` every share reader
+ * raises alike); when `fetch` itself never gets a response — a dead
+ * `SUPABASE_URL`, a DNS failure, a timeout — the same library synthesises an
+ * error with `code` set to `""` and `status: 0`, because a request that never
+ * reached Postgres has no SQLSTATE to report.
+ */
+function serverAnswered(error: { readonly code?: string } | null): boolean {
+  return typeof error?.code === "string" && error.code !== "";
+}
+
+/**
+ * `PGRST202`: the routine is not in PostgREST's schema cache — a migration
+ * that has not run against this project, not a token any grant ever issued.
+ * The server did answer, so `serverAnswered` alone would call this a refusal;
+ * it is this function's deploy being incomplete, the same class of problem as
+ * the missing-env-var check above, and it is treated the same way.
+ */
+function isMissingRoutine(error: { readonly code?: string } | null): boolean {
+  return error?.code === "PGRST202";
+}
+
+/**
+ * Did Storage answer the signing request, or did it never get there?
+ *
+ * `storage-js` mints a `StorageApiError` — with a numeric `status` — when the
+ * request reached the Storage API and got an HTTP response back, including a
+ * 4xx or 5xx; it mints a `StorageUnknownError` — `status` left `undefined` —
+ * when `fetch` rejected before any response existed. The same asymmetry
+ * `serverAnswered` reads on the anon client above, one API over.
+ */
+function storageAnswered(error: { readonly status?: number } | null): boolean {
+  return typeof error?.status === "number";
+}
+
 /** One receipt row as the RPC returns it. Only two fields are read. */
 interface ResolvedReceipt {
   readonly id?: unknown;
@@ -206,7 +266,18 @@ Deno.serve(async (request: Request): Promise<Response> => {
   const { data, error } = await asAnon.rpc(SHARE_RECEIPTS_READER, {
     p_token: token,
   });
-  if (error || !Array.isArray(data)) return refuse();
+  if (error) {
+    // A dropped connection is not a "no" here either (T2-404 review, F9) —
+    // confirmed by execution against a dead `SUPABASE_URL`, which came back
+    // as this function's own 403 rather than the 500 an outage is.
+    if (!serverAnswered(error) || isMissingRoutine(error)) return unavailable();
+    return refuse();
+  }
+  // Not an array is not an empty array, same as `readAsHolder` in
+  // `src/lib/supabase/shares.ts`: a reader that answered with something
+  // unexpected is a failure, and rendering it as "this grant reaches
+  // nothing" would be the failure-is-not-a-zero mistake one layer down.
+  if (!Array.isArray(data)) return unavailable();
 
   const resolved = (data as ResolvedReceipt[]).find(
     (row) => row?.id === receiptId
@@ -228,7 +299,13 @@ Deno.serve(async (request: Request): Promise<Response> => {
     .createSignedUrl(resolvedPath, expiresIn);
 
   const signedUrl = signed.data?.signedUrl;
-  if (signed.error || typeof signedUrl !== "string") return refuse();
+  if (signed.error) {
+    // Same split as the RPC above: a Storage outage is not Storage refusing
+    // the path Postgres already authorized.
+    if (!storageAnswered(signed.error)) return unavailable();
+    return refuse();
+  }
+  if (typeof signedUrl !== "string") return unavailable();
 
   return new Response(
     JSON.stringify({ url: signedUrl, expires_in: expiresIn }),
