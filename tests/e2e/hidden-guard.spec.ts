@@ -116,6 +116,11 @@ const UNCONDITIONAL_PAGES = [
   // added them, not a reason to wait.
   { locale: "en", path: "/en/procedures/" },
   { locale: "es", path: "/es/procedimientos/" },
+  // T702 — the site-wide search page carries a `[hidden]` element
+  // (`data-search-none`) and lays its toolbar out with `display: flex`,
+  // exactly like every other filtered listing above.
+  { locale: "en", path: "/en/search/" },
+  { locale: "es", path: "/es/buscar/" },
 ] as const;
 
 /**

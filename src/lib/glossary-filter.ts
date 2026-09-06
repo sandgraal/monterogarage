@@ -29,6 +29,20 @@
  */
 import { normalizeForSearch } from "./text";
 
+/**
+ * The glossary page's own DOM id for one entry's card, `#term-<id>` with `/`
+ * replaced (nested entry ids carry one, and `/` is not id-safe).
+ *
+ * Shared rather than reimplemented: `[glossarySegment].astro` uses it to
+ * build the id it renders, and `[searchSegment].astro` (T702) uses the same
+ * function to build the `#term-…` fragment its own cards link to — two
+ * copies of this format existing anywhere is a page whose search result
+ * links to an anchor that does not exist, silently, the day either drifts.
+ */
+export function glossaryTermDomId(id: string): string {
+  return `term-${id.replace(/\//g, "--")}`;
+}
+
 /** What a card carries, as the filter sees it. */
 export interface GlossaryFilterCard {
   /** The card's system id, `data-system`. */
