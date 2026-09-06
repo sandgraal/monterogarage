@@ -1,0 +1,40 @@
+{
+  "id": "torque-gen3-timing-belt-tension-pulley-bolt",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    },
+    "engines": ["6g74-gdi"]
+  },
+  "kind": "torque",
+  "system": "engine",
+  "torque": {
+    "value": 48,
+    "min": 42,
+    "max": 54,
+    "unit": "nm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis Volume 1, Pub. No. PWJE0001(1/2) (February 2000): groups 00 to 23 — group 11A, Engine <6G7>, §11A-16, Timing Belt removal and installation (the tension pulley centre bolt callout), and §11A-21, where the same bolt is tightened after the tension is applied",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260831203139id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Timing belt tension pulley centre bolt tightening torque — 6G74 GDI",
+      "summary": "The tightening torque for the centre bolt of the timing belt tension pulley on the direct-injection petrol V6. The manual's order matters as much as the figure: the belt is tensioned with the bolt loose and the special tool on the pulley, and only then is the bolt tightened — while holding the pulley so it cannot turn with the bolt and change the tension you just set."
+    },
+    "es": {
+      "title": "Par de apriete del tornillo central de la polea tensora — 6G74 GDI",
+      "summary": "El par de apriete del tornillo central de la polea tensora de la faja de distribución del V6 de gasolina de inyección directa. El orden del manual importa tanto como la cifra: la faja se tensa con el tornillo flojo y la herramienta especial puesta en la polea, y hasta entonces se aprieta el tornillo, sujetando la polea para que no gire con él y le cambie la tensión que acaba de dejar."
+    }
+  }
+}

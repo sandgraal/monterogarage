@@ -1,0 +1,37 @@
+{
+  "id": "dimension-gen3-front-brake-pad-thickness-new",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    }
+  },
+  "kind": "dimension",
+  "system": "brakes",
+  "dimension": {
+    "value": 10.0,
+    "unit": "mm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis, Pub. No. PWJE0001 (February 2000), second scanned part: groups 25 to 55 — group 35A, Basic Brake System, §35A-6, Service Specifications (front and rear disc brake pad thickness, standard value and limit), and §35A-31, Disc Brake Pad Check and Replacement, where the same standard value is repeated alongside the check-port method",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260906181459id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Front brake pad thickness — standard value (new)",
+      "summary": "The friction thickness the brake group gives as the standard value for a front pad. Read together with the wear limit it is what lets you work out how much life is left rather than guessing from a glance through the caliper port. The manual gives the rear pads the same standard value on the same table, but the rear brake is a different caliper with its own hardware and its own torques. The manual this comes from is the export PAJERO book; the North American Montero has its own manual and a reader on that truck should confirm the figure there."
+    },
+    "es": {
+      "title": "Espesor de la pastilla de freno delantera — valor estándar (nueva)",
+      "summary": "El espesor de material de fricción que el grupo de frenos da como valor estándar para una pastilla de freno delantera. Leído junto con el límite de desgaste, es lo que le permite calcular cuánta vida le queda en vez de calcular a ojo por la ventana del cáliper. El manual le da a las pastillas traseras el mismo valor estándar en esa misma tabla, pero el freno trasero es otro cáliper, con su propia tornillería y sus propios pares de apriete. El manual del que sale esto es el del PAJERO de exportación; el Montero de Norteamérica tiene su propio manual, y quien ande en ese carro debería confirmar la cifra ahí."
+    }
+  }
+}

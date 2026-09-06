@@ -16,6 +16,18 @@
       "countries": ["ES"]
     },
     {
+      "term": "dado",
+      "locale": "es",
+      "countries": ["MX"],
+      "falseFriend": true
+    },
+    {
+      "term": "dados",
+      "locale": "es",
+      "countries": ["MX"],
+      "falseFriend": true
+    },
+    {
       "term": "sockets",
       "locale": "en",
       "countries": ["US", "GB", "AU"]
@@ -39,11 +51,11 @@
   "prose": {
     "en": {
       "title": "socket",
-      "summary": "The cup that fits over a nut or bolt head and drives from a ratchet. Costa Rican catalogs sell them as cubos, in sets and singly — not to be confused with the cubos de rueda libre on the front axle, which are hubs."
+      "summary": "The cup that fits over a nut or bolt head and drives from a ratchet. Costa Rican catalogs sell them as cubos, in sets and singly — not to be confused with the cubos de rueda libre on the front axle, which are hubs. Mexican catalogs and Mexican-made videos call the same tool a dado, which is why the word turns up in Costa Rican workshops; it is recorded here for search only, and never used in this site's Spanish, because dado is also the ordinary past participle of dar."
     },
     "es": {
       "title": "cubo",
-      "summary": "La copa que entra sobre la tuerca o la cabeza del perno y se acciona con ratchet. Los catálogos ticos los venden como cubos, en juegos y por unidad. Ojo con el otro sentido de la palabra: los cubos de rueda libre del eje delantero son otra cosa."
+      "summary": "La copa que entra sobre la tuerca o la cabeza del perno y se acciona con ratchet. Los catálogos ticos los venden como cubos, en juegos y por unidad. Ojo con el otro sentido de la palabra: los cubos de rueda libre del eje delantero son otra cosa. Y ojo también con «dado»: así le dicen en México, y de ahí se oye en talleres ticos, pero aquí no se usa —queda solo para la búsqueda—, entre otras cosas porque «dado» es además el participio corriente de «dar»."
     }
   }
 }

@@ -1,0 +1,39 @@
+{
+  "id": "torque-gen3-engine-oil-drain-plug",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    }
+  },
+  "kind": "torque",
+  "system": "engine",
+  "torque": {
+    "value": 39,
+    "min": 34,
+    "max": 44,
+    "unit": "nm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis Volume 1, Pub. No. PWJE0001(1/2) (February 2000): groups 00 to 23 — group 12, Engine Lubrication, §12-4, Engine Oil Replacement (the drain plug torque callout, printed once for each of the three engine families)",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260831203139id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Engine oil drain plug tightening torque",
+      "summary": "The tightening torque the engine lubrication group gives for the oil pan drain plug, as a nominal with its tolerance. The manual prints one figure for the petrol V6 and both diesels, and it asks for a new sealing washer every time, fitted the way its illustration shows. This is a plug that gets rounded off or stripped by guesswork more than by wear: fit the washer, tighten with a torque wrench, and stop there. The manual this comes from is the export PAJERO book; the North American Montero has its own manual and a reader on that truck should confirm the figure there."
+    },
+    "es": {
+      "title": "Par de apriete del tapón de drenaje del aceite de motor",
+      "summary": "El par de apriete que el grupo de lubricación indica para el tapón de drenaje del cárter, como valor nominal con su tolerancia. El manual imprime la misma cifra para el V6 de gasolina y para los dos diésel, y pide empaque nuevo en cada cambio, colocado en el sentido que muestra su ilustración. Este tapón se redondea o se barre más por apretar a puro pulso que por uso: ponga el empaque, apriete con llave de torque y ahí se queda. El manual del que sale esto es el del PAJERO de exportación; el Montero de Norteamérica tiene su propio manual, y quien ande en ese carro debería confirmar la cifra ahí."
+    }
+  }
+}

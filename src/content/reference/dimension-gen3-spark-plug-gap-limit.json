@@ -1,0 +1,38 @@
+{
+  "id": "dimension-gen3-spark-plug-gap-limit",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    },
+    "engines": ["6g74-gdi"]
+  },
+  "kind": "dimension",
+  "system": "engine",
+  "dimension": {
+    "value": 0.75,
+    "unit": "mm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis Volume 1, Pub. No. PWJE0001(1/2) (February 2000): groups 00 to 23 — group 16, Engine Electrical, §16-38, Spark Plug Specification and Service Specifications, and §16-39 to §16-40, Spark Plug Check and Cleaning",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260831203139id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Spark plug gap — wear limit, 6G74 GDI",
+      "summary": "The gap at which the ignition system group says to replace the plug rather than clean or reuse it. Gap grows as the electrodes erode, and a plug past this limit asks the coil for a voltage it does not always have — the misfire usually shows up under load, on a hill, with the truck loaded."
+    },
+    "es": {
+      "title": "Separación de electrodos de la bujía — límite de desgaste, 6G74 GDI",
+      "summary": "La separación a la que el grupo de sistema de encendido manda a cambiar la bujía en vez de limpiarla o volverla a montar. La separación crece conforme se desgastan los electrodos, y una bujía pasada de este límite le pide a la bobina un voltaje que no siempre tiene: la falla aparece con carga, en una cuesta y con el carro cargado."
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "id": "all-engine-filtro-de-aceite",
+  "fitment": {
+    "gens": ["gen1", "gen2", "gen2-5", "gen3", "gen4"]
+  },
+  "system": "engine",
+  "aliases": [
+    {
+      "term": "oil filters",
+      "locale": "en",
+      "countries": ["US", "GB", "AU"]
+    }
+  ],
+  "relatedTerms": ["all-engine-aceite-de-motor", "all-engine-carter"],
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Automas — Repuestos Automotrices en Costa Rica (catálogo por categoría: «Filtros de aceite»)",
+      "url": "https://automas.cr/",
+      "archiveUrl": "https://web.archive.org/web/20260906173001id_/https://automas.cr/",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    },
+    {
+      "title": "Rojas Motor, Costa Rica — catálogo de repuestos, categoría «Filtros de aceite» (la categoría en el árbol de la tienda, y los productos listados dentro de ella nombrados «Filtro de Aceite …»)",
+      "url": "https://rojasmotorcr.com/product-category/filtros/filtros-aceite/",
+      "archiveUrl": "https://web.archive.org/web/20260906210941id_/https://rojasmotorcr.com/product-category/filtros/filtros-aceite/",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "oil filter",
+      "summary": "The spin-on filter the engine's oil passes through. It is changed with the oil, not every other time — the old one holds dirty oil that goes straight back into a fresh fill."
+    },
+    "es": {
+      "title": "filtro de aceite",
+      "summary": "El filtro roscado por donde pasa el aceite del motor. Se cambia junto con el aceite, no un cambio sí y otro no: el filtro viejo guarda aceite sucio que se le devuelve al aceite nuevo."
+    }
+  }
+}

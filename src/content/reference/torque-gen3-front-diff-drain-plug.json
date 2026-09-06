@@ -1,0 +1,39 @@
+{
+  "id": "torque-gen3-front-diff-drain-plug",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    }
+  },
+  "kind": "torque",
+  "system": "drivetrain",
+  "torque": {
+    "value": 65,
+    "min": 60,
+    "max": 70,
+    "unit": "nm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis, Pub. No. PWJE0001 (February 2000), second scanned part: groups 25 to 55 — group 26, Front Axle, §26-40, Differential Carrier REASSEMBLY, whose exploded illustration carries this torque as a callout against the drain plug, item 29 in its own reassembly step list, and a different one against the filler plug, item 30; and §00-2, How to Use This Manual, whose \"Indication of tightening torque\" note states that the central value is the target and the tolerance is the checking range",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260906181459id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Front differential drain plug tightening torque",
+      "summary": "The tightening torque for the front differential's drain plug, as a target with the checking range the manual allows around it. It is easy to conclude there is no figure for this plug, because the on-vehicle pages that tell you how to check the oil level give none: the number is printed elsewhere in the same group, as a callout on the differential carrier's reassembly illustration, and it is a real factory specification rather than an inference. Do not carry it round the truck. The rear differential's drain plug has its own figure in its own group, each differential's filler plug has another again, and the transfer case bolted alongside this housing has one of its own — and no two of them are the same number. Under-tighten a diff plug and it weeps, or backs itself out on a washboard road; over-tighten it and the threads come out of the housing with the plug, which is the expensive half. The manual this comes from is the export PAJERO book; the North American Montero has its own manual and a reader on that truck should confirm the figure there."
+    },
+    "es": {
+      "title": "Par de apriete del tapón de drenaje del diferencial delantero",
+      "summary": "El par de apriete del tapón de drenaje del diferencial delantero, como valor buscado con el rango de comprobación que el manual admite alrededor de él. Es fácil concluir que para este tapón no hay cifra, porque las páginas de servicio en el vehículo que explican cómo revisar el nivel de aceite no dan ninguna: el número está impreso en otra parte del mismo grupo, como llamada sobre la ilustración de armado del portadiferencial, y es una especificación de fábrica y no una deducción. No la ande por todo el carro: el tapón de drenaje del diferencial trasero tiene la suya en su propio grupo, el tapón de llenado de cada diferencial tiene otra distinta, y la caja de transferencia que va empernada al lado de esta caja tiene la suya, y no hay dos iguales entre todas. Un tapón de diferencial flojo llora, o se sale solo en un camino de piedra; uno pasado de apriete se lleva la rosca de la caja al salir, que es la mitad cara. El manual del que sale esto es el del PAJERO de exportación; el Montero de Norteamérica tiene su propio manual, y quien ande en ese carro debería confirmar la cifra ahí."
+    }
+  }
+}

@@ -1,0 +1,163 @@
+{
+  "id": "gen3-spark-plug-replacement",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    },
+    "engines": ["6g74-gdi"]
+  },
+  "system": "engine",
+  "difficulty": 4,
+  "time": {
+    "value": 3,
+    "unit": "h"
+  },
+  "prerequisites": [
+    {
+      "id": "engine-stone-cold"
+    },
+    {
+      "id": "air-cleaner-assembly-out",
+      "procedure": "gen3-air-cleaner-element-replacement"
+    },
+    {
+      "id": "battery-disconnected"
+    }
+  ],
+  "tools": [
+    {
+      "id": "spark-plug-socket"
+    },
+    {
+      "id": "torque-wrench-small-range"
+    },
+    {
+      "id": "extensions-and-swivel"
+    },
+    {
+      "id": "feeler-gauge"
+    },
+    {
+      "id": "compressed-air-or-brush"
+    }
+  ],
+  "partsConsumed": [],
+  "specs": [
+    "torque-gen3-spark-plug",
+    "torque-gen3-ignition-coil-bolt",
+    "dimension-gen3-spark-plug-gap",
+    "dimension-gen3-spark-plug-gap-limit"
+  ],
+  "steps": [
+    {
+      "id": "start-cold"
+    },
+    {
+      "id": "clear-the-top-of-the-engine"
+    },
+    {
+      "id": "lift-the-coils-off-the-left-bank",
+      "specs": ["torque-gen3-ignition-coil-bolt"]
+    },
+    {
+      "id": "clean-the-plug-wells"
+    },
+    {
+      "id": "back-the-plugs-out"
+    },
+    {
+      "id": "read-and-measure-the-old-plugs",
+      "specs": [
+        "dimension-gen3-spark-plug-gap",
+        "dimension-gen3-spark-plug-gap-limit"
+      ]
+    },
+    {
+      "id": "fit-the-new-plugs",
+      "specs": ["torque-gen3-spark-plug"]
+    },
+    {
+      "id": "the-right-bank-is-a-different-job"
+    },
+    {
+      "id": "refit-the-coils",
+      "specs": ["torque-gen3-ignition-coil-bolt"]
+    },
+    {
+      "id": "reconnect-and-road-test"
+    }
+  ],
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis Volume 1, Pub. No. PWJE0001(1/2) (February 2000): groups 00 to 23 — group 16, Engine Electrical, Ignition System: §16-38, Spark Plug Specification and Service Specifications; §16-39 to §16-40, Spark Plug Check and Cleaning (the iridium-plug cautions and the gap and insulation-resistance figures); and §16-41, Ignition Coil <6G7> removal and installation, whose removal steps are given separately for the left bank and the right bank, and whose right-bank list opens by referring the throttle body to GROUP 13A — the gasoline direct injection group under FUEL, per the fuel section's own contents page at §13A-1 — and not to the intake and exhaust group",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260831203139id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Spark plug replacement — 6G74 GDI",
+      "summary": "Six plugs under six moulded coils, and the two banks are not the same job. The manual splits its own removal steps into a left bank and a right bank, and this engine sits lengthwise in the truck, so those are the driver's side and the passenger's side and not the front and the back — get that the wrong way round and you will strip the covers off the bank you did not mean to touch. The left bank is an afternoon with hand tools. The right bank lists the throttle body as something that comes off first. The plugs this engine uses are iridium and the manual says their gap is not to be adjusted — you measure a used one against the limit and replace it, you do not bend it back. Everything below is the left bank plus an honest description of what the right one costs; the time and the difficulty are our estimate.",
+      "steps": {
+        "start-cold": "Do this on a stone cold engine. The head is aluminium and the plug threads are steel — pulled hot, a plug can take the thread with it, and that repair is an insert in a cylinder head that is still in the truck.",
+        "clear-the-top-of-the-engine": "Take off the engine cover and the centre cover over the bank you are working on — the manual gives the left and the right centre cover as separate parts with their own removal steps — and put the fasteners somewhere they cannot fall into the valley. Label anything you unplug. Working room here is worth ten minutes of tidying.",
+        "lift-the-coils-off-the-left-bank": "Working on the left bank: unplug each coil, undo its mounting bolt and lift the coil straight up off the plug. If one is stuck, twist it gently rather than levering against the cam cover. Note the bolt torque below for reassembly — it is a small fastener into aluminium.",
+        "clean-the-plug-wells": "Blow or brush the grit out of the plug wells before the plugs come out. Anything sitting in the well drops straight into the cylinder the moment the plug clears the thread, and grit on a piston crown is not something you can wash out afterwards.",
+        "back-the-plugs-out": "Break each plug loose and back it out slowly. If it fights you, stop, let it cool if there is any heat in the engine at all, and work it back and forth rather than forcing it — this is where seized plugs take threads with them.",
+        "read-and-measure-the-old-plugs": "Look at each old plug and keep them in cylinder order: one oily, or one clearly out of step with the other five, is telling you something the new plugs will hide for a while. Read colour carefully, though — the manual states that on a GDI engine the electrodes go black even on a plug that is working normally, and that whether a plug is good is judged by its insulation resistance rather than by how it looks. Measure the gap with a feeler gauge and compare it against the standard value and the wear limit below. The manual is explicit on two more points: the gap on these iridium plugs is not to be adjusted, and a wire brush is never to be used on them.",
+        "fit-the-new-plugs": "Start each new plug by hand, all the way down by hand, and stop if it does not turn freely — a cross-threaded plug in an aluminium head is the expensive version of this job. Then tighten with a torque wrench to the figure below.",
+        "the-right-bank-is-a-different-job": "The right bank's removal steps start with something the left bank's do not: the throttle body, which has to come off before the centre cover, the coils and the plugs can. And note where the manual sends you for it — not to the intake group, as you would expect, but to its gasoline direct injection group, which is filed under fuel. That is a different afternoon — coolant and intake connections come off, gaskets are involved, and this is a direct-injection engine whose fuel system runs at pressures a port-injected engine never sees. If that is past what you can handle with what you have, a sound compromise is to do the left bank yourself and have a workshop do the right — say plainly that the plugs are already bought and which bank is done.",
+        "refit-the-coils": "Refit each coil onto its own plug, seated fully before the bolt goes in, and tighten to the coil bolt figure below. Reconnect every plug you labelled.",
+        "reconnect-and-road-test": "Reconnect the battery, refit the covers and the air cleaner, then start it. It may idle rough for a few seconds. Drive it under load — a hill, not a flat street — and if a misfire shows up, the plug you just fitted is where to look first."
+      },
+      "tools": {
+        "spark-plug-socket": "Spark plug socket with a rubber insert, deep enough for these wells",
+        "torque-wrench-small-range": "Torque wrench covering the low range these fasteners need",
+        "extensions-and-swivel": "Extensions and a swivel adapter for the socket — the plugs are down in wells and not all of them are straight up",
+        "feeler-gauge": "Feeler gauge, for measuring the old plugs' gap",
+        "compressed-air-or-brush": "Compressed air, or a long brush, for the plug wells"
+      },
+      "prerequisites": {
+        "engine-stone-cold": "Engine stone cold. Not warm, not 'cool enough to touch' — cold.",
+        "air-cleaner-assembly-out": "Air cleaner assembly off, which the manual lists as the pre-removal operation for this job. It is the same box you open to change the element.",
+        "battery-disconnected": "Battery disconnected before the coils come off."
+      },
+      "safetyNotes": "This is ignition work on a direct-injection engine. Disconnect the battery before you unplug or remove a coil, and do not crank the engine with coils unplugged and lying on the rocker cover. If you go on to the right bank, you are opening the intake of a fuel system that holds pressure after shutdown — read the fuel group before you disturb any fuel connection, and if that is past what you can handle with what you have, hand that half of the job to a qualified mechanic."
+    },
+    "es": {
+      "title": "Cambio de bujías — 6G74 GDI",
+      "summary": "Seis bujías bajo seis bobinas moldeadas, y los dos bancos no son el mismo trabajo. El manual parte sus propios pasos de desmontaje en banco izquierdo y banco derecho, y este motor va montado a lo largo del carro, así que esos son el lado del chofer y el lado del pasajero, no el de adelante y el de atrás; si usted se confunde, termina destapando el banco que no era. El banco izquierdo es una tarde con herramienta de mano. El derecho arranca con el cuerpo de aceleración, que el manual manda a quitar primero. Las bujías de este motor son de iridio y el manual dice que su separación no se calibra: usted mide una usada contra el límite y la cambia, no la dobla para dejarla igual. Todo lo de abajo es el banco izquierdo, más una descripción honesta de lo que cuesta el otro; el tiempo y la dificultad son estimación nuestra.",
+      "steps": {
+        "start-cold": "Haga esto con el motor completamente frío. El cabezote es de aluminio y la rosca de la bujía es de acero: sacada en caliente, una bujía se puede llevar la rosca, y esa reparación es un inserto en un cabezote que todavía anda en el carro.",
+        "clear-the-top-of-the-engine": "Quite la tapa del motor y la tapa central del banco en el que va a trabajar —el manual da la tapa central izquierda y la derecha como piezas aparte, cada una con sus pasos— y ponga los tornillos donde no se le caigan a la V del motor. Marque todo lo que desconecte. Diez minutos de orden aquí valen la pena.",
+        "lift-the-coils-off-the-left-bank": "Trabajando el banco izquierdo: desconecte cada bobina, saque su tornillo y levántela derecho, sacándola de la bujía. Si alguna está pegada, gírela despacio en vez de hacer palanca contra la tapa de válvulas. Anote el par del tornillo que va abajo para el armado: es un tornillo pequeño que entra en aluminio.",
+        "clean-the-plug-wells": "Sople o cepille la mugre de los pozos de las bujías antes de sacarlas. Lo que quede ahí se le va derechito al cilindro apenas la bujía suelta la rosca, y la tierra y la arenilla sobre la cabeza del pistón no se lavan después.",
+        "back-the-plugs-out": "Suelte cada bujía y sáquela despacio. Si se pone dura, pare, deje enfriar si el motor guarda algo de calor y trabájela para adelante y para atrás en vez de forzarla: es aquí donde una bujía pegada se lleva la rosca.",
+        "read-and-measure-the-old-plugs": "Vea cada bujía usada y guárdelas en orden de cilindro: una aceitosa, o una que claramente no vaya con las otras cinco, le está diciendo algo que las nuevas van a tapar un tiempo. Eso sí, lea el color con cuidado: el manual advierte que en un motor GDI los electrodos se ponen negros aunque la bujía esté trabajando bien, y que si una bujía sirve o no se juzga por su resistencia de aislamiento y no por cómo se ve. Mida la separación con la galga y compárela con el valor estándar y el límite de desgaste de abajo. El manual es claro en dos cosas más: a estas bujías de iridio no se les calibra la separación, y nunca se les pasa cepillo de alambre.",
+        "fit-the-new-plugs": "Empiece cada bujía nueva a mano, hasta el fondo a mano, y pare si no entra suave: una bujía cruzada en un cabezote de aluminio es la versión cara de este trabajo. Después apriete con llave de torque a la cifra de abajo.",
+        "the-right-bank-is-a-different-job": "Los pasos del banco derecho empiezan con algo que los del izquierdo no tienen: el cuerpo de aceleración, que hay que quitar antes de poder sacar la tapa central, las bobinas y las bujías. Y fíjese a dónde lo manda el manual para eso: no al grupo de admisión, como uno esperaría, sino a su grupo de inyección directa de gasolina, que va archivado dentro de combustible. Esa es otra tarde: se sueltan conexiones de refrigerante y de admisión, hay empaques de por medio, y este es un motor de inyección directa, con un sistema de combustible que trabaja a presiones que uno nunca ve en un motor de inyección indirecta. Si eso pasa de lo que usted puede resolver con lo que tiene, un buen arreglo es hacer usted el banco izquierdo y dejarle el derecho a un taller; dígalo claro: que las bujías ya están compradas y cuál banco ya está hecho.",
+        "refit-the-coils": "Monte cada bobina en su propia bujía, bien asentada antes de entrar el tornillo, y apriete a la cifra del tornillo de bobina de abajo. Vuelva a conectar todo lo que marcó.",
+        "reconnect-and-road-test": "Conecte la batería, ponga las tapas y el filtro de aire, y arranque. Puede que la marcha mínima quede áspera unos segundos. Manéjelo con carga —una cuesta, no una calle plana— y si sale una falla de encendido, la bujía que acaba de montar es lo primero que hay que ver."
+      },
+      "tools": {
+        "spark-plug-socket": "Cubo de bujía con hule por dentro, largo para estos pozos",
+        "torque-wrench-small-range": "Llave de torque que cubra el rango bajo que piden estos tornillos",
+        "extensions-and-swivel": "Extensiones y un adaptador articulado para el cubo — las bujías van hondas y no todas quedan derechas hacia arriba",
+        "feeler-gauge": "Galga de láminas, para medir la separación de las bujías usadas",
+        "compressed-air-or-brush": "Aire comprimido, o un cepillo largo, para los pozos de las bujías"
+      },
+      "prerequisites": {
+        "engine-stone-cold": "Motor completamente frío. Ni tibio ni «que se pueda tocar»: frío.",
+        "air-cleaner-assembly-out": "Caja del filtro de aire afuera, que es lo que el manual pone como operación previa de este trabajo. Es la misma caja que uno abre para cambiar el elemento.",
+        "battery-disconnected": "Batería desconectada antes de sacar las bobinas."
+      },
+      "safetyNotes": "Esto es trabajo de encendido en un motor de inyección directa. Desconecte la batería antes de desconectar o sacar una bobina, y no le dé arranque con las bobinas desconectadas y apoyadas sobre la tapa de válvulas. Si sigue con el banco derecho, va a abrir la admisión de un sistema de combustible que queda con presión después de apagar: lea el grupo de combustible antes de tocar cualquier conexión de gasolina, y si eso pasa de lo que usted puede resolver con lo que tiene, deje esa mitad del trabajo a un mecánico calificado."
+    }
+  }
+}

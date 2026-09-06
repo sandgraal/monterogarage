@@ -1,0 +1,39 @@
+{
+  "id": "dimension-gen3-auto-tensioner-rod-protrusion",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    },
+    "engines": ["6g74-gdi"]
+  },
+  "kind": "dimension",
+  "system": "engine",
+  "dimension": {
+    "min": 3.8,
+    "max": 5.0,
+    "unit": "mm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis Volume 1, Pub. No. PWJE0001(1/2) (February 2000): groups 00 to 23 — group 11A, Engine <6G7>, §11A-21, Timing Belt installation (the auto-tensioner pushrod standard value, checked after two crankshaft revolutions and the manual's stated settling wait)",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260831203139id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Timing belt auto-tensioner rod protrusion — standard value, 6G74 GDI",
+      "summary": "How far the auto-tensioner push rod should stand proud once the belt is on, the setting pin is out, the crankshaft has been turned two full turns clockwise back to the timing marks, and the tensioner has been left alone for the settling time the manual states in that step. That wait is written as a minimum and it is part of the specification, not a courtesy: measure before the rod has settled and it reads short, which sends you back round a sequence that was already correct. It is the manual's own check that the tension it just had you set actually took — outside this range, the tensioning sequence is repeated rather than accepted."
+    },
+    "es": {
+      "title": "Salida del vástago del tensor automático — valor estándar, 6G74 GDI",
+      "summary": "Cuánto debe sobresalir el vástago del tensor automático una vez montada la faja, sacado el pasador, girado el cigüeñal dos vueltas completas en sentido de las manecillas hasta las marcas de tiempo y dejado el tensor quieto el tiempo de asentamiento que el manual indica en ese paso. Esa espera está escrita como mínimo y es parte de la especificación, no una cortesía: si usted mide antes de que asiente, el vástago le da corto y lo devuelve a repetir una secuencia que ya estaba bien. Es la comprobación del propio manual de que la tensión que acaba de poner sí quedó: fuera de este rango se repite la secuencia de tensado en vez de darla por buena."
+    }
+  }
+}

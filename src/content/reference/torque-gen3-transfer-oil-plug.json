@@ -1,0 +1,40 @@
+{
+  "id": "torque-gen3-transfer-oil-plug",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    },
+    "transferCases": ["super-select-ii"]
+  },
+  "kind": "torque",
+  "system": "transfer-case",
+  "torque": {
+    "value": 32,
+    "min": 30,
+    "max": 34,
+    "unit": "nm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis Volume 1, Pub. No. PWJE0001(1/2) (February 2000): groups 00 to 23 — group 22, Manual Transmission, §22-6, On-vehicle Service (the oil replacement torque list, which names the transfer explicitly alongside the filler plug torque, and the instruction to apply the specified sealant to the plug threads), and group 23, Automatic Transmission, §23-99 to §23-100, Transfer Oil Check and Transfer Oil Change, which repeats the same figure for the filler plug",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260831203139id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Transfer case oil filler and drain plug tightening torque",
+      "summary": "The tightening torque the manual gives for the transfer case oil plugs, filler and drain. It is printed twice and it agrees with itself: the manual transmission group names the transfer explicitly in its oil replacement torque list, and the automatic transmission group repeats the same figure in the transfer's own check and change pages. Note what the manual asks for alongside the figure: sealant on the plug threads, named by product, rather than a harder pull on the bar. This is a figure worth using rather than a feel — a stripped filler plug hole turns an oil change into a case repair. The manual this comes from is the export PAJERO book; the North American Montero has its own manual and a reader on that truck should confirm the figure there."
+    },
+    "es": {
+      "title": "Par de apriete de los tapones de llenado y drenaje de la caja de transferencia",
+      "summary": "El par de apriete que el manual indica para los tapones de aceite de la caja de transferencia, tanto el de llenado como el de drenaje. Viene impreso dos veces y coincide consigo mismo: el grupo de transmisión manual nombra la transferencia aparte en su lista de pares para el cambio de aceite, y el grupo de transmisión automática repite la misma cifra en las páginas de revisión y cambio de la transferencia. Fíjese en lo que el manual pide junto con la cifra: sellador en la rosca de los tapones, y lo nombra por producto, en vez de un jalón más fuerte a la barra. Esta cifra vale la pena usarla y no apretar a pulso: un hueco de llenado barrido convierte un cambio de aceite en una reparación de caja. El manual del que sale esto es el del PAJERO de exportación; el Montero de Norteamérica tiene su propio manual, y quien ande en ese carro debería confirmar la cifra ahí."
+    }
+  }
+}

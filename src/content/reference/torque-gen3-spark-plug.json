@@ -1,0 +1,40 @@
+{
+  "id": "torque-gen3-spark-plug",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    },
+    "engines": ["6g74-gdi"]
+  },
+  "kind": "torque",
+  "system": "engine",
+  "torque": {
+    "value": 25,
+    "min": 20,
+    "max": 30,
+    "unit": "nm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis Volume 1, Pub. No. PWJE0001(1/2) (February 2000): groups 00 to 23 — group 16, Engine Electrical, §16-41, Ignition Coil <6G7> removal and installation (the spark plug torque callout on the coil and plug illustration)",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260831203139id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Spark plug tightening torque — 6G74 GDI",
+      "summary": "The tightening torque the ignition system group gives for the spark plugs of the direct-injection petrol V6, from the coil and plug removal-and-installation illustration. The head is aluminium and the thread is what a torque wrench protects here — over-tightening pulls the thread out of the head, and under-tightening leaves the plug running hot. Same figure for both banks."
+    },
+    "es": {
+      "title": "Par de apriete de las bujías — 6G74 GDI",
+      "summary": "El par de apriete que el grupo de sistema de encendido indica para las bujías del V6 de gasolina de inyección directa, tomado de la lámina de desmontaje y montaje de bobinas y bujías. El cabezote es de aluminio y lo que protege la llave de torque aquí es la rosca: pasado de apriete se arranca la rosca del cabezote, y flojo la bujía trabaja caliente. La cifra es la misma para los dos bancos."
+    }
+  }
+}

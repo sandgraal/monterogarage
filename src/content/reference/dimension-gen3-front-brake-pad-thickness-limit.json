@@ -1,0 +1,37 @@
+{
+  "id": "dimension-gen3-front-brake-pad-thickness-limit",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    }
+  },
+  "kind": "dimension",
+  "system": "brakes",
+  "dimension": {
+    "value": 2.0,
+    "unit": "mm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis, Pub. No. PWJE0001 (February 2000), second scanned part: groups 25 to 55 — group 35A, Basic Brake System, §35A-6, Service Specifications (front and rear disc brake pad thickness, standard value and limit); §35A-31, Disc Brake Pad Check and Replacement, where the same standard value and limit are repeated with the check-port method and the wear-indicator note; and §35A-49, whose installation service point covers unequal pad thickness",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260906181459id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Front brake pad thickness — wear limit",
+      "summary": "The friction thickness at which the brake group says to replace the pads, always as an axle set. The pads carry a wear indicator that starts squealing against the disc at about the same thickness, so the noise and this figure are telling you the same thing — the noise is simply the version you hear before you measure. The manual also gives the same figure for the rear pads, and it tells you to check the moving parts if it finds an excessive difference in thickness between the right and left brake pads — its own words. Our reading of that is that uneven wear is a seized pin or a sticking piston rather than a pad problem, and worth chasing before a new set goes in. The manual this comes from is the export PAJERO book; the North American Montero has its own manual and a reader on that truck should confirm the figure there."
+    },
+    "es": {
+      "title": "Espesor de la pastilla de freno delantera — límite de desgaste",
+      "summary": "El espesor de material de fricción al que el grupo de frenos manda a cambiar las pastillas de freno, siempre en juego por eje. Las pastillas traen un indicador de desgaste que empieza a chillar contra el disco de freno más o menos a ese mismo espesor, así que el ruido y esta cifra dicen lo mismo: el ruido es la versión que uno oye antes de medir. El manual da esta misma cifra para las pastillas traseras, y manda a revisar las piezas móviles cuando encuentra una diferencia de espesor excesiva entre la pastilla derecha y la izquierda: así lo dice el manual. Nuestra lectura de eso es que el desgaste disparejo sale de un perno pegado o de un pistón que no regresa, y no de la pastilla, y que conviene resolverlo antes de montar un juego nuevo. El manual del que sale esto es el del PAJERO de exportación; el Montero de Norteamérica tiene su propio manual, y quien ande en ese carro debería confirmar la cifra ahí."
+    }
+  }
+}

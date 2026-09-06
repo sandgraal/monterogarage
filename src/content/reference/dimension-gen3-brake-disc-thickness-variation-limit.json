@@ -1,0 +1,37 @@
+{
+  "id": "dimension-gen3-brake-disc-thickness-variation-limit",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    }
+  },
+  "kind": "dimension",
+  "system": "brakes",
+  "dimension": {
+    "value": 0.015,
+    "unit": "mm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis, Pub. No. PWJE0001 (February 2000), second scanned part: groups 25 to 55 — group 35A, Basic Brake System, §35A-32, Brake Disc Thickness Check (the measurement pattern, the front and rear thickness table, and the thickness-variation limit)",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260906181459id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Brake disc thickness variation limit (parallelism)",
+      "summary": "The most any two thickness measurements taken around one disc may differ. It is not the wear limit and it is not run-out: a disc can be comfortably thick, run true, and still be thicker in one place than another, and that is what puts a pulse through the pedal on a long descent. The manual has you take the measurements in a set pattern of evenly spaced points a fixed distance in from the outer edge — the exact pattern is on the same page — and it applies the same variation limit to the front and rear discs. Past this figure the disc is replaced or machined on the truck; it is not something a new set of pads settles down. The manual this comes from is the export PAJERO book; the North American Montero has its own manual and a reader on that truck should confirm the figure there."
+    },
+    "es": {
+      "title": "Límite de variación de espesor del disco de freno (paralelismo)",
+      "summary": "Lo máximo que pueden diferir entre sí dos medidas de espesor tomadas alrededor de un mismo disco de freno. No es el límite de desgaste ni es el alabeo: un disco puede estar bien grueso, girar derecho y aun así quedar más grueso en un punto que en otro, y eso es lo que le mete pulso al pedal en una bajada larga. El manual manda a tomar las medidas en un patrón fijo de puntos repartidos parejo, todos a la misma distancia del borde exterior —el patrón exacto viene en esa misma página—, y aplica el mismo límite de variación a los discos delanteros y a los traseros. Pasado de esta cifra, el disco se cambia o se rectifica en el carro; no es algo que un juego de pastillas de freno nuevas vaya a asentar. El manual del que sale esto es el del PAJERO de exportación; el Montero de Norteamérica tiene su propio manual, y quien ande en ese carro debería confirmar la cifra ahí."
+    }
+  }
+}

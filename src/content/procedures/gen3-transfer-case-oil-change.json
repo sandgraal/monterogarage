@@ -1,0 +1,140 @@
+{
+  "id": "gen3-transfer-case-oil-change",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    },
+    "transferCases": ["super-select-ii"]
+  },
+  "system": "transfer-case",
+  "difficulty": 2,
+  "time": {
+    "value": 45,
+    "unit": "min"
+  },
+  "prerequisites": [
+    {
+      "id": "truck-level-and-supported"
+    },
+    {
+      "id": "know-which-gearbox-you-have"
+    },
+    {
+      "id": "gl4-oil-and-a-pump"
+    }
+  ],
+  "tools": [
+    {
+      "id": "square-drive-and-bar"
+    },
+    {
+      "id": "torque-wrench-mid-range"
+    },
+    {
+      "id": "hand-pump"
+    },
+    {
+      "id": "drain-pan-and-rags"
+    }
+  ],
+  "partsConsumed": [],
+  "specs": [
+    "torque-gen3-transfer-oil-plug",
+    "fluid-gen3-transfer-oil-automatic",
+    "fluid-gen3-transfer-oil-manual"
+  ],
+  "steps": [
+    {
+      "id": "identify-the-two-plugs"
+    },
+    {
+      "id": "open-the-filler-first"
+    },
+    {
+      "id": "drain-and-read-the-oil"
+    },
+    {
+      "id": "refit-the-drain-plug",
+      "specs": ["torque-gen3-transfer-oil-plug"]
+    },
+    {
+      "id": "fill-to-the-hole",
+      "specs": [
+        "fluid-gen3-transfer-oil-automatic",
+        "fluid-gen3-transfer-oil-manual"
+      ]
+    },
+    {
+      "id": "close-the-filler",
+      "specs": ["torque-gen3-transfer-oil-plug"]
+    },
+    {
+      "id": "drive-it-and-check"
+    }
+  ],
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis Volume 1, Pub. No. PWJE0001(1/2) (February 2000): groups 00 to 23 — group 22, Manual Transmission, §22-6, On-vehicle Service (the transfer's drain and filler plug torques, the specified sealant for the plug threads, the transfer oil specification and its quantity behind the manual gearbox), and group 23, Automatic Transmission, §23-99 to §23-100, Transfer Oil Check and Transfer Oil Change (the same plug torque, the same oil specification and the quantity behind the automatic)",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260831203139id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Transfer case oil change — Super Select 4WD II",
+      "summary": "The forgotten service on a Super Select truck, and the one that decides whether the centre differential and the chain are still healthy at high mileage. Two plugs, a level taken at the filler hole rather than by quantity, and one trap: the transfer takes a GL-4 oil while the differentials bolted around it take GL-5. Two fill quantities are listed below because the manual states a different one depending on whether the transfer sits behind the manual or the automatic gearbox — read the row that matches your truck. The time and the difficulty are our estimate.",
+      "steps": {
+        "identify-the-two-plugs": "Find both plugs on the transfer case before you undo anything: the filler on the side and the drain lower down. Wipe the area clean so nothing falls in when they come out, and make sure you are looking at the transfer case and not at the gearbox in front of it — they are separate housings with separate oil.",
+        "open-the-filler-first": "Crack the filler plug loose first, always. If it will not move, stop while the case is still full and take it to a workshop — an empty transfer case you cannot fill is not a job you can walk away from.",
+        "drain-and-read-the-oil": "Drain into a pan and read what comes out. Milky oil means water, which on this truck usually means a breather hose or a seal after deep water. A burnt smell and a dark, thin oil mean it has been hot. Metal paste on the plug means the chain or the centre differential is telling you something long before the noise does.",
+        "refit-the-drain-plug": "Clean the drain plug and seal its threads the way the manual does. It does not put a washer under this plug: it has you apply a sealant, named by product in the transmission group, to the plug threads, and then tighten to the figure below. The case is light alloy and the plug is steel; the sealant and the torque wrench together are what keep the two on speaking terms, and neither substitutes for the other.",
+        "fill-to-the-hole": "Pump the specified GL-4 oil in through the filler hole until it reaches the bottom of the hole and starts to weep back out. That level is the specification — the quantities below tell you how much to buy, and they differ between the manual and the automatic, so use the row that matches your gearbox.",
+        "close-the-filler": "Seal the filler plug's threads the same way — the manual asks for sealant on this one too — and tighten it to the same figure as the drain plug, below. Wipe the case dry so that any future weep is obvious and you can tell an old smear from a new leak.",
+        "drive-it-and-check": "Drive it, including a short stretch in four-wheel drive if the road allows it, then look underneath again for weeping plugs. Write down the date and the odometer: this oil has no dipstick, no lamp and no warning, and the record is the only thing that will tell the next owner it was ever done."
+      },
+      "tools": {
+        "square-drive-and-bar": "Whatever fits the two plugs, and a breaker bar — look at the heads first rather than guessing between a square drive and a hex socket",
+        "torque-wrench-mid-range": "Torque wrench",
+        "hand-pump": "Hand pump or squeeze bottle with a hose that reaches the filler",
+        "drain-pan-and-rags": "Drain pan and rags"
+      },
+      "prerequisites": {
+        "truck-level-and-supported": "Truck level and supported on stands. Level matters: the level is read at the filler hole.",
+        "know-which-gearbox-you-have": "Know whether your truck is the manual or the automatic — the fill quantity is not the same, and buying one bottle short leaves the case half full.",
+        "gl4-oil-and-a-pump": "The correct GL-4 hypoid oil, a way to pump it in, and the thread sealant the manual names for the plugs — all three on the ground before the drain plug comes out."
+      },
+      "safetyNotes": "Support the truck on stands on firm level ground before you go underneath — never on a jack alone. The oil comes out hot after a drive and gear oil is a skin irritant, so wear gloves. Do not start the engine or move the truck with the transfer case empty."
+    },
+    "es": {
+      "title": "Cambio de aceite de la caja de transferencia — Super Select 4WD II",
+      "summary": "El servicio olvidado en un carro con Super Select, y el que decide si el diferencial central y la cadena siguen sanos con kilometraje alto. Dos tapones, un nivel que se toma en el hueco de llenado y no por cantidad, y una trampa: la transferencia lleva aceite GL-4 mientras que los diferenciales que van a su alrededor llevan GL-5. Abajo aparecen dos cantidades de llenado porque el manual indica una distinta según si la transferencia va detrás de la caja manual o de la automática: lea la que corresponde a su carro. El tiempo y la dificultad son estimación nuestra.",
+      "steps": {
+        "identify-the-two-plugs": "Ubique los dos tapones de la caja de transferencia antes de aflojar nada: el de llenado, al costado, y el de drenaje, más abajo. Limpie alrededor para que no le caiga nada adentro cuando salgan, y asegúrese de que está viendo la caja de transferencia y no la caja de cambios que va adelante: son cajas distintas con aceites distintos.",
+        "open-the-filler-first": "Afloje primero el tapón de llenado, siempre. Si no se mueve, pare mientras la caja todavía está llena y llévela a un taller: una caja de transferencia vacía que usted no puede llenar no es un trabajo del que se pueda ir.",
+        "drain-and-read-the-oil": "Drene en la bandeja y lea lo que sale. Aceite lechoso es agua, y en este carro casi siempre significa una manguera de respiradero o un retenedor después de pasar agua honda. Olor a quemado y aceite oscuro y aguado significan que trabajó caliente. Pasta metálica en el tapón es la cadena o el diferencial central avisándole mucho antes de que aparezca el ruido.",
+        "refit-the-drain-plug": "Limpie el tapón de drenaje y séllele la rosca como lo hace el manual. Aquí no lleva empaque: el manual manda a ponerle sellador en la rosca —lo nombra por producto en el grupo de transmisión— y después apretar a la cifra de abajo. La caja es de aleación liviana y el tapón es de acero; el sellador y la llave de torque juntos son los que mantienen a los dos en buenos términos, y ninguno de los dos reemplaza al otro.",
+        "fill-to-the-hole": "Bombee el aceite GL-4 indicado por el hueco de llenado hasta que llegue al borde inferior del hueco y empiece a devolverse. Ese nivel es la especificación: las cantidades de abajo le dicen cuánto comprar, y no son iguales para la manual y la automática, así que use la que corresponde a su caja.",
+        "close-the-filler": "Séllele la rosca al tapón de llenado igual —el manual también le pide sellador a este— y apriételo a la misma cifra que el de drenaje, abajo. Seque bien la caja para que cualquier goteo futuro se note y usted pueda distinguir una mancha vieja de una fuga nueva.",
+        "drive-it-and-check": "Maneje, incluyendo un tramo corto en doble tracción si el camino lo permite, y vuelva a revisar por debajo si algún tapón está llorando. Anote la fecha y el kilometraje: este aceite no tiene varilla, ni luz, ni aviso, y el registro es lo único que le va a decir al siguiente dueño que alguna vez se hizo."
+      },
+      "tools": {
+        "square-drive-and-bar": "Lo que le calce a los dos tapones, y barra de fuerza; véales la cabeza antes, en vez de adivinar entre cuadrante y cubo hexagonal",
+        "torque-wrench-mid-range": "Llave de torque",
+        "hand-pump": "Bomba manual o botella de servir con manguera que alcance el llenado",
+        "drain-pan-and-rags": "Bandeja de drenaje y trapos"
+      },
+      "prerequisites": {
+        "truck-level-and-supported": "Carro en piso plano y sostenido sobre soportes de seguridad. El piso plano importa: el nivel se lee en el hueco de llenado.",
+        "know-which-gearbox-you-have": "Sepa si su carro es manual o automático: la cantidad de llenado no es la misma, y quedarse corto por una botella deja la caja a medio llenar.",
+        "gl4-oil-and-a-pump": "El aceite hipoidal GL-4 correcto, con qué bombearlo y el sellador de roscas que el manual nombra para los tapones: las tres cosas en el suelo antes de que salga el tapón de drenaje."
+      },
+      "safetyNotes": "Sostenga el carro sobre soportes de seguridad, en piso firme y plano, antes de meterse debajo; nunca solo con la gata. El aceite sale caliente después de manejar y el aceite de engranajes irrita la piel, así que use guantes. No arranque el motor ni mueva el carro con la caja de transferencia vacía."
+    }
+  }
+}

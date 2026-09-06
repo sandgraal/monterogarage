@@ -1,0 +1,40 @@
+{
+  "id": "torque-gen3-ignition-coil-bolt",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    },
+    "engines": ["6g74-gdi"]
+  },
+  "kind": "torque",
+  "system": "engine",
+  "torque": {
+    "value": 10,
+    "min": 8,
+    "max": 12,
+    "unit": "nm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis Volume 1, Pub. No. PWJE0001(1/2) (February 2000): groups 00 to 23 — group 16, Engine Electrical, §16-41, Ignition Coil <6G7> removal and installation (the coil mounting bolt callout, distinct from the centre cover bolt callout on the same illustration)",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260831203139id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Ignition coil mounting bolt tightening torque — 6G74 GDI",
+      "summary": "The tightening torque for the bolt that holds each of the six moulded coils down on the direct-injection petrol V6. A small fastener into aluminium, and it is the one people lean on with a long ratchet after wrestling the coil off a plug that had seized."
+    },
+    "es": {
+      "title": "Par de apriete del tornillo de la bobina de encendido — 6G74 GDI",
+      "summary": "El par de apriete del tornillo que sujeta cada una de las seis bobinas moldeadas del V6 de gasolina de inyección directa. Es un tornillo pequeño que entra en aluminio, y es justo el que uno aprieta de más con el ratchet largo después de pelear con una bobina pegada a la bujía."
+    }
+  }
+}
