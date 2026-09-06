@@ -257,8 +257,15 @@ function headingAbove(html: string, anchor: string): string | null {
   return headings(html).findLast((heading) => heading.end <= at)?.text ?? null;
 }
 
-/** Every string `ui.ts` can produce in `locale` — 502 of them, all distinct
- * from the other locale's (checked: the two tables share no value). */
+/**
+ * Every string `ui.ts` can produce in `locale`.
+ *
+ * Membership in this list is the difference between "a translated label" and
+ * "two hard-coded literals": a literal typed into the markup is invisible to
+ * `check:glossary` and to `check:es-register`, both of which scan `ui.ts`.
+ * No count is pinned — the table grows, and a grader that counted it would
+ * go red on an unrelated key.
+ */
 function uiValues(locale: Locale): readonly string[] {
   return Object.values(t(locale) as unknown as Record<string, unknown>).filter(
     (value): value is string => typeof value === "string"
