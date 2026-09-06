@@ -282,104 +282,19 @@ const fitmentTable = buildFitmentTable(
 </BaseLayout>
 
 <script>
-  import {
-    EMPTY_PROCEDURES_FILTER,
-    matchesProceduresFilter,
-    type ProceduresFilterState,
-  } from "../../lib/procedures/filter";
-  import { formatCount } from "../../lib/glossary-filter";
-  import { buildTaxonomy } from "../../lib/fitment";
-  import { readSelectorPayload } from "../../lib/vehicle-taxonomy";
-  import { createVehicleListingView } from "../../lib/vehicle-listing";
-  import {
-    onVehicleSelectionChange,
-    readVehicleSelection,
-    type StoredVehicleSelection,
-  } from "../../lib/vehicle-selection";
+  import { enhanceProceduresIndex } from "../../lib/procedures/index-view";
 
-  /**
-   * Client-side filtering and the vehicle fit view. Enhancement only — the
-   * toolbar is laid out only when the document is marked script-capable, so a
-   * visitor with no JavaScript sees every procedure and no dead control. DOM
-   * wiring only: `matchesProceduresFilter` owns the pill rule,
-   * `src/lib/vehicle-listing.ts` owns the vehicle filter and T204's
-   * provisional-match tag, and `src/lib/fitment/` owns every fitment answer
-   * (FIT-01).
+  /*
+   * All DOM wiring for this page lives behind the seam (T504b): pill
+   * filtering, the vehicle fit view and T204's provisional-match indicator.
+   * Vitest cannot execute this compiled script, so `enhanceProceduresIndex`
+   * is what `tests/pages/procedures-index.render.test.ts` drives directly —
+   * see that module's own header for why the split exists.
    */
-  function enhance(root: HTMLElement): void {
-    const toolbar = root.querySelector<HTMLElement>(
-      "[data-procedures-toolbar]"
-    );
-    const count = root.querySelector<HTMLElement>("[data-procedures-count]");
-    const none = root.querySelector<HTMLElement>("[data-procedures-none]");
-    const cards = [...root.querySelectorAll<HTMLElement>(".procedure-card")];
-    if (!toolbar || !count || !none) return;
-
-    const template = count.dataset.countTemplate ?? "";
-    const total = Number(count.dataset.total ?? cards.length);
-    const state: ProceduresFilterState = { ...EMPTY_PROCEDURES_FILTER };
-
-    const payload = readSelectorPayload(document);
-    // The same nodes the selector shipped, read once. Without a selector on the
-    // page there is no taxonomy and no vehicle filter — the pills still work,
-    // and `buildTaxonomy([])` gives the generation facet its "no expansion"
-    // reading rather than throwing.
-    const taxonomy = buildTaxonomy(payload?.nodes ?? []);
-
-    const vehicle = createVehicleListingView({
-      root,
-      cards,
-      taxonomy,
-      lang: document.documentElement.lang,
-    });
-
-    function applyVehicle(selection: StoredVehicleSelection | null): void {
-      vehicle?.apply(selection);
-    }
-
-    function apply(): void {
-      let shown = 0;
-      for (const card of cards) {
-        const visible = matchesProceduresFilter(
-          { system: card.dataset.system ?? "" },
-          state
-        );
-        card.hidden = !visible;
-        if (visible) shown += 1;
-      }
-      count!.textContent = formatCount(template, shown, total);
-      none!.hidden = shown > 0;
-      applyVehicle(readVehicleSelection(window));
-    }
-
-    const buttons = [
-      ...toolbar.querySelectorAll<HTMLButtonElement>('[data-facet="system"]'),
-    ];
-    for (const button of buttons) {
-      button.addEventListener("click", () => {
-        const value = button.dataset.value ?? "";
-        state.system = value;
-        for (const sibling of buttons) {
-          sibling.setAttribute(
-            "aria-pressed",
-            String((sibling.dataset.value ?? "") === value)
-          );
-        }
-        apply();
-      });
-    }
-
-    // The selector lives in the site chrome and knows nothing about this page;
-    // it announces, and the listing re-filters (FIT-03).
-    onVehicleSelectionChange(window, (selection) => applyVehicle(selection));
-
-    apply();
-  }
-
   for (const root of document.querySelectorAll<HTMLElement>(
     "[data-procedures]"
   )) {
-    enhance(root);
+    enhanceProceduresIndex(root, window);
   }
 </script>
 
