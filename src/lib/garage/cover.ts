@@ -1,6 +1,6 @@
 /**
- * The cover-photo designation, resolved once (GAR-01′) — **a seam declared by
- * T2-306a [TEST], implemented by T2-306 [PLATFORM]**.
+ * The cover-photo designation, resolved once (GAR-01′) — a seam declared by
+ * T2-306a [TEST] and filled in by T2-306 [PLATFORM].
  *
  * > **GAR-01′** … A user SHALL be able to designate one uploaded photo as the
  * > vehicle's **cover photo** (owner-approved addition, 2026-09-02), rendered
@@ -10,16 +10,6 @@
  * > another one; a vehicle with photos but no cover renders the same
  * > placeholder image used when the vehicle has no photos.
  *
- * ## Why this file exists before the feature does
- *
- * Every function here throws {@link COVER_SEAM}. That is deliberate: the
- * graders in `./cover.test.ts` are written against a contract, not against an
- * implementation, and the instance that wrote them is not the instance that
- * will fill them in (AGENTS.md separation rule; T901 audits it). A stub that
- * throws a named error is what lets a grader fail **for the reason it names**
- * rather than with a module-resolution error, which looks identical in a
- * report and means something completely different.
- *
  * ## Why the resolution is one function and not one per page
  *
  * T2-306's task line asks for the render helper to be shared: *"design the
@@ -27,47 +17,49 @@
  * implementation."* Two implementations of "which photo is the cover" is how
  * a garage card and a showcase card end up disagreeing about the same truck —
  * and the second one is always the one written in a hurry, against a row shape
- * somebody assumed rather than read.
+ * somebody assumed rather than read. `resolveCoverPath` is imported straight
+ * into `src/pages/[locale]/[garageSegment].astro`'s list-card and edit-view
+ * rendering, and whichever task ships a showcase card next (T2-404, having
+ * absorbed T2-402's public-page rendering) reuses the same function rather
+ * than re-deriving the answer.
  *
  * ## What this module is NOT
  *
  * It is not the enforcement. A cover that names a photo the vehicle does not
  * have is refused by the **database** — see `tests/garage/contract.ts`'s
  * `cover_photo_path` entry and the constraint and trigger graded in
- * `tests/garage/cover-photo.test.ts`. SHR-01 is explicit that a check living
- * in client or page code is not one of the three permitted enforcement modes,
- * so nothing here may be the only thing standing between a reader and someone
- * else's object. {@link resolveCoverPath} filters for the same reason
- * `vehiclePhotoPaths` in `./vehicle.ts` filters: to stop a wrong path from
- * being *asked for*, not to grant anything.
+ * `tests/garage/cover-photo.test.ts`, and shipped in
+ * `supabase/migrations/20260906120000_vehicle_cover_photo.sql`. SHR-01 is
+ * explicit that a check living in client or page code is not one of the three
+ * permitted enforcement modes, so nothing here may be the only thing standing
+ * between a reader and someone else's object. {@link resolveCoverPath} filters
+ * for the same reason `vehiclePhotoPaths` in `./vehicle.ts` filters: to stop a
+ * wrong path from being *asked for*, not to grant anything — the database has
+ * already refused it as a designation; this is the belt that keeps the page
+ * from asking the storage API for it anyway.
  *
  * refs specs/002-montero-garage (GAR-01′, SHR-01, SHR-02)
  */
 
 /**
- * The seam message. Every grader in `./cover.test.ts` that describes behaviour
- * T2-306 has not built yet fails with *this* — not with a typo, not with a bad
- * import path.
+ * The seam message this module's functions used to throw while T2-306 was
+ * unbuilt.
+ *
+ * Left in place, unused by the functions below, for the reason
+ * `SEAM_NOT_IMPLEMENTED` outlived T2-202: `./cover.test.ts`'s own control
+ * ("names a task in the seam message") still asserts its shape, and a future
+ * seam in this project is free to reuse the pattern.
  */
 export const COVER_SEAM = "not implemented: T2-306";
-
-function seam(what: string): Error {
-  return new Error(
-    `${COVER_SEAM} — ${what}. T2-306a [TEST] declared the cover-photo ` +
-      `designation as graders; T2-306 [PLATFORM] ships the column, the ` +
-      `enforcement and the UI that satisfy them ` +
-      `(refs specs/002-montero-garage GAR-01′)`
-  );
-}
 
 /**
  * The parts of a `vehicles` row a cover decision is made from.
  *
- * Declared structurally rather than as `VehicleRow` from `./vehicle.ts` on
- * purpose: `VehicleRow` does not carry `cover_photo_path` yet, and adding a
- * field to it is implementation work this task must not do. A `VehicleRow`
- * that gains the column is assignable to this interface with no adapter, so
- * T2-306 passes rows straight in.
+ * Declared structurally rather than as `VehicleRow` from `./vehicle.ts`, so
+ * this module has no dependency on it — a `VehicleRow` (which does now carry
+ * `cover_photo_path`, see its own docstring) is assignable to this interface
+ * with no adapter, and every call site in the garage page passes a row
+ * straight in.
  *
  * `cover_photo_path` is `string | null` and never `string | undefined`: null
  * is what the column holds, and a second spelling of "no cover" is a second
@@ -101,13 +93,31 @@ export interface CoverPhotoSource {
  *
  * Fall back to `photo_paths[0]`. "Silently promoting another one" is the exact
  * phrase GAR-01′ forbids, and the first array entry is the tempting thing to
- * promote — `src/lib/garage/photos.ts` still carries a docstring from before
- * this requirement existed claiming *"the first path is the cover photo"*,
- * which is precisely the convention T2-306 replaces and which the graders in
- * `./cover.test.ts` exist to keep replaced.
+ * promote — `src/lib/garage/photos.ts` carried a docstring, before T2-306,
+ * claiming *"the first path is the cover photo"*, which was precisely the
+ * convention this function replaces (now corrected there too) and which the
+ * graders in `./cover.test.ts` exist to keep replaced.
  */
 export function resolveCoverPath(vehicle: CoverPhotoSource): string | null {
-  throw seam(`resolveCoverPath for vehicle ${vehicle.id}`);
+  const cover = vehicle.cover_photo_path;
+  if (cover === null) return null;
+
+  // The same ownership check `vehiclePhotoPaths` in `./vehicle.ts` applies to
+  // the whole array, asked of one path: it has to live directly under
+  // `<owner>/<vehicle>/` — no fewer segments (not this vehicle's at all) and
+  // no more (not a path `photoObjectPath` could have built). Not imported
+  // from `./vehicle.ts` on purpose — `CoverPhotoSource` is declared
+  // structurally precisely so this module does not have to depend on
+  // `VehicleRow`, and the check is three lines, not worth a coupling.
+  const prefix = `${vehicle.owner_id}/${vehicle.id}/`;
+  const ownsPath =
+    cover.startsWith(prefix) && !cover.slice(prefix.length).includes("/");
+  if (!ownsPath) return null;
+
+  // Membership, asked last and against `vehicle.photo_paths` as it actually
+  // is — never `photo_paths[0]`, and never anything but a lookup of the
+  // designation that was already there.
+  return vehicle.photo_paths.includes(cover) ? cover : null;
 }
 
 /**
@@ -134,5 +144,5 @@ export function resolveCoverPath(vehicle: CoverPhotoSource): string | null {
 export function coverPhotoWrite(
   path: string | null
 ): Readonly<Record<string, string | null>> {
-  throw seam(`coverPhotoWrite(${path ?? "null"})`);
+  return { cover_photo_path: path };
 }

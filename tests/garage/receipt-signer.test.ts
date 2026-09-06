@@ -80,6 +80,32 @@ const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const SIGNER_DIR = join(REPO_ROOT, RECEIPT_SIGNER_DIR);
 
 /**
+ * The per-test timeout for the two live describe blocks below, in
+ * milliseconds.
+ *
+ * Every live call the harness makes — `request()` in `harness.ts`, and this
+ * file's own `askSigner()` — already carries its own `AbortSignal.timeout(10_000)`.
+ * That ceiling is a deliberate per-request budget, not a default anybody
+ * forgot to lower. Vitest's *test*-level timeout defaults to 5000ms, which is
+ * shorter than even one of those per-request budgets — so a test chaining
+ * several of them (a fixture is a vehicle insert, a record insert, a receipt
+ * insert and a storage upload before the signer is even asked) can be killed
+ * by the test framework before the network call it is waiting on ever gets to
+ * time out on its own terms.
+ *
+ * Observed for real: a Tier-B CI run where the pulled `edge-runtime` container
+ * exited mid-suite (SIGBUS, confirmed by a clean rerun of the same commit)
+ * left Kong retrying DNS for a couple of seconds before answering 503 — long
+ * enough, stacked on top of a test's other live calls, to blow past 5000ms and
+ * report "Test timed out in 5000ms" instead of the clean, fast refusal the
+ * signer's own logic would have produced. `20_000` is comfortably above the
+ * realistic sum of several sequential 10-second-ceilinged calls without
+ * hiding a genuinely hung request forever — the tier-b job itself is bounded
+ * at `timeout-minutes: 20` for the same reason.
+ */
+const LIVE_TEST_TIMEOUT_MS = 20_000;
+
+/**
  * Every source file of the signer, or the seam error naming what is missing.
  *
  * Concatenated rather than read as one `index.ts`, because a signer split into
@@ -87,15 +113,17 @@ const SIGNER_DIR = join(REPO_ROOT, RECEIPT_SIGNER_DIR);
  * read `index.ts` would go quiet the day somebody refactored — the worst
  * possible direction for a rule about a caller-supplied path.
  */
-function requireSigner(): { path: string; text: string }[] {
-  if (!existsSync(SIGNER_DIR)) {
+function requireSigner(
+  directory: string = SIGNER_DIR
+): { path: string; text: string }[] {
+  if (!existsSync(directory)) {
     throw shareSeam(`no Edge Function at ${RECEIPT_SIGNER_DIR}/`);
   }
-  const files = readdirSync(SIGNER_DIR)
+  const files = readdirSync(directory)
     .filter((name) => /\.(ts|js|mts)$/.test(name))
     .map((name) => ({
       path: `${RECEIPT_SIGNER_DIR}/${name}`,
-      text: readFileSync(join(SIGNER_DIR, name), "utf8"),
+      text: readFileSync(join(directory, name), "utf8"),
     }));
   if (files.length === 0) {
     throw shareSeam(`${RECEIPT_SIGNER_DIR}/ contains no source file`);
@@ -114,12 +142,36 @@ function signerSource(): string {
  * Tier A — unmarked. Claims about the repo as it stands.
  * ====================================================================== */
 
-describe("the signer is not here yet, and nothing pretends otherwise", () => {
-  it("the seam names the task that ships it", () => {
-    // The control for every marker below: they must fail because this throws a
-    // sentence, not because a `readFileSync` blew up somewhere unhelpful.
-    expect(() => requireSigner()).toThrow(SEAM_SHARE_GRANTS);
-    expect(() => requireSigner()).toThrow(RECEIPT_SIGNER_DIR);
+describe("there is exactly one signer, and these rules reach all of it", () => {
+  it("the seam still names its subject when a file goes missing", () => {
+    // **The seam control changed shape when the seam was filled** — the same
+    // move `public-pages.test.ts` records for T2-402 and `share-delivery.
+    // test.ts` for this task. It used to assert `requireSigner()` *throws*,
+    // which is precisely the grader that must fail once the Edge Function
+    // exists; leaving it would make a green suite impossible rather than
+    // meaningful.
+    //
+    // What it still has to prove is the half that outlives the seam: that a
+    // missing signer fails with a sentence naming the directory, not with an
+    // `ENOENT` three frames deep — because every marked grader below reads
+    // `signerSource()`, and a resolver that failed unhelpfully would turn one
+    // deleted file into six unreadable failures.
+    //
+    // Both failure branches, against directories with a known answer: one that
+    // does not exist, and one that exists and holds no source file (the
+    // migrations directory is all `.sql`). The second is the branch a partial
+    // deletion hits, and it had no control at all before.
+    const absent = join(REPO_ROOT, "supabase", "no-such-directory");
+    const empty = join(REPO_ROOT, "supabase", "migrations");
+
+    expect(() => requireSigner(absent)).toThrow(SEAM_SHARE_GRANTS);
+    expect(() => requireSigner(absent)).toThrow(RECEIPT_SIGNER_DIR);
+    expect(() => requireSigner(empty)).toThrow(SEAM_SHARE_GRANTS);
+    expect(() => requireSigner(empty)).toThrow("contains no source file");
+
+    // The control on the two above: the real directory resolves. Without it,
+    // both assertions are satisfied by a resolver that refuses everything.
+    expect(requireSigner().length).toBeGreaterThan(0);
   });
 
   it("no Edge Function anywhere in the repo signs storage objects today", () => {
@@ -148,11 +200,11 @@ describe("the signer is not here yet, and nothing pretends otherwise", () => {
  * ====================================================================== */
 
 describe("the signer signs; it does not decide", () => {
-  it.fails(`ships an Edge Function at ${RECEIPT_SIGNER_DIR}`, () => {
+  it(`ships an Edge Function at ${RECEIPT_SIGNER_DIR}`, () => {
     expect(requireSigner().length).toBeGreaterThan(0);
   });
 
-  it.fails("NEVER reads a path out of the request", () => {
+  it("NEVER reads a path out of the request", () => {
     // The rule the whole split rests on. A signer that accepts
     // `{ token, path }` has turned Postgres's authorization into a suggestion:
     // the caller names the object, the signer signs it, and the bucket becomes
@@ -167,7 +219,7 @@ describe("the signer signs; it does not decide", () => {
     expect(offenders.map(String)).toEqual([]);
   });
 
-  it.fails("asks the database to resolve the path", () => {
+  it("asks the database to resolve the path", () => {
     // The other half of the same claim, positively: authorization stays in
     // Postgres where the graders reach it. A signer that queried
     // `storage.objects` directly, or read `public.receipts` itself, would have
@@ -178,7 +230,7 @@ describe("the signer signs; it does not decide", () => {
     expect(source).not.toMatch(/from\s*\(\s*["'`]receipts["'`]\s*\)/);
   });
 
-  it.fails("signs inside the TTL ceiling and never above it", () => {
+  it("signs inside the TTL ceiling and never above it", () => {
     // Every numeric literal handed to a sign call has to sit in the window. The
     // grader reads the literals rather than trusting a named constant, because
     // the defect is somebody passing `3600` at one call site.
@@ -195,14 +247,14 @@ describe("the signer signs; it does not decide", () => {
     }
   });
 
-  it.fails("signs only in the receipts bucket", () => {
+  it("signs only in the receipts bucket", () => {
     // A signer that took the bucket from anywhere but a constant would be one
     // parameter away from signing `vehicle-photos` — a different bucket with a
     // different consent story (T2-301a).
     expect(signerSource()).toContain(`"${RECEIPTS_BUCKET}"`);
   });
 
-  it.fails("the edge runtime is switched on in config.toml", () => {
+  it("the edge runtime is switched on in config.toml", () => {
     // `[edge_runtime] enabled` is off today. Named here because it is the one
     // line that makes the whole surface exist, and because leaving it off would
     // make every behavioural grader below skip rather than fail — a silent pass
@@ -220,75 +272,87 @@ describe("the signer signs; it does not decide", () => {
 describe.skipIf(!live.available)(
   liveTitle("the storage layer still refuses a stranger", live),
   () => {
-    it("owner B cannot sign owner A's receipt — the floor everything rests on", async () => {
-      // Unmarked, and true today: T2-202's storage policies already prove it,
-      // and `storage-privacy.test.ts` grades the whole cross-user matrix. It is
-      // restated here because the signer is about to become a *second* door to
-      // the same bytes, and the value of this grader is that it says what the
-      // first door does — so a regression in the signer cannot be mistaken for
-      // a regression in storage.
-      const scenario = await provisionScenario(stackOf(live));
-      try {
-        const path = testReceiptPath(scenario.ownerA.userId ?? "", "1");
-        await createOwnedFixture(scenario, scenario.ownerA, path);
+    it(
+      "owner B cannot sign owner A's receipt — the floor everything rests on",
+      async () => {
+        // Unmarked, and true today: T2-202's storage policies already prove it,
+        // and `storage-privacy.test.ts` grades the whole cross-user matrix. It is
+        // restated here because the signer is about to become a *second* door to
+        // the same bytes, and the value of this grader is that it says what the
+        // first door does — so a regression in the signer cannot be mistaken for
+        // a regression in storage.
+        const scenario = await provisionScenario(stackOf(live));
+        try {
+          const path = testReceiptPath(scenario.ownerA.userId ?? "", "1");
+          await createOwnedFixture(scenario, scenario.ownerA, path);
 
-        const stolen = await signObject(scenario, scenario.ownerB, path);
+          const stolen = await signObject(scenario, scenario.ownerB, path);
 
-        expect(stolen.ok).toBe(false);
-      } finally {
-        await teardownScenario(scenario);
-      }
-    });
+          expect(stolen.ok).toBe(false);
+        } finally {
+          await teardownScenario(scenario);
+        }
+      },
+      LIVE_TEST_TIMEOUT_MS
+    );
 
-    it("POSITIVE CONTROL: the owner CAN sign their own", async () => {
-      const scenario = await provisionScenario(stackOf(live));
-      try {
-        const path = testReceiptPath(scenario.ownerA.userId ?? "", "1");
-        // The bytes have to be there: the storage API refuses to sign a path
-        // with no object behind it, so a fixture that only created the database
-        // row would make this control fail for a reason that has nothing to do
-        // with ownership.
-        await uploadObject(scenario, scenario.ownerA, path);
-        await createOwnedFixture(scenario, scenario.ownerA, path);
+    it(
+      "POSITIVE CONTROL: the owner CAN sign their own",
+      async () => {
+        const scenario = await provisionScenario(stackOf(live));
+        try {
+          const path = testReceiptPath(scenario.ownerA.userId ?? "", "1");
+          // The bytes have to be there: the storage API refuses to sign a path
+          // with no object behind it, so a fixture that only created the database
+          // row would make this control fail for a reason that has nothing to do
+          // with ownership.
+          await uploadObject(scenario, scenario.ownerA, path);
+          await createOwnedFixture(scenario, scenario.ownerA, path);
 
-        const signed = await signObject(scenario, scenario.ownerA, path);
+          const signed = await signObject(scenario, scenario.ownerA, path);
 
-        expect(signed.ok).toBe(true);
-      } finally {
-        await teardownScenario(scenario);
-      }
-    });
+          expect(signed.ok).toBe(true);
+        } finally {
+          await teardownScenario(scenario);
+        }
+      },
+      LIVE_TEST_TIMEOUT_MS
+    );
 
-    it("a signed URL cannot be asked for a longer life than the ceiling", async () => {
-      // Unmarked, and it is about the *storage API*, not the signer: whatever
-      // the Edge Function does, the underlying endpoint accepts any
-      // `expiresIn` a caller sends. So the ceiling can never be enforced by the
-      // storage layer, which is exactly why it has to be enforced in the signer
-      // — and why the Tier A literal check above is not belt-and-braces but the
-      // only enforcement there is.
-      //
-      // Recorded as an observation rather than a requirement: this asserts what
-      // the platform does, so that the next reader does not assume a limit that
-      // is not there.
-      const scenario = await provisionScenario(stackOf(live));
-      try {
-        const path = testReceiptPath(scenario.ownerA.userId ?? "", "1");
-        await uploadObject(scenario, scenario.ownerA, path);
-        await createOwnedFixture(scenario, scenario.ownerA, path);
+    it(
+      "a signed URL cannot be asked for a longer life than the ceiling",
+      async () => {
+        // Unmarked, and it is about the *storage API*, not the signer: whatever
+        // the Edge Function does, the underlying endpoint accepts any
+        // `expiresIn` a caller sends. So the ceiling can never be enforced by the
+        // storage layer, which is exactly why it has to be enforced in the signer
+        // — and why the Tier A literal check above is not belt-and-braces but the
+        // only enforcement there is.
+        //
+        // Recorded as an observation rather than a requirement: this asserts what
+        // the platform does, so that the next reader does not assume a limit that
+        // is not there.
+        const scenario = await provisionScenario(stackOf(live));
+        try {
+          const path = testReceiptPath(scenario.ownerA.userId ?? "", "1");
+          await uploadObject(scenario, scenario.ownerA, path);
+          await createOwnedFixture(scenario, scenario.ownerA, path);
 
-        const long = await signObject(
-          scenario,
-          scenario.ownerA,
-          path,
-          RECEIPTS_BUCKET,
-          60 * 60 * 24 * 365
-        );
+          const long = await signObject(
+            scenario,
+            scenario.ownerA,
+            path,
+            RECEIPTS_BUCKET,
+            60 * 60 * 24 * 365
+          );
 
-        expect(long.ok).toBe(true);
-      } finally {
-        await teardownScenario(scenario);
-      }
-    });
+          expect(long.ok).toBe(true);
+        } finally {
+          await teardownScenario(scenario);
+        }
+      },
+      LIVE_TEST_TIMEOUT_MS
+    );
   }
 );
 
@@ -368,24 +432,28 @@ describe.skipIf(!live.available)(
       return createOwnedFixture(scenario, owner, path);
     }
 
-    it.fails("signs a receipt on the granted vehicle", async () => {
-      const scenario = await provisionScenario(stackOf(live));
-      try {
-        const owned = await uploadedFixture(scenario, scenario.ownerA, "1");
-        const grant = await grantOn(scenario, owned.vehicleId, false, true);
+    it(
+      "signs a receipt on the granted vehicle",
+      async () => {
+        const scenario = await provisionScenario(stackOf(live));
+        try {
+          const owned = await uploadedFixture(scenario, scenario.ownerA, "1");
+          const grant = await grantOn(scenario, owned.vehicleId, false, true);
 
-        const signed = await askSigner(scenario, {
-          token: grant.token,
-          receipt_id: owned.receiptId,
-        });
+          const signed = await askSigner(scenario, {
+            token: grant.token,
+            receipt_id: owned.receiptId,
+          });
 
-        expect(signed.ok).toBe(true);
-      } finally {
-        await teardownScenario(scenario);
-      }
-    });
+          expect(signed.ok).toBe(true);
+        } finally {
+          await teardownScenario(scenario);
+        }
+      },
+      LIVE_TEST_TIMEOUT_MS
+    );
 
-    it.fails(
+    it(
       "REFUSES a receipt on another vehicle of the SAME owner",
       async () => {
         // The cell that gets built wrong. A resolver that goes token → owner →
@@ -407,28 +475,33 @@ describe.skipIf(!live.available)(
         } finally {
           await teardownScenario(scenario);
         }
-      }
+      },
+      LIVE_TEST_TIMEOUT_MS
     );
 
-    it.fails("REFUSES a receipt on another owner's vehicle", async () => {
-      const scenario = await provisionScenario(stackOf(live));
-      try {
-        const mine = await uploadedFixture(scenario, scenario.ownerA, "1");
-        const theirs = await uploadedFixture(scenario, scenario.ownerB, "1");
-        const grant = await grantOn(scenario, mine.vehicleId, false, true);
+    it(
+      "REFUSES a receipt on another owner's vehicle",
+      async () => {
+        const scenario = await provisionScenario(stackOf(live));
+        try {
+          const mine = await uploadedFixture(scenario, scenario.ownerA, "1");
+          const theirs = await uploadedFixture(scenario, scenario.ownerB, "1");
+          const grant = await grantOn(scenario, mine.vehicleId, false, true);
 
-        const signed = await askSigner(scenario, {
-          token: grant.token,
-          receipt_id: theirs.receiptId,
-        });
+          const signed = await askSigner(scenario, {
+            token: grant.token,
+            receipt_id: theirs.receiptId,
+          });
 
-        expect(signed.ok).toBe(false);
-      } finally {
-        await teardownScenario(scenario);
-      }
-    });
+          expect(signed.ok).toBe(false);
+        } finally {
+          await teardownScenario(scenario);
+        }
+      },
+      LIVE_TEST_TIMEOUT_MS
+    );
 
-    it.fails(
+    it(
       "REFUSES once the grant is revoked, on the next request",
       async () => {
         // SHR-08's "takes effect on the next request", applied to issuance. A
@@ -460,10 +533,11 @@ describe.skipIf(!live.available)(
         } finally {
           await teardownScenario(scenario);
         }
-      }
+      },
+      LIVE_TEST_TIMEOUT_MS
     );
 
-    it.fails(
+    it(
       "REFUSES when includes_receipts is false, EVEN IF includes_costs is true",
       async () => {
         // SHR-06's independence, in the direction that is easy to get wrong: a
@@ -483,10 +557,11 @@ describe.skipIf(!live.available)(
         } finally {
           await teardownScenario(scenario);
         }
-      }
+      },
+      LIVE_TEST_TIMEOUT_MS
     );
 
-    it.fails(
+    it(
       "SIGNS when includes_receipts is true and includes_costs is FALSE",
       async () => {
         // The mirror image, and the positive control for the cell above.
@@ -506,31 +581,36 @@ describe.skipIf(!live.available)(
         } finally {
           await teardownScenario(scenario);
         }
-      }
+      },
+      LIVE_TEST_TIMEOUT_MS
     );
 
-    it.fails("ignores a caller-supplied path entirely", async () => {
-      // The behavioural half of the Tier A rule. Sending a path IS the attack;
-      // the correct answer is that it changes nothing — the signer signs what
-      // Postgres resolved for `receipt_id`, or it refuses.
-      const scenario = await provisionScenario(stackOf(live));
-      try {
-        const mine = await uploadedFixture(scenario, scenario.ownerA, "1");
-        const theirs = await uploadedFixture(scenario, scenario.ownerB, "1");
-        const grant = await grantOn(scenario, mine.vehicleId, false, true);
+    it(
+      "ignores a caller-supplied path entirely",
+      async () => {
+        // The behavioural half of the Tier A rule. Sending a path IS the attack;
+        // the correct answer is that it changes nothing — the signer signs what
+        // Postgres resolved for `receipt_id`, or it refuses.
+        const scenario = await provisionScenario(stackOf(live));
+        try {
+          const mine = await uploadedFixture(scenario, scenario.ownerA, "1");
+          const theirs = await uploadedFixture(scenario, scenario.ownerB, "1");
+          const grant = await grantOn(scenario, mine.vehicleId, false, true);
 
-        const signed = await askSigner(scenario, {
-          token: grant.token,
-          receipt_id: mine.receiptId,
-          path: theirs.storagePath,
-          storage_path: theirs.storagePath,
-        });
+          const signed = await askSigner(scenario, {
+            token: grant.token,
+            receipt_id: mine.receiptId,
+            path: theirs.storagePath,
+            storage_path: theirs.storagePath,
+          });
 
-        expect(signed.ok).toBe(true);
-        expect(signed.text).not.toContain(theirs.storagePath);
-      } finally {
-        await teardownScenario(scenario);
-      }
-    });
+          expect(signed.ok).toBe(true);
+          expect(signed.text).not.toContain(theirs.storagePath);
+        } finally {
+          await teardownScenario(scenario);
+        }
+      },
+      LIVE_TEST_TIMEOUT_MS
+    );
   }
 );

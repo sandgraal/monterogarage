@@ -75,6 +75,7 @@ import { SUPABASE_BROWSER_CONFIG } from "../../lib/supabase/config";
 import { MAX_DISPLAY_NAME_LENGTH } from "../../lib/garage/vehicle";
 import { MAX_PHOTO_BYTES, PHOTO_MIME_TYPES } from "../../lib/garage/photos";
 import { HANDLE_LENGTH } from "../../lib/garage/handles";
+import { SHARE_EXPIRY_DAY_CHOICES } from "../../lib/supabase/shares";
 import {
   MAX_RECEIPT_BYTES,
   RECEIPT_MIME_TYPES,
@@ -188,6 +189,20 @@ const mediaTooLarge = strings.garageMediaSizeRejectedTemplate.replace(
 const handleHint = strings.garageHandleHintTemplate
   .replace("{min}", number.format(HANDLE_LENGTH.min))
   .replace("{max}", number.format(HANDLE_LENGTH.max));
+
+/**
+ * How long a share link may run, as the form offers it (SHR-08).
+ *
+ * The durations come from `SHARE_EXPIRY_DAY_CHOICES` in
+ * `src/lib/supabase/shares.ts` — one list of figures, formatted into both
+ * locales through one template. Typing "7 días" and "7 days" into two locale
+ * records would be the same number stored twice, which is the thing AGENTS.md
+ * says means the schema is wrong.
+ */
+const expiryChoices = SHARE_EXPIRY_DAY_CHOICES.map((days) => ({
+  days,
+  label: strings.shareExpiryDaysTemplate.replace("{days}", number.format(days)),
+}));
 const handleTooShort = strings.garageHandleIssueShortTemplate.replace(
   "{min}",
   number.format(HANDLE_LENGTH.min)
@@ -295,6 +310,8 @@ const hasReferences = Object.values(referenceCatalogue).some(
     data-string-photo-alt={strings.garagePhotoAltTemplate}
     data-string-photo-type={strings.garagePhotoTypeRejected}
     data-string-photo-size={photoTooLarge}
+    data-string-set-cover={strings.garageSetCover}
+    data-string-remove-cover={strings.garageRemoveCover}
     data-string-form-new={strings.garageFormNewHeading}
     data-string-form-edit={strings.garageFormEditHeading}
     data-string-issue-name-required={strings.garageIssueNameRequired}
@@ -370,6 +387,20 @@ const hasReferences = Object.values(referenceCatalogue).some(
     data-string-handle-reserved={strings.garageHandleIssueReserved}
     data-string-handle-unavailable={strings.garageHandleUnavailable}
     data-string-visibility-needs-handle={strings.garageVisibilityNeedsHandle}
+    data-string-share-empty={strings.shareListEmpty}
+    data-string-share-expires={strings.shareExpiresTemplate}
+    data-string-share-ended={strings.shareEndedTemplate}
+    data-string-share-opens-nothing={strings.shareOpensNothing}
+    data-string-share-opens-costs={strings.shareOpensCosts}
+    data-string-share-opens-receipts={strings.shareOpensReceipts}
+    data-string-share-opens-both={strings.shareOpensBoth}
+    data-string-share-kind-mechanic={strings.shareKindMechanic}
+    data-string-share-kind-buyer={strings.shareKindBuyer}
+    data-string-share-revoke={strings.shareRevoke}
+    data-string-share-revoking={strings.shareRevoking}
+    data-string-share-copied={strings.shareCopied}
+    data-string-share-copy-failed={strings.shareCopyFailed}
+    data-string-share-error={strings.shareError}
     data-locale={LOCALE_BCP47[locale]}
   >
     <div class="garage__intro">
@@ -583,6 +614,152 @@ const hasReferences = Object.values(referenceCatalogue).some(
                 <p
                   class="garage__message"
                   data-garage-visibility-message
+                  role="status"
+                  aria-live="polite"
+                />
+              </div>
+
+              {/* ------------------------------------------------------ */}
+              {/* Typed share grants (T2-404, SHR-05…SHR-08)             */}
+              {/*                                                        */}
+              {/* Beside publishing, and deliberately NOT inside it: the  */}
+              {/* two switches above put a truck on the public internet,  */}
+              {/* and a link admits exactly one person the owner chose.   */}
+              {/* SHR-09 keeps them apart in the database; keeping them   */}
+              {/* apart on screen is the same claim, made where the owner */}
+              {/* can read it.                                            */}
+              {/*                                                        */}
+              {/* Two checkboxes and not one "full access" switch: SHR-06 */}
+              {/* opens costs and receipts independently, and a single    */}
+              {/* control would make "the scans but not the totals"       */}
+              {/* unrepresentable rather than merely unbuilt.            */}
+              {/*                                                        */}
+              {/* No handle is needed. A link is not publication — it     */}
+              {/* carries its own address — so this panel works for an    */}
+              {/* owner who has never claimed one.                       */}
+              {/* ------------------------------------------------------ */}
+              <div class="garage__share">
+                <h3>{strings.shareHeading}</h3>
+                <p class="garage__fineprint">{strings.shareIntro}</p>
+
+                <p class="garage__field">
+                  <label class="garage__label" for="garage-share-kind">
+                    {strings.shareKindLabel}
+                  </label>
+                  <select
+                    class="garage__input"
+                    id="garage-share-kind"
+                    data-garage-share-kind
+                  >
+                    <option value="mechanic">
+                      {strings.shareKindMechanic}
+                    </option>
+                    <option value="buyer">{strings.shareKindBuyer}</option>
+                  </select>
+                </p>
+
+                <p class="garage__check">
+                  <input
+                    class="garage__checkbox"
+                    id="garage-share-costs"
+                    type="checkbox"
+                    aria-describedby="garage-share-costs-hint"
+                    data-garage-share-costs
+                  />
+                  <label class="garage__label" for="garage-share-costs">
+                    {strings.shareCostsLabel}
+                  </label>
+                  <span class="garage__hint" id="garage-share-costs-hint">
+                    {strings.shareCostsHint}
+                  </span>
+                </p>
+
+                <p class="garage__check">
+                  <input
+                    class="garage__checkbox"
+                    id="garage-share-receipts"
+                    type="checkbox"
+                    aria-describedby="garage-share-receipts-hint"
+                    data-garage-share-receipts
+                  />
+                  <label class="garage__label" for="garage-share-receipts">
+                    {strings.shareReceiptsLabel}
+                  </label>
+                  <span class="garage__hint" id="garage-share-receipts-hint">
+                    {strings.shareReceiptsHint}
+                  </span>
+                </p>
+
+                <p class="garage__field">
+                  <label class="garage__label" for="garage-share-expiry">
+                    {strings.shareExpiryLabel}
+                  </label>
+                  <select
+                    class="garage__input"
+                    id="garage-share-expiry"
+                    data-garage-share-expiry
+                  >
+                    {expiryChoices.map((choice) => (
+                      <option value={String(choice.days)}>
+                        {choice.label}
+                      </option>
+                    ))}
+                  </select>
+                </p>
+
+                <div class="garage__actions">
+                  <button
+                    class="garage__button"
+                    type="button"
+                    data-garage-share-create
+                    data-idle={strings.shareCreate}
+                  >
+                    {strings.shareCreate}
+                  </button>
+                </div>
+
+                {/*
+                 * The one-shot panel. The token exists in plaintext for
+                 * exactly one response and never again, so this is the only
+                 * place on the site allowed to hold it — and it is `hidden`
+                 * until there is one, rather than rendered empty, so the
+                 * warning above it is never on screen without the thing it
+                 * warns about.
+                 */}
+                <div
+                  class="garage__share-issued"
+                  data-garage-share-issued
+                  hidden
+                >
+                  <h4>{strings.shareCreatedHeading}</h4>
+                  <p class="garage__fineprint">{strings.shareCreatedBody}</p>
+                  <p class="garage__share-link">
+                    <code data-garage-share-link />
+                  </p>
+                  <div class="garage__actions">
+                    <button
+                      class="garage__button"
+                      type="button"
+                      data-garage-share-copy
+                    >
+                      {strings.shareCopy}
+                    </button>
+                    <button
+                      class="garage__link"
+                      type="button"
+                      data-garage-share-dismiss
+                    >
+                      {strings.shareDismiss}
+                    </button>
+                  </div>
+                </div>
+
+                <h4>{strings.shareListHeading}</h4>
+                <ul class="garage__share-list" data-garage-share-list />
+
+                <p
+                  class="garage__message"
+                  data-garage-share-message
                   role="status"
                   aria-live="polite"
                 />
@@ -1592,9 +1769,24 @@ const hasReferences = Object.values(referenceCatalogue).some(
             {/* ---------------------------------------------------------- */}
             <template data-garage-row-template>
               <li class="garage__row">
-                <div class="garage__row-text">
-                  <span class="garage__row-name" data-row-name />
-                  <span class="garage__row-identity" data-row-identity />
+                <div class="garage__row-main">
+                  <div class="garage__row-media">
+                    <img
+                      class="garage__row-thumb"
+                      data-row-thumb
+                      alt=""
+                      hidden
+                    />
+                    <span
+                      class="garage__row-thumb-empty"
+                      data-row-thumb-empty
+                      aria-hidden="true"
+                    />
+                  </div>
+                  <div class="garage__row-text">
+                    <span class="garage__row-name" data-row-name />
+                    <span class="garage__row-identity" data-row-identity />
+                  </div>
                 </div>
                 <div class="garage__row-actions">
                   <button class="garage__button" type="button" data-row-open>
@@ -1606,14 +1798,32 @@ const hasReferences = Object.values(referenceCatalogue).some(
 
             <template data-garage-photo-template>
               <li class="garage__photo">
-                <img class="garage__photo-image" data-photo-image alt="" />
-                <button
-                  class="garage__link garage__link--danger"
-                  type="button"
-                  data-photo-remove
-                >
-                  {strings.garagePhotoRemove}
-                </button>
+                <div class="garage__photo-media">
+                  <img class="garage__photo-image" data-photo-image alt="" />
+                  <span
+                    class="garage__badge garage__photo-cover-badge"
+                    data-photo-cover-badge
+                    hidden
+                  >
+                    {strings.garageCoverBadge}
+                  </span>
+                </div>
+                <div class="garage__photo-actions">
+                  <button
+                    class="garage__link"
+                    type="button"
+                    data-photo-cover-toggle
+                  >
+                    {strings.garageSetCover}
+                  </button>
+                  <button
+                    class="garage__link garage__link--danger"
+                    type="button"
+                    data-photo-remove
+                  >
+                    {strings.garagePhotoRemove}
+                  </button>
+                </div>
               </li>
             </template>
 
@@ -1820,6 +2030,7 @@ const hasReferences = Object.values(referenceCatalogue).some(
     removeVehiclePhoto,
     saveHandle,
     setRecordVisibility,
+    setVehicleCover,
     setVehicleVisibility,
     signPhotoUrls,
     signReceiptUrls,
@@ -1836,6 +2047,14 @@ const hasReferences = Object.values(referenceCatalogue).some(
     normalizeHandle,
     type HandleIssue,
   } from "../../lib/garage/handles";
+  import { shareLinkFor } from "../../lib/garage/share-link";
+  import {
+    SHARE_EXPIRY_DAY_CHOICES,
+    createShareGrant,
+    listShareGrants,
+    revokeShareGrant,
+    type ShareGrantRow,
+  } from "../../lib/supabase/shares";
   import type {
     RecordPublication,
     VehiclePublication,
@@ -1907,6 +2126,7 @@ const hasReferences = Object.values(referenceCatalogue).some(
     type OdometerUnit,
   } from "../../lib/garage/odometer";
   import { photoIssue } from "../../lib/garage/photos";
+  import { resolveCoverPath } from "../../lib/garage/cover";
 
   interface SelectorPayload extends SelectorTaxonomyData {
     labels: {
@@ -1924,6 +2144,19 @@ const hasReferences = Object.values(referenceCatalogue).some(
   function enhance(root: HTMLElement): void {
     const text = root.dataset;
     const locale = text.locale ?? "en";
+    /**
+     * The site locale, as `share-link.ts` needs it (`en` | `es`).
+     *
+     * Not the same value as `locale` above, which is the BCP-47 tag the
+     * `Intl` formatters take (`es-CR`). A share link's path segment comes from
+     * the route registry, which is keyed by the two-letter site locale — and
+     * `/es-CR/compartir/` is a URL this site does not serve.
+     */
+    const pageLocale: "en" | "es" = document.documentElement.lang.startsWith(
+      "es"
+    )
+      ? "es"
+      : "en";
 
     const query = <T extends Element>(selector: string): T | null =>
       root.querySelector<T>(selector);
@@ -2131,6 +2364,18 @@ const hasReferences = Object.values(referenceCatalogue).some(
       recordVisibilityMessage: query<HTMLElement>(
         "[data-garage-record-visibility-message]"
       ),
+      /* Typed share grants — T2-404, SHR-05…SHR-08 */
+      shareKind: query<HTMLSelectElement>("[data-garage-share-kind]"),
+      shareCosts: query<HTMLInputElement>("[data-garage-share-costs]"),
+      shareReceipts: query<HTMLInputElement>("[data-garage-share-receipts]"),
+      shareExpiry: query<HTMLSelectElement>("[data-garage-share-expiry]"),
+      shareCreate: query<HTMLButtonElement>("[data-garage-share-create]"),
+      shareIssued: query<HTMLElement>("[data-garage-share-issued]"),
+      shareLink: query<HTMLElement>("[data-garage-share-link]"),
+      shareCopy: query<HTMLButtonElement>("[data-garage-share-copy]"),
+      shareDismiss: query<HTMLButtonElement>("[data-garage-share-dismiss]"),
+      shareList: query<HTMLUListElement>("[data-garage-share-list]"),
+      shareMessage: query<HTMLElement>("[data-garage-share-message]"),
     };
 
     const payload = readSelectorPayload(document) as SelectorPayload | null;
@@ -2488,7 +2733,10 @@ const hasReferences = Object.values(referenceCatalogue).some(
       els.list.replaceChildren();
       els.empty.hidden = vehicles.length > 0;
 
-      for (const row of sortVehicles(vehicles, locale)) {
+      const rows = sortVehicles(vehicles, locale);
+      const items = new Map<string, HTMLElement>();
+
+      for (const row of rows) {
         const item = els.rowTemplate.content.firstElementChild?.cloneNode(
           true
         ) as HTMLElement | null;
@@ -2507,6 +2755,66 @@ const hasReferences = Object.values(referenceCatalogue).some(
         );
         open?.addEventListener("click", () => openDetail(row));
         els.list.append(item);
+        items.set(row.id, item);
+      }
+
+      void paintRowThumbnails(rows, items);
+    }
+
+    /**
+     * The cover thumbnail on each list card (GAR-01′, T2-306) — "rendering
+     * the designated cover — never just the first array entry — on the
+     * garage vehicle list card", the task line's own words.
+     *
+     * A second pass over the freshly painted list rather than part of the
+     * loop above: `resolveCoverPath` is synchronous but a *readable* image
+     * needs a signed URL, and signing every row's cover in one batched
+     * request is one round trip instead of one per truck. `paintList`
+     * fires this and does not await it — the names and the "Open" buttons
+     * are not held hostage to the signing request.
+     */
+    async function paintRowThumbnails(
+      rows: readonly VehicleRow[],
+      items: ReadonlyMap<string, HTMLElement>
+    ): Promise<void> {
+      const covers = new Map<string, string>();
+      for (const row of rows) {
+        const cover = resolveCoverPath(row);
+        if (cover !== null) covers.set(row.id, cover);
+      }
+      if (covers.size === 0) return;
+
+      const urls = await signPhotoUrls([...covers.values()]);
+      // Built once, not `rows.find(...)` per cover below — that would make
+      // this loop O(n²) across the whole garage instead of O(n).
+      const rowsById = new Map(rows.map((row) => [row.id, row] as const));
+
+      for (const [vehicleId, path] of covers) {
+        const item = items.get(vehicleId);
+        const url = urls.get(path);
+        // The list may have been repainted — a vehicle added, removed, or
+        // renamed — while the signing request was in flight. `contains`
+        // rather than a second lookup: an item still in `items` but no
+        // longer in the live list is exactly that case, and painting a
+        // detached node is harmless but pointless.
+        if (!item || !els.list.contains(item) || url === undefined) continue;
+        const row = rowsById.get(vehicleId);
+        const image = item.querySelector<HTMLImageElement>("[data-row-thumb]");
+        const empty = item.querySelector<HTMLElement>("[data-row-thumb-empty]");
+        // The same convention as every other row-template lookup in this
+        // file (see `paintList` above): if the row or the expected `<img>`
+        // is not there, skip this one rather than proceeding as though the
+        // thumbnail painted. That is also why the placeholder is only
+        // hidden inside this branch — hiding it unconditionally would leave
+        // a blank card (no placeholder, no image) on exactly this failure.
+        if (!image || !row) continue;
+        image.src = url;
+        image.alt = (text.stringPhotoAlt ?? "").replace(
+          "{name}",
+          row.display_name
+        );
+        image.hidden = false;
+        if (empty) empty.hidden = true;
       }
     }
 
@@ -2552,6 +2860,10 @@ const hasReferences = Object.values(referenceCatalogue).some(
       // this truck that nobody made.
       say(els.visibilityMessage, "");
       paintVisibility(row);
+      // Same rule, one panel over: a share link issued for the truck the
+      // reader was looking at a moment ago has no business on this one's
+      // screen (T2-404).
+      paintShares(row);
       show("detail");
       void paintPhotos(row).catch(() => unreachable(els.photoMessage));
       // Beside the rail, like every other way loading records can fail. The
@@ -2592,6 +2904,12 @@ const hasReferences = Object.values(referenceCatalogue).some(
       // request was in flight would otherwise paint the wrong gallery.
       if (opened?.id !== row.id) return;
 
+      // Resolved once for the whole gallery, never per photo: the cover is
+      // one designation, and asking `resolveCoverPath` inside the loop below
+      // would still be correct but would invite a second, subtly different
+      // notion of "is this the cover" to grow up beside it later.
+      const cover = resolveCoverPath(row);
+
       for (const path of paths) {
         const url = urls.get(path);
         if (url === undefined) continue;
@@ -2601,9 +2919,16 @@ const hasReferences = Object.values(referenceCatalogue).some(
         if (!item) continue;
         const image =
           item.querySelector<HTMLImageElement>("[data-photo-image]");
+        const badge = item.querySelector<HTMLElement>(
+          "[data-photo-cover-badge]"
+        );
+        const toggle = item.querySelector<HTMLButtonElement>(
+          "[data-photo-cover-toggle]"
+        );
         const drop = item.querySelector<HTMLButtonElement>(
           "[data-photo-remove]"
         );
+        const isCover = path === cover;
         if (image) {
           image.src = url;
           image.loading = "lazy";
@@ -2612,11 +2937,48 @@ const hasReferences = Object.values(referenceCatalogue).some(
             row.display_name
           );
         }
+        if (badge) badge.hidden = !isCover;
+        if (toggle) {
+          say(
+            toggle,
+            (isCover ? text.stringRemoveCover : text.stringSetCover) ?? ""
+          );
+          toggle.addEventListener("click", () => {
+            void setCover(row, isCover ? null : path).catch(() =>
+              unreachable(els.photoMessage)
+            );
+          });
+        }
         drop?.addEventListener("click", () => {
           void dropPhoto(row, path).catch(() => unreachable(els.photoMessage));
         });
         els.gallery.append(item);
       }
+    }
+
+    /**
+     * Designate — or, with `null`, remove — this vehicle's cover photo
+     * (GAR-01′, T2-306): the "Set as cover" / "Remove cover" control on the
+     * edit view's gallery.
+     *
+     * Repaints the gallery *and* goes through `replace`, the same as
+     * `dropPhoto` below: the toggled badge is this panel's problem, but the
+     * list card the reader returns to has to show the new cover too, and
+     * `replace` is what keeps `vehicles` (and the list paint it triggers) in
+     * step with every mutation this page makes.
+     */
+    async function setCover(
+      row: VehicleRow,
+      path: string | null
+    ): Promise<void> {
+      say(els.photoMessage, "");
+      const result = await setVehicleCover(row.id, path);
+      if (!result.ok) {
+        say(els.photoMessage, text.stringError ?? "");
+        return;
+      }
+      replace(result.value);
+      await paintPhotos(result.value);
     }
 
     /* ------------------------------------------------------------ records */
@@ -3787,6 +4149,181 @@ const hasReferences = Object.values(referenceCatalogue).some(
       say(els.visibilityMessage, text.stringSaved ?? "");
     }
 
+    /* ---------------------------------------------------------------------
+     * Typed share grants (T2-404, SHR-05…SHR-08)
+     * ------------------------------------------------------------------ */
+
+    /**
+     * One grant, as a row in the owner's list.
+     *
+     * Revoked and expired grants stay on the list. SHR-08 makes revocation a
+     * timestamp rather than a delete precisely so an owner can see what they
+     * ended and when, and a list that hid them would make "did I actually
+     * revoke that?" unanswerable from the only screen that asks it.
+     *
+     * The capability line is read from the two columns, never from `kind`:
+     * SHR-05 makes the preset a label, and a label that decided what the row
+     * says would be the second source of truth the requirement forbids.
+     */
+    function renderShareGrant(grant: ShareGrantRow): HTMLLIElement {
+      const item = document.createElement("li");
+      item.className = "garage__share-item";
+
+      const label = document.createElement("span");
+      label.className = "garage__share-label";
+      const preset =
+        grant.kind === "buyer"
+          ? (text.stringShareKindBuyer ?? grant.kind)
+          : (text.stringShareKindMechanic ?? grant.kind);
+      const opens = grant.includes_costs
+        ? grant.includes_receipts
+          ? (text.stringShareOpensBoth ?? "")
+          : (text.stringShareOpensCosts ?? "")
+        : grant.includes_receipts
+          ? (text.stringShareOpensReceipts ?? "")
+          : (text.stringShareOpensNothing ?? "");
+
+      const ended = grant.revoked_at;
+      const when = ended === null ? grant.expires_at : ended;
+      const template =
+        ended === null
+          ? (text.stringShareExpires ?? "{date}")
+          : (text.stringShareEnded ?? "{date}");
+      const date = new Intl.DateTimeFormat(locale, {
+        dateStyle: "medium",
+      }).format(new Date(when));
+
+      // Punctuation, not prose: the separator carries no meaning a translator
+      // could change, which is why it is not a UI string.
+      label.textContent = `${preset} · ${opens} · ${template.replace("{date}", date)}`;
+      if (ended !== null) item.classList.add("garage__share-item--ended");
+      item.append(label);
+
+      // No button on a grant that is already ended: revoking twice is
+      // harmless (the RPC keeps the first timestamp) but a control that
+      // cannot change anything is a control that teaches a reader nothing.
+      if (ended === null) {
+        const cut = document.createElement("button");
+        cut.type = "button";
+        cut.className = "garage__link garage__link--danger";
+        cut.textContent = text.stringShareRevoke ?? "";
+        cut.addEventListener("click", () => {
+          void endShareGrant(grant.id, cut).catch(() =>
+            unreachable(els.shareMessage)
+          );
+        });
+        item.append(cut);
+      }
+      return item;
+    }
+
+    /**
+     * Read this vehicle's grants and paint the list.
+     *
+     * A failed read paints **nothing** and says so. An empty list would read
+     * as "no links exist on this truck", which is the one answer an owner must
+     * not be given wrongly: it is the answer they check before deciding they
+     * have nothing to revoke (AGENTS.md — a failure is not a zero).
+     */
+    async function loadShareGrants(row: VehicleRow): Promise<void> {
+      const outcome = await listShareGrants(row.id);
+      if (!els.shareList) return;
+      if (!outcome.ok) {
+        els.shareList.replaceChildren();
+        say(els.shareMessage, text.stringShareError ?? "");
+        return;
+      }
+      say(els.shareMessage, "");
+      if (outcome.value.length === 0) {
+        const empty = document.createElement("li");
+        empty.className = "garage__note";
+        empty.textContent = text.stringShareEmpty ?? "";
+        els.shareList.replaceChildren(empty);
+        return;
+      }
+      els.shareList.replaceChildren(...outcome.value.map(renderShareGrant));
+    }
+
+    /**
+     * Reset the panel for a different truck.
+     *
+     * The one-shot token panel is closed first and unconditionally. A link for
+     * the *previous* vehicle left on screen under this vehicle's heading would
+     * be an owner about to send somebody the wrong truck's history — the same
+     * class of defect as a visibility checkbox carried over, and worse.
+     */
+    function paintShares(row: VehicleRow): void {
+      if (els.shareIssued) els.shareIssued.hidden = true;
+      if (els.shareLink) els.shareLink.textContent = "";
+      if (els.shareList) els.shareList.replaceChildren();
+      say(els.shareMessage, "");
+      void loadShareGrants(row).catch(() => unreachable(els.shareMessage));
+    }
+
+    /**
+     * Issue a grant on the open vehicle and show the link, once.
+     *
+     * The two capability bits are read from their own checkboxes and sent as
+     * two arguments (SHR-06). The link is built by
+     * `src/lib/garage/share-link.ts`, which is the only code that decides where
+     * in a URL a token may live — the token goes in the fragment, so it reaches
+     * no server, no access log and no `Referer`.
+     */
+    async function issueShareGrant(row: VehicleRow): Promise<void> {
+      const button = els.shareCreate;
+      if (!button) return;
+      button.disabled = true;
+      say(els.shareMessage, text.stringSaving ?? "");
+
+      const outcome = await createShareGrant({
+        vehicleId: row.id,
+        kind: els.shareKind?.value === "buyer" ? "buyer" : "mechanic",
+        includesCosts: els.shareCosts?.checked ?? false,
+        includesReceipts: els.shareReceipts?.checked ?? false,
+        expiresInDays:
+          Number(els.shareExpiry?.value) || SHARE_EXPIRY_DAY_CHOICES[0],
+      });
+      button.disabled = false;
+
+      if (!outcome.ok) {
+        say(els.shareMessage, text.stringShareError ?? "");
+        return;
+      }
+      if (els.shareLink) {
+        els.shareLink.textContent = shareLinkFor({
+          origin: window.location.origin,
+          locale: pageLocale,
+          token: outcome.value.token,
+        });
+      }
+      if (els.shareIssued) els.shareIssued.hidden = false;
+      say(els.shareMessage, "");
+      await loadShareGrants(row);
+    }
+
+    /** End one grant, by id, and repaint the list from the database. */
+    async function endShareGrant(
+      shareId: string,
+      control: HTMLButtonElement
+    ): Promise<void> {
+      const row = opened;
+      if (row === null) return;
+      control.disabled = true;
+      control.textContent = text.stringShareRevoking ?? "";
+      const outcome = await revokeShareGrant(shareId);
+      if (!outcome.ok) {
+        control.disabled = false;
+        control.textContent = text.stringShareRevoke ?? "";
+        say(els.shareMessage, text.stringShareError ?? "");
+        return;
+      }
+      // Repainted from the database rather than from the click, so what the
+      // owner sees is what the row actually says — an optimistic strike-through
+      // over a revocation that failed silently is exactly the wrong direction
+      // for this control.
+      await loadShareGrants(row);
+    }
+
     /**
      * The two per-record switches, or the note that says there is nothing to
      * open yet.
@@ -3927,6 +4464,35 @@ const hasReferences = Object.values(referenceCatalogue).some(
         { is_worklog_public: control.checked },
         control
       ).catch(() => unreachable(els.visibilityMessage));
+    });
+
+    els.shareCreate?.addEventListener("click", () => {
+      if (opened === null) return;
+      void issueShareGrant(opened).catch(() => unreachable(els.shareMessage));
+    });
+
+    els.shareCopy?.addEventListener("click", () => {
+      const link = els.shareLink?.textContent ?? "";
+      if (link === "") return;
+      // `navigator.clipboard` is unavailable on an insecure origin and can be
+      // refused by permission policy, so the failure is reported rather than
+      // swallowed: an owner who thinks they copied a link they did not copy
+      // has lost it, and the token is not recoverable. The link stays on
+      // screen either way, selectable, which is the fallback the message
+      // points at.
+      void Promise.resolve()
+        .then(() => navigator.clipboard.writeText(link))
+        .then(() => say(els.shareMessage, text.stringShareCopied ?? ""))
+        .catch(() => say(els.shareMessage, text.stringShareCopyFailed ?? ""));
+    });
+
+    els.shareDismiss?.addEventListener("click", () => {
+      // The token is gone from the page from here on, and it is gone
+      // everywhere else already — `create_share_grant` is the only routine in
+      // the schema that ever emits it.
+      if (els.shareIssued) els.shareIssued.hidden = true;
+      if (els.shareLink) els.shareLink.textContent = "";
+      say(els.shareMessage, "");
     });
 
     els.recordPublic?.addEventListener("change", () => {
@@ -4522,10 +5088,48 @@ const hasReferences = Object.values(referenceCatalogue).some(
     border-radius: 8px;
   }
 
+  .garage__row-main {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+
+  .garage__row-media {
+    position: relative;
+    width: 3.25rem;
+    height: 3.25rem;
+    flex: 0 0 auto;
+  }
+
+  .garage__row-media > * {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 6px;
+  }
+
+  /*
+   * GAR-01′: the designated cover, never `photo_paths[0]` — see
+   * `resolveCoverPath` in `src/lib/garage/cover.ts`. The two elements below
+   * are mutually exclusive states of the same box, not a stack: whichever one
+   * the script leaves un-hidden is the one a reader sees.
+   */
+  .garage__row-thumb {
+    object-fit: cover;
+    border: 1px solid var(--line);
+  }
+
+  .garage__row-thumb-empty {
+    background: var(--chip);
+    border: 1px dashed var(--line);
+  }
+
   .garage__row-text {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
+    min-width: 0;
   }
 
   .garage__row-name {
@@ -4641,7 +5245,8 @@ const hasReferences = Object.values(referenceCatalogue).some(
    * ------------------------------------------------------------------ */
 
   .garage__handle,
-  .garage__visibility {
+  .garage__visibility,
+  .garage__share {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -4651,8 +5256,70 @@ const hasReferences = Object.values(referenceCatalogue).some(
   }
 
   .garage__handle > h2,
-  .garage__visibility > h3 {
+  .garage__visibility > h3,
+  .garage__share > h3,
+  .garage__share > h4 {
     margin: 0;
+  }
+
+  /* -------------------------------------------------------------------
+   * Typed share grants (T2-404)
+   * ---------------------------------------------------------------- */
+
+  /*
+   * The one-shot token panel, marked out as the thing on this screen that
+   * cannot be recovered. Boxed rather than merely spaced, because an owner
+   * who scrolls past it has lost the link.
+   */
+  .garage__share-issued {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 0.25rem;
+  }
+
+  .garage__share-issued > h4 {
+    margin: 0;
+  }
+
+  /*
+   * The link itself wraps rather than scrolls: a 64-character token in a
+   * one-line box is a token whose end nobody can see they failed to select.
+   */
+  .garage__share-link {
+    margin: 0;
+    overflow-wrap: anywhere;
+    font-family: var(--mono, monospace);
+    font-size: 0.875rem;
+  }
+
+  .garage__share-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .garage__share-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  /* An ended link is still on the list — SHR-08 keeps the record — but it is
+   * not a live one, and the two must not read alike at a glance. */
+  .garage__share-item--ended .garage__share-label {
+    color: var(--muted, inherit);
+  }
+
+  .garage__share-label {
+    font-size: 0.9375rem;
   }
 
   /*
@@ -5133,6 +5800,10 @@ const hasReferences = Object.values(referenceCatalogue).some(
     gap: 0.375rem;
   }
 
+  .garage__photo-media {
+    position: relative;
+  }
+
   .garage__photo-image {
     width: 100%;
     aspect-ratio: 4 / 3;
@@ -5140,6 +5811,19 @@ const hasReferences = Object.values(referenceCatalogue).some(
     background: var(--chip);
     border: 1px solid var(--line);
     border-radius: 6px;
+  }
+
+  /* GAR-01′: which one photo the "Remove cover" label below applies to. */
+  .garage__photo-cover-badge {
+    position: absolute;
+    top: 0.375rem;
+    left: 0.375rem;
+  }
+
+  .garage__photo-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
   }
 
   .garage__field {

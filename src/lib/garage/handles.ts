@@ -204,6 +204,11 @@ const SITE_ROUTE_HANDLES = [
   "procedimientos",
   "search",
   "buscar",
+  // T2-404's accountless share page — same precedent as `search`/`buscar`
+  // above, and the compile-time `SITE_NAMESPACE_IS_RESERVED` check below is
+  // what named them the moment the registry grew.
+  "share",
+  "compartir",
 ] as const;
 
 /**

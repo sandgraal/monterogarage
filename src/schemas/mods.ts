@@ -88,6 +88,38 @@
  * Nothing in {@link modsProse} is a figure — `defineEntrySchema` throws at
  * define time if it ever becomes one.
  *
+ * ## Every *other* figure is a `reference` id — T604, on PRC-03's precedent
+ *
+ * T602's fact-check found that this collection had no typed home for a number:
+ * `difficulty` aside, "`modsShared` is a strict object with no numeric field,
+ * so a tire diameter, a roof-load limit or a gear ratio has no typed home.
+ * Every figure therefore sits in the entry's `sources[].title`." That cost two
+ * things at once — the numbers were invisible to `check:citations`, so REF-02's
+ * "every numeric spec carries a source" was *vacuous* for exactly the entries
+ * that state the most figures, and a Spanish reader's only view of "100 kg roof
+ * load" was an English sentence inside a citation.
+ *
+ * {@link modsShared}'s `specs` closes it the way `procedures` already had:
+ * **ids, never values**. A roof-load limit lives once, in the `reference` entry
+ * that carries it and its own sources, and both locales' pages render from that
+ * one copy. Note what this field deliberately is not — a `{ id, value, unit }`
+ * row. That shape looks like it satisfies both halves ("referenced by id" *and*
+ * "a typed number") and is the second copy wearing the reference's clothes: the
+ * figure would live here and in the `reference` entry with nothing keeping the
+ * two equal.
+ *
+ * Whether the id names a real entry, and whether that entry's `kind` carries a
+ * figure at all, are whole-corpus questions and live in `src/lib/mods/index.ts`
+ * — the same division `requires` already draws.
+ *
+ * {@link checkInlinedFigures} is the other half: a typed path an author never
+ * uses is not a fix, so the sentences this collection owns are scanned for a
+ * figure written into them, exactly as `procedures` scans its own. The
+ * detector's stated gap (mass and length are outside the category, because no
+ * regex separates "100 kg" from "a 20 kg drawer you lift out") is inherited
+ * unchanged from `src/lib/procedures/figures.ts`; it is closed the other way,
+ * by `dimension` being citable, so an author always has a correct move.
+ *
  * `cost` reuses T401's `COST_BANDS` through {@link fixCostSchema} rather than
  * minting a mods-only price vocabulary. A fix path's cost and a mod's cost are
  * the same claim about the same money; two enums would render as two different
@@ -105,6 +137,7 @@ import {
   requiresSafetyFlagFromSubject,
   systemIsSafetyCritical,
 } from "../lib/safety";
+import { findInlinedFigure } from "../lib/procedures/figures";
 import {
   MOD_ID_PATTERN,
   MOD_IMPACTS,
@@ -154,6 +187,34 @@ export const modReferenceSchema = z
   .strict();
 
 export type ModReference = z.infer<typeof modReferenceSchema>;
+
+/**
+ * One figure this mod states, as the id of the `reference` entry that holds it
+ * (T604, on PRC-03's precedent).
+ *
+ * A bare id string and not `{ collection, id }`: unlike `requires`, there is no
+ * discriminator to make, because there is only one collection a figure can come
+ * from. `reference` is where REF-01 files torques, capacities, fluids and
+ * dimensions, and it is the only collection whose entries carry a number with
+ * its own sources attached. `procedures` spells its own `specs` the same way,
+ * and a second spelling of one idea is a second vocabulary an author has to
+ * learn per collection.
+ *
+ * The pattern is the one check that catches the mistake an author actually
+ * makes — pasting a **catalogue token** (`MR455009`, `TEST-REF-0001`, uppercase)
+ * where an entry id belongs. Whether the id names a real entry, and whether that
+ * entry carries a figure at all, is the build's question
+ * (`src/lib/mods/index.ts`), exactly as it is for a typed reference.
+ */
+export const modSpecIdSchema = z.string().regex(MOD_ID_PATTERN, {
+  message:
+    "a figure is cited by the id of the `reference` entry that holds it, " +
+    "which is lowercase kebab-case (`g3-dimension-roof-load`) — not a " +
+    "catalogue number, not a slug and not the number itself. The value stays " +
+    "in the `reference` entry, with its own sources, so it exists once and " +
+    "both locales render from that one copy. " +
+    "refs specs/001-foundation (MOD-01, PRC-03 precedent)",
+});
 
 /* -------------------------------------------------------------------------
  * What a mod breaks or affects — MOD-01
@@ -263,6 +324,18 @@ export const modsShared = {
    * mod. What it *can* refuse, and does, is a row with no sentence attached.
    */
   affects: z.array(modImpactRowSchema).default([]),
+
+  /**
+   * Every figure this mod states, by `reference` entry id (T604).
+   *
+   * Empty by default and legally empty: plenty of mods state no number at all,
+   * and a schema that demanded one would get inventions — the reasoning
+   * `requires` already records for its own empty default.
+   *
+   * See the module docstring for why this is a list of ids and never a list of
+   * `{ id, value, unit }` rows, and {@link modSpecIdSchema} for the id's shape.
+   */
+  specs: z.array(modSpecIdSchema).default([]),
 };
 
 /**
@@ -346,6 +419,7 @@ interface ModsEntryShape {
   safetyCritical?: unknown;
   requires?: unknown;
   affects?: unknown;
+  specs?: unknown;
   sources?: unknown;
   prose?: unknown;
 }
@@ -694,6 +768,131 @@ function checkNotesNameDeclaredRows(
 }
 
 /**
+ * The same figure may not be cited twice on one entry.
+ *
+ * `procedures` already refuses this (`checkDuplicateStrings`) and the reason
+ * carries over unchanged: the page renders one row per cited id, so a repeat is
+ * one figure shown twice — and the author who repeated it probably meant to
+ * cite a *different* one, which is the mistake worth naming.
+ */
+function checkSpecsAreUnique(
+  entry: ModsEntryShape,
+  ctx: ModsRefineContext
+): void {
+  const { specs } = entry;
+  if (!Array.isArray(specs)) return;
+
+  const seen = new Map<string, number>();
+
+  specs.forEach((value, index) => {
+    if (typeof value !== "string") return;
+    const first = seen.get(value);
+    if (first === undefined) {
+      seen.set(value, index);
+      return;
+    }
+
+    ctx.addIssue({
+      code: "custom",
+      path: ["specs", index],
+      message:
+        `\`${value}\` is already cited at index ${first}. The page renders ` +
+        `one row per cited id, so the same figure twice is one row entered ` +
+        `twice — and if two different figures were meant, one of these ids is ` +
+        `the wrong one. refs specs/001-foundation (MOD-01, PRC-03 precedent)`,
+    });
+  });
+}
+
+/**
+ * Every free sentence this collection owns, scanned for a figure written into
+ * it — the fourth way to inline a value, and the only one no shape can catch.
+ *
+ * The other three are already closed: `defineEntrySchema` throws at define time
+ * on a numeric prose field, and the strict entry object refuses a figure
+ * smuggled into `prose` or re-declared in the mod's own shared data. This
+ * catches **"Apriete las patas a 100 N·m"** — a number that now exists once in
+ * `en`, once in `es`, and nowhere a build can compare them.
+ *
+ * It is here rather than left to review because T602's own bilingual pass found
+ * the defect in shipped content: the 33s entry typed a source's figure into
+ * *both* locale prose blocks one sentence after its summary promised the
+ * numbers were "in the citation rather than repeated here". Giving `mods` a
+ * typed figure path without the guard that pushes an author toward it would
+ * leave that hole with a nicer alternative beside it.
+ *
+ * ## Scope, and the two things deliberately outside it
+ *
+ * `title`, `summary`, `tradeoffs` and each `affectsNotes` row — every sentence
+ * a reader sees. `title` and `summary` are in for the reason T502's review
+ * recorded as F2 one collection over: a summary renders on the detail page
+ * *and* on every index card, so a detector scoped to the "interesting" field
+ * ships the figure on the most surfaces the collection has.
+ *
+ *  1. **`sources[].title` is not scanned.** A source title is a document's own
+ *     title, quoted. Run against the ten shipped wave-1 entries the detector
+ *     fires on five of them and every one is a false positive of the kind that
+ *     gets a rule deleted — "3.8L V6" is the engine's name inside a listing's
+ *     title, "3000cc" is part of ARB's own product description. The
+ *     requirement is that an author has an *alternative* to putting the figure
+ *     there, not that a citation may not quote accurately.
+ *  2. **Mass, length and angle are a stated gap**, inherited verbatim from
+ *     `src/lib/procedures/figures.ts` (where it is written down for `mm`).
+ *     "100 kg" and "51 mm" are the roof-load and lift-height shapes this
+ *     collection most wants to catch, and no regex separates them from "a
+ *     14 mm socket" or "a 20 kg drawer you lift out". It is closed the other
+ *     way instead — `dimension` is citable by id, so an author *has* a correct
+ *     move — and the residual risk is carried by review. If a future round
+ *     finds a way to tell a figure from a tool size, widen the pattern there
+ *     and the whole repository gains it at once.
+ */
+function checkInlinedFigures(
+  entry: ModsEntryShape,
+  ctx: ModsRefineContext
+): void {
+  const prose = asRecord(entry.prose);
+  if (prose === null) return;
+
+  const report = (path: PropertyKey[], text: string): void => {
+    const figure = findInlinedFigure(text);
+    if (figure === null) return;
+
+    ctx.addIssue({
+      code: "custom",
+      path,
+      message:
+        `this sentence states the figure \`${figure}\` itself. A figure comes ` +
+        `from shared reference data **by ID** (PRC-03's rule, and this ` +
+        `collection's since T604) — written into a sentence it exists once in ` +
+        `\`en\`, once in \`es\` and nowhere a build can compare them, so the ` +
+        `day the figure is corrected one language keeps the old one, and a ` +
+        `reader of the other language is the one who finds out. Cite the ` +
+        `\`reference\` entry in \`specs\` and let the page render the number ` +
+        `from the one stored copy. (A count — "the three bolts" — a tire size ` +
+        `and a gear ratio are not figures this rule is about.) ` +
+        `refs specs/001-foundation (MOD-01, PRC-03 precedent)`,
+    });
+  };
+
+  for (const [locale, block] of Object.entries(prose)) {
+    const localeProse = asRecord(block);
+    if (localeProse === null) continue;
+
+    for (const field of ["title", "summary", "tradeoffs"]) {
+      const text = localeProse[field];
+      if (typeof text !== "string") continue;
+      report(["prose", locale, field], text);
+    }
+
+    const notes = asRecord(localeProse["affectsNotes"]) ?? {};
+    for (const [id, text] of Object.entries(notes)) {
+      if (typeof text !== "string") continue;
+      report(["prose", locale, "affectsNotes", id], text);
+    }
+  }
+}
+
+/**
  * Every mods rule, applied to an entry that already satisfies the base entry
  * shape. Exported so the rules can be unit-tested — and read — without
  * reconstructing the whole collection schema.
@@ -710,6 +909,8 @@ export function checkModsEntry(entry: unknown, ctx: ModsRefineContext): void {
   checkAffectsSelfReference(candidate, ctx);
   checkAffectsNotesAreComplete(candidate, ctx);
   checkNotesNameDeclaredRows(candidate, ctx);
+  checkSpecsAreUnique(candidate, ctx);
+  checkInlinedFigures(candidate, ctx);
 }
 
 /**

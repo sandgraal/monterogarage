@@ -22,11 +22,13 @@
  *
  * The **association** between a photo and a vehicle is not this path, though:
  * it is `public.vehicles.photo_paths`, the `text[]` T2-202 already shipped.
- * That column is where order lives (the first path is the cover photo), and it
- * disappears with the vehicle row through the same cascade as everything else.
- * No `vehicle_photos` table was added: `tests/garage/contract.ts` pins none,
- * the column that would carry it already exists, and a schema addition is
- * never a drive-by edit (AGENTS.md).
+ * That column is where upload order lives; the cover is a separate column,
+ * `vehicles.cover_photo_path` (GAR-01′, T2-306) — resolved by
+ * `resolveCoverPath` in `./cover.ts`, never by reading `photo_paths[0]`. It
+ * disappears with the vehicle row through the same cascade as everything
+ * else. No `vehicle_photos` table was added: `tests/garage/contract.ts` pins
+ * none, the column that would carry it already exists, and a schema addition
+ * is never a drive-by edit (AGENTS.md).
  *
  * The path's second segment is therefore a *check*, not the source of truth —
  * see `vehiclePhotoPaths` in `./vehicle.ts`, which refuses to render a stored

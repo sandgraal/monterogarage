@@ -40,6 +40,7 @@
     "@types/jsdom": "^30.0.0",
     "@types/node": "^24.0.0",
     "@types/pg": "^8.23.1",
+    "@vercel/routing-utils": "^6.5.0",
     "astro-eslint-parser": "^3.1.0",
     "chrome-launcher": "^1.2.1",
     "eslint": "^10.9.1",

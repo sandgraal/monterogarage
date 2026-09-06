@@ -152,6 +152,21 @@ const CONFIGURED_ONLY_PAGES = [
     path: "/es/ingresar/",
     marker: /(?<![\w-])data-signin-signed-in(?![\w-])/,
   },
+  // T2-404 — the accountless share page. Its whole body ships `hidden` and is
+  // revealed only once a token has resolved, so the defect this file exists to
+  // catch would show a reader an empty history under a heading for a link that
+  // opened nothing. Configured-only for the same reason as the two above: the
+  // panel exists only when the build has a Supabase project.
+  {
+    locale: "en",
+    path: "/en/share/",
+    marker: /(?<![\w-])data-share-body(?![\w-])/,
+  },
+  {
+    locale: "es",
+    path: "/es/compartir/",
+    marker: /(?<![\w-])data-share-body(?![\w-])/,
+  },
 ] as const;
 
 /** `servedPath`'s built HTML, or `null` if this run's `dist` has no such file. */

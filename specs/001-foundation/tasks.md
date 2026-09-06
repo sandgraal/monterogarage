@@ -34,6 +34,96 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
   - **Perf margin (T204 review, F3), measured 3 runs per page:** the webfonts plus the selector chrome cost the glossary pages some of their headroom. `/en/glossary/` and `/es/glosario/` sit at **92–93 / 90** after the two savings taken here (the per-row fit markers are built by the client instead of server-rendered into all 154 cards, −98 kB; and each card carries an index into a de-duplicated fitment table instead of its own escaped JSON, −19 kB). Every other sampled page is 98–100. **The glossary margin is 2–3 points; the next page-weight regression there lands red.** Not taken, with its measured value: moving the ~11 kB inlined taxonomy payload out to a fetched static JSON is worth a further ~2 points, but needs the selector and both listings to become async — deferred as a named follow-up rather than shipped unreviewed at the end of a review round. The reviewer's alternative ("inline only where a listing exists") provably cannot help here: the pages under budget pressure *are* the listings. The `latin-ext` font subsets were measured too — **zero** `latin-ext` codepoints appear anywhere in the built site, so they cost zero runtime bytes (their `unicode-range` already prevents the download) and are kept so a future European name in a source title does not fall back mid-word.
   - **Design-fidelity follow-up (T204 review, F7):** HANDOFF-DESIGN's site chrome puts the vehicle chip in the header, always visible. T204 ships the bar and panel at the top of `<main>` instead — a functional superset (idle CTA, full picker, active chip, clear) but not the final chrome. Header integration is recorded as a design-fidelity follow-up, not a defect. The skip link was re-anchored past the selector in the same review.
 
+- [x] **T203a [TEST]** Graders for the `global`-market fitment bug (found 2026-09-06,
+  during T504a's authoring, owner-approved as a real bug fix rather than a
+  content sweep): `src/lib/fitment/index.ts`'s `matchesVehicle` treats a
+  present `fitment.markets` as a **direct-match facet** — `if (allowed ===
+  undefined) continue;` only skips the check when the field is entirely
+  absent, so `markets: ["global"]` is compared literally against the
+  visitor's selected market and never matches `"us"`, `"cr"`, or any real
+  selection. The module's own docstring (line ~32) already states the
+  correct semantics: *"`fitment.markets` is optional… omitting it correctly
+  means 'no market restriction'"* — but 89 existing content files (plus
+  T504's 8 new procedures) declare `markets: ["global"]` explicitly rather
+  than omitting the field, evidently believing that value means "applies
+  everywhere." Every one of those entries currently reads as "does not fit"
+  the moment a reader picks a specific market. **Owner ruling: fix the
+  engine, not the 89+ files** — `"global"` in a `markets` array must resolve
+  the same as omitting the field entirely. Grade: `matchesVehicle`/
+  `entryAppliesTo` treat `markets: ["global"]` as unrestricted for every
+  real market value in `MARKETS`; a fitment naming `"global"` **alongside**
+  other real market values (e.g. `["global", "us"]`, if such content exists
+  or could be authored) does not silently break either reading — decide and
+  grade a specific behavior for it, do not leave it ambiguous; the existing
+  T202/T203 boundary and impossible-combination graders are unaffected (no
+  regression on a fitment that validly omits `markets` or lists only real
+  values); at least one grader runs against real shipped content (a sample
+  of the 89 `markets: ["global"]` entries) rather than only synthetic
+  fixtures, so the fix is proven against the actual data it must unbreak.
+  Depends: T203 merged. *(FIT-01, FIT-03, FIT-04)*
+  - **RULING MADE BY THIS TASK (2026-09-06) — binding on T203b and on every
+    content author.** The owner's ruling settles `["global"]`; the mixed case
+    it names as needing a decision is decided here: **`"global"` is
+    absorbing.** Any `fitment.markets` array that *contains* `"global"` — not
+    only `["global"]` as its sole member, but `["global", "us"]`,
+    `["au", "global"]`, and every other mix — resolves as **no market
+    restriction at all**, exactly as if the field were omitted; the real
+    market ids beside it are inert. Four reasons, in the order they carried
+    weight: (1) the ruling's own words are "`global` *in* a `markets` array",
+    not "as the sole member of"; (2) set semantics — every
+    `DIRECT_MATCH_FACETS` facet is a disjunction of acceptable values,
+    `"global"` denotes the universal market set, and a union with the
+    universal set is the universal set; any other reading makes one token's
+    meaning depend on its neighbours, which is how a taxonomy stops being
+    checkable; (3) the fitment module's stated bias (T203 decision (a)) errs
+    towards showing, because "hiding is the destructive answer … showing is
+    recoverable in one click"; (4) the corpus agrees — all 14 mixed entries
+    shipping today use the extra id as an **addition** to the general-export
+    scope, never as an exclusion (`gls`/`glx` are `["au","global"]`,
+    `option-code-gen3-transmission-v5a51` is `["global","us"]`, the four
+    `g4-*` problems and the five generation entries enumerate every market
+    their generation was sold in *plus* `global`).
+    **The cost, stated plainly:** once T203b lands, *"everywhere EXCEPT X"* is
+    no longer spellable as `["global", …]`. Express it by listing the real
+    markets and **omitting** `"global"`.
+    **Deliberately NOT changed:** `"global"` on the *selection* side stays
+    literal (a visitor who picks general-export has picked one scope, not all
+    of them, so a `markets: ["us"]` fitment still does not match them);
+    combination scoping stays literal (`combos-gen4-global` records the
+    general-export offering list and must not start answering for `gen4 × cr`
+    — VEH-03 rule 3's "no entry at all is *unknown*, never impossible" is the
+    honest answer there); and no other facet gains an absorbing value
+    (`trims: ["global"]` is an unknown trim id, not a wildcard).
+    Recorded on this line, and not only in the graders' file headers, for the
+    reason T207's own line already records: *a ruling that exists only in a
+    transcript is a ruling the next agent re-litigates.*
+    `tests/lib/fitment/global-market-content.test.ts` carries a `KNOWN_MIXED`
+    ratchet over today's 14 mixed entries, so the author of the 15th is made
+    to read this paragraph before adding an id to the list.
+  - **What landed:** `tests/lib/fitment/global-market.test.ts` (fixtures — the
+    rule, the boundary tables over every real market, and the positive
+    controls that catch a *too-broad* fix: an implementation that strips
+    `"global"` from every facet, or that turns `markets: []` into
+    "unrestricted", goes red on them) and
+    `tests/lib/fitment/global-market-content.test.ts` (the same rule against
+    the 103 shipped entries that declare `global` — 89 exactly, 14 mixed).
+    Marker style is `it.fails`, one line per grader; T203b activates each by
+    deleting exactly that `.fails`. The two authorities are kept apart in the
+    corpus file: the `it.fails` graders over the 89 follow from the owner's
+    ruling verbatim, those over the 14 follow from the interpretive call
+    above, and no decision-dependent assertion spans both — so a future
+    reversal of the absorbing reading touches only the mixed-specific block
+    (review F2).
+- [ ] **T203b [PLATFORM]** Implements the T203a seam: `"global"` inside a
+  `markets` array resolves as no market restriction (**including when it
+  appears alongside real market ids** — see the absorbing-`global` ruling on
+  the T203a line above), everywhere
+  `matchesVehicle`/`entryAppliesTo` are consulted (provisional-match
+  indicator logic from T204/F8 must keep working correctly — a `["global"]`
+  fitment should read as a **full** match, not a provisional one, since it
+  is not silent about market, it explicitly claims all of them). Activates
+  T203a graders. Depends: T203a merged. *(FIT-01, FIT-03, FIT-04)*
+
 ### Glossary & reference
 - [x] **T205 [PLATFORM]** Glossary schema + `check:glossary` real implementation (canonical-term conformance scan of ES prose) + public glossary page w/ system filter. Note: the T104 base schema requires `fitment`+`confidence` on every collection, glossary included; if glossary terms need that relaxed, it is a negotiated schema change (AGENTS.md stop-and-ask), not a drive-by fix. Same applies to T701 community entries. Depends: T106. *(GLO-01, GLO-02, GLO-04)*
 - [x] **T206 [CONTENT]** Glossary seed: ~150 core terms (systems, major components, tools, fluids) with CR-canonical ES, regional aliases, bilingual definitions. Binding notes (T205 reviews): list singular AND plural for every alias (the conformance scan does no stemming); `rin`, `goma`, `balatas` must exist as aliases (the search placeholder names them), `goma` with `falseFriend: true` (CR: hangover, not tire); coolant/fluid entries must agree with the chrome terms `Refrigeración` and `Líquidos`; no caveat renders on term cards (owner ruling 2026-08-28). Depends: T205. *(GLO-01, GLO-03)* Follow-up recorded at merge review (2026-08-29, both confirm passes): a small successor batch owes the four T201-ratification headwords still missing — `distancia entre ejes` (+`batalla`[es:ES]), `riel común`, `cámara de reversa`, `emblema` — plus the EN countable-noun alias plurals the bilingual pass enumerated (search-recall only; check:glossary scans ES, so zero gate exposure until T702's search index) and an optional AWD-vs-4WD contrast entry. **Extended by the T207 bilingual pass (2026-08-31):** that successor batch also owes the reference-table headwords T207's prose needed and the glossary does not yet carry — the off-road geometry group `ángulo de ataque` / `ángulo de salida` / `ángulo ventral` (one group, they are only ever read together), plus `peso bruto vehicular`, `altura libre` (the ruled canon for ground clearance, which T207 now uses) and `profundidad de vadeo`.
@@ -533,7 +623,7 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
     - **LOW.** Skid plates: "all of it ahead of the front axle line" was false for the pan and transmission plates; the ADD listing states aluminium only for the Superleggera kit and no material at all for the other, so the "steel" was our inference and is gone. Springs: the supplier's alignment instruction is about *its spacer install*, not ride-height changes generally — narrowed, with the generalisation now flagged as ours. Locker: our reading that ARB's "without affecting on-road drivability" is about the *unlocked* state is now labelled as our reading, because ARB does not scope it that way.
     - **The `falseFriend` flag on `all-suspension-calza-de-levante` is now sourced.** It was a bare linguistic assertion; REACSA, a Costa Rican retailer, sells the other part under the category name "Espaciadores de Aros" in colones, which is the attestation the warning needed.
   - **The T601-F1 shape is deliberately represented.** Four entries are filed under a non-safety-critical `system` and widen through `affects[]` into a safety-critical one — skid plates, bumper, drawers and dual battery are `body`/`interior`/`electrical` entries that all land on `suspension`; the locker is `drivetrain` and lands on `steering`. Those pages must name the *affected* system in the notice, which is the regression F1/F2 exist to catch.
-- [ ] **T603 [TEST]** Graders for typed mods figures: `modsShared` gains a
+- [x] **T603 [TEST]** Graders for typed mods figures: `modsShared` gains a
   referenced-by-ID numeric spec field (torque, weight, load rating, dimension),
   mirroring T502a/T502's specs-by-id pattern (PRC-03) — a figure lives once in
   shared reference data, resolves by ID, and renders per-locale instead of
@@ -544,8 +634,18 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
   call for the implementer: share `src/lib/procedures/specs.ts`'s module or
   fork a `mods`-specific one — record which and why. Depends: T601, T502
   merged (reuse candidate). *(MOD-01, MOD-02, PRC-03 precedent)*
-- [ ] **T604 [PLATFORM]** Implements the T603 seam. Depends: T603 merged.
+  - **Graders: 108 tests across four files, 50 of them expected failures behind 34 `it.fails` marker lines** (one line per `it`, some being `.each` tables) — T604 activates a grader by deleting exactly that `.fails`. `tests/schemas/mods-spec-by-id.test.ts` (64 tests / 26 expected fail) the shape; `tests/schemas/mods-citations.test.ts` (14 / 2) REF-02 end to end through the real `check:citations`; `tests/integrations/validate-mods-specs.test.ts` (16 / 12) the build resolves every cited id; `tests/pages/mod-page.specs.render.test.ts` (14 / 10) both locales render the identical figure from the one stored value, under a per-locale label. The box is checked on merge of the graders, as T2-306a/T502a/T601a do — the paired T604 carries its own.
+  - **KNOWN GAP the implementer inherits: the prose-figure detector catches torque and volume only, not mass or length.** T603's own task line names four families (torque, **weight**, **load rating**, dimension) and the guard that pushes an author toward the typed field covers two of them. `src/lib/procedures/figures.ts`' category is *a digit bound to a torque or volume unit*; "100 kg" and "51 mm" — the roof-load and lift-height shapes this collection most wants to catch — are outside it, because no regex separates them from "a 14 mm socket" or "a 20 kg drawer you lift out". This is the same carve-out procedures already documents for `mm`, and it is **locked in by unmarked ACCEPT controls**: `tests/schemas/mods-spec-by-id.test.ts` requires "The mount sits 51 mm from the roof" and "A steel drawer weighs about 20 kg empty" to parse clean, and those rows are labelled "the stated gap". A T604 that widens the detector to mass/length turns those controls red — that is a **deliberate decision with an owner-visible cost** (the false-positive budget the controls exist to protect), not a grader defect to route around. The gap is closed the other way instead: `dimension` is citable by id, so an author always has a correct move, and the residual risk is carried by review. If a future round finds a way to tell a figure from a tool size, widen the pattern and delete the two controls in the same commit.
+  - **Review round 1 (independent code-reviewer, 2026-09-06) — 2 real grader gaps found by mutation, both closed on this branch.** (a) Every build-resolution reject case cited a single id, so the bad id was always `specs[0]`; a scratch resolver validating only the first element passed all 44 markers. Closed by `validate-mods-specs.test.ts` §4 — four cases whose first id resolves and whose bad id does not, plus the accept control that stops "a list longer than one is an error" being the cheap way through. Mutants re-run against the fixed file with every marker deleted: `first-only` → 4 red and the 11 tests that existed at review time all green, reproducing the finding exactly; `last-only` → 2 red; `all-but-last` → 11 red; `report-only-the-first-problem` → 1 red (the "names BOTH bad ids" case alone); a correct scratch resolver → 16/16 green. (b) No grader read the *words* around the figures, so a scratch page emitting a literal `<h2>Figures</h2>` on `/es/…` scored 100/100 — the T601-F1 defect class (right data, wrong heading) on the same page file. Closed by `mod-page.specs.render.test.ts` §4, two markers plus an unmarked control that proves the heading helper works on today's tradeoffs section (so a red marker there means "no per-locale label", never "the helper is broken"). Page mutants, markers deleted: `english-literal-on-both` → 2 red with the 11 pre-existing tests green; `two-hard-coded-literals` (one per locale) → 1 red, the `ui.ts`-provenance one; `figures-with-no-heading-of-their-own` (borrowing the tradeoffs heading) → 1 red, which is what the neighbouring-label check exists for; a correct section reading `t(locale)` → 14/14 green.
+- [x] **T604 [PLATFORM]** Implements the T603 seam. Depends: T603 merged.
   *(MOD-01, MOD-02, PRC-03 precedent)*
+  - **All 34 `it.fails` marker lines deleted, 108/108 green across the four T603 files.** The only other change inside those files is prettier reflow forced by the shorter call expression (T601a's precedent) — proved by a `git diff -w`, which shows nothing but the marker lines and three `expect(...)` calls collapsing onto fewer lines. No assertion, fixture or expectation was edited. `npm run verify` green: 4029 passed | 2 expected fail | 183 skipped, and the 2 remaining expected failures belong to other tasks (none is in a `mods` file).
+  - **THE JUDGMENT CALL T603 LEFT OPEN: shared, not forked — `src/lib/procedures/specs.ts` is imported by the mod page verbatim.** Verified before committing to it rather than taken on the test-writer's word: `specRows`, `referenceFigures` and `quantityLabel` take `(ids, references, locale)` and say nothing about procedures. What that module actually owns is **`reference`'s storage shape** — `quantitySchema`'s value / min–max forms, the unit-id → symbol table, the rule that the *number* is formatted with `Intl.NumberFormat` in the page locale while the *symbol* is not translated at all, and the typographic decision that a degree sign is written tight against its figure and every other unit is not. A mods-local copy would be a second `UNIT_SYMBOLS`, a second decimal-separator decision and a second answer to that spacing question: three ways for one stored figure to render differently on two pages of the same site, which is precisely what AGENTS.md's shared-data rule exists to prevent. Zero edits to the module were needed; the only change to it is a docstring line recording that `mods` reads it too. Same call one layer down: `MOD_SPEC_KINDS` in `src/lib/mods/index.ts` is `PROCEDURE_SPEC_KINDS` **aliased**, and `readReferenceKinds` is re-exported rather than re-implemented — "which `reference` kinds carry a figure" is one question with one answer, decided by REF-01's filing and not by either collection's taste (T501's "never re-mint"). If the two ever genuinely need to diverge, *that* is the moment to lift the list into a shared module; forking pre-emptively buys nothing and costs a drift.
+  - **`fluid` and `capacity` ARE citable by a mod (the sub-call T603 left to judgment), so the closed set is the same four kinds.** Checked against real mod shapes rather than argued from the name: a long-range fuel tank is a mod whose whole point is a **capacity**, and a locker or a regear changes the differential's **fluid** designation (`API GL-5 SAE 75W-90` — shared data on the `reference` entry, identical in both languages). Refusing them would leave an author holding a figure with no legal way to cite it and exactly one remaining move — writing the number into a sentence, which is the outcome this whole seam exists to prevent. "A closed loop with no correct move in it is a schema bug" is the reasoning `PROCEDURE_SPEC_KINDS` already records for `dimension`, and it applies unchanged. The four REFUSED kinds (`fsm-section`, `vin-position`, `vin-code`, `option-code`) carry no figure at all, so excluding them closes no loop on anybody: a manual section is a citation and belongs in `sources`.
+  - **The R1 coverage gap the graders could not close — every entry, every id — closed by construction and stated in the code.** `specIssues` in `src/lib/mods/index.ts` is `for (const mod of mods)` around `mod.specs.forEach(...)`, with every problem **pushed** and nothing returned early, so the three mutants the T603 reviewer named by hand (`const [first] = specs`, a stray `return` where a `continue` belonged, `.find()` where `.filter()` belonged) are all structurally absent. The build-grader corpus still contains one mods entry, so the *outer* loop remains ungraded — recorded here rather than papered over. `unknown-spec` and `wrong-spec-kind` are two codes for two mistakes, following `src/lib/procedures/index.ts`; `relatedEntryIds` carries the cited id on a wrong-kind issue and not on an unknown one, which is what makes `withFileIndex` name **both** files when the entry to open is in a different collection.
+  - **The figures label is three new `ui.ts` keys in both locales, real translations** (`modsSpecsHeading` "Figures this mod states" / "Cifras que indica esta modificación", plus `modsSpecsIntro` and `modsSpecUnresolvedLabel`). Deliberately *not* reusing `proceduresSpecsHeading`: a procedure **sets** a figure (you torque the bolt to it) and a mod **states** one (this is what the rack is rated for), and one string across both pages would make one of them say the wrong thing about its own numbers. The section is its own `<section>` with its own `<h2>`, so it cannot borrow the tradeoffs heading above it (T601-F1's defect class on this exact file).
+  - **The known prose-detector gap was inherited, not touched.** `checkInlinedFigures` calls `findInlinedFigure` from `src/lib/procedures/figures.ts` unchanged, so mass and length stay outside the category and the two unmarked ACCEPT controls ("51 mm from the roof", "20 kg empty") stay green. Widening it would have traded a documented, reviewed gap for a false-positive budget the controls exist to protect. **The 10 shipped T602 entries were not migrated** — `specs` defaults to `[]`, every one of them still parses unchanged, and moving their prose-embedded figures onto the typed path is a content task, not this seam.
+  - **Scope of the change:** `src/schemas/mods.ts` (the `specs` field, `modSpecIdSchema`, `checkSpecsAreUnique`, `checkInlinedFigures`), `src/lib/mods/index.ts` (`MOD_SPEC_KINDS`, `ModIdentity.specs`, `specIssues`, two issue codes, an optional third parameter on `findModIssues`/`assertModsResolve` so no existing caller moved), `src/integrations/validate-mods.ts` (reads `reference` kinds off the already-loaded corpus), `src/i18n/ui.ts`, the mod page, and the four grader files' marker lines.
 
 ## Phase 7 — Community, search, gaps
 - [x] **T700 [PLATFORM]** Community schema (owner-approved addition, 2026-08-28): extend the `community` collection per COM-01/COM-02 — community type (forum, subreddit, FB group, Discord, YouTube, vendor, shop), region/language/gen/activity tags, links. Attempt within the T104 base contract first; if community entries genuinely need the fitment/confidence requirement relaxed, that is the negotiated stop-and-ask recorded on T205 — report BLOCKED for the owner decision, never a drive-by change. Depends: T106. *(COM-01, COM-02)*

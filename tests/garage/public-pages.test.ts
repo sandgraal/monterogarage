@@ -89,6 +89,7 @@ function vehicle(overrides: Partial<VehicleRow> = {}): VehicleRow {
     engine_id: TEST_TAXONOMY_IDENTITY.engine_id,
     odometer_km: 233_000,
     photo_paths: [],
+    cover_photo_path: null,
     is_showcase_public: false,
     is_worklog_public: false,
     ...overrides,

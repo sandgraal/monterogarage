@@ -859,7 +859,7 @@ Vercel is an owner action inside T2-102 (the task prepares the exact records).
   recorded here rather than acted on. No storage object is uploaded by any of them: the
   designation is a claim about two columns, and borrowing the bucket would
   make every cover grader depend on the storage API being up.
-- [ ] **T2-306 [PLATFORM]** Cover-photo UI (owner-approved addition,
+- [x] **T2-306 [PLATFORM]** Cover-photo UI (owner-approved addition,
   2026-09-02): a "Set as cover" control per photo on the vehicle edit view,
   a "Remove cover" affordance, and rendering the designated cover — never
   just the first array entry — on the garage vehicle list card in place of
@@ -1327,6 +1327,79 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   keyspace, guessing is not the threat. What matters and is gradeable: uniform
   refusal across unknown/expired/revoked (SHR-08), and a failure path no more
   expensive than the success path.
+  <br>**Partly landed 2026-09-06, and deliberately left unchecked.** The typed
+  grant surface shipped whole; the public showcase/work-log pages the
+  2026-09-05 amendment folded in did not, because they are blocked on a grader
+  the amendment did not see. Same shape as T2-402's own partial landing, and
+  for a related reason.
+  <br>*Shipped:* `20260906120100_share_grants.sql` — the `shares` table (forced
+  RLS, owner-scoped through `vehicle_id`, `revoke`-then-`grant` ACL, cascade),
+  `create_share_grant` / `revoke_share_grant` (authenticated, definer,
+  `search_path = ''`), and the three anon readers `share_read_vehicle` /
+  `share_read_records` / `share_read_receipts`; the `sign-receipt` Edge
+  Function (`[edge_runtime] enabled = true`, one function, anon key for the
+  RPC and the platform's injected service key for signing only); the
+  accountless page at `/en/share/` + `/es/compartir/` with `noindex` and
+  `Referrer-Policy: no-referrer` in `vercel.json`; `share-link.ts` (token in
+  the fragment, `null` never `""`); `src/lib/supabase/shares.ts`; and the
+  owner's issue/revoke panel on the garage page. **`shares` promoted out of
+  `pending` in `contract.ts` (table and all nine columns) and 26 markers
+  activated** across `share-instrument`, `share-grants`, `share-delivery`,
+  `receipt-signer`, `schema-shape`, `rls-deny-by-default`, `sharing-default`
+  and `deletion-cascade`.
+  <br>*Blocked, and this is the finding:* **the amendment and
+  `share-grants.test.ts` cannot both be satisfied.** The amendment says one
+  anon-granted reader serves the world and the token holder alike. Serving the
+  world means the reader consults `is_worklog_public` / `is_showcase_public` —
+  and the **unmarked** grader "no anon-reachable routine reads a vehicle's
+  public work-log flag" (T2-401, SHR-09) fails any anon routine whose body
+  contains either name. Written 2026-09-02 for token-only readers; the
+  amendment landed 2026-09-05 and did not revisit it. The two evasions
+  available — a helper the reader calls so the flag name is not in *its* body,
+  or a fourth anon function — are respectively textual dodging of a rule and
+  the allow-list widening T2-402 already ruled is a test-writer's edit. Needs
+  an independent test-writer session to decide whether SHR-09's SQL-level
+  proxy should be narrowed (it grades a proxy; `public-pages.test.ts` holds the
+  requirement itself, and that file is green) or whether the reader set should
+  grow.
+  <br>*Grader defect found, not worked around (two `it.fails` left in place).*
+  `share-grants.test.ts`'s "both lifecycle RPCs take the argument names the
+  graders send" and "revocation is per-GRANT, not per-vehicle" both assert
+  against `FunctionDefinition.header` — and `functions()` in `sql.ts` builds
+  `header` from the text **after** the closing paren of the argument list, so
+  no argument name can ever appear in it. Verified against the shipped
+  migration: `create.statement.includes("p_vehicle_id")` is `true` and
+  `create.header.includes("p_vehicle_id")` is `false`. Both graders are
+  unsatisfiable as written and stay marked; the fix is one field
+  (`statement`, or a parsed argument-name list), and it belongs to a
+  test-writer.
+  <br>*Also in this branch, and flagged rather than buried:* the reserved-handle
+  check constraint is restated to add `share`/`compartir` (this task's route
+  segment, which `RESERVED_HANDLES`' superset check requires) **and**
+  `search`/`buscar`, which T702 added to both TypeScript lists and not to the
+  SQL — so the form has been refusing a handle the database accepts since
+  T702.
+  <br>**Fixed 2026-09-06 (post-merge, two branches converged on it
+  independently):** `20260906120000_share_grants.sql` shared its timestamp
+  prefix with T2-306's already-merged `20260906120000_vehicle_cover_photo.sql`
+  — both authored the same minute, neither noticed at review — which made
+  `supabase db reset` fail with `duplicate key value violates unique
+  constraint "schema_migrations_pkey"` and took down Tier-B (live-stack)
+  locally and in CI. This branch (`fix/002-t2-405-migration-timestamp-
+  collision`) renamed it to `20260906120001_share_grants.sql`; `fix/002-t2-
+  404-copilot-followups` (#125) renamed it to `20260906120100_share_grants.sql`
+  as part of the same Copilot-follow-up pass and merged to `main` first
+  (`8c9baeb`). `#125`'s timestamp is what shipped — this branch's own rename
+  is superseded and its migration file, plus the three prose references to the
+  old filename (`src/lib/supabase/shares.ts`, `tests/garage/contract.ts`, this
+  file), were resolved to match `main`'s on merge rather than re-diverging.
+  <br>**Also tracked, not blocking (AGENTS.md Orchestration ledger, entry
+  opened 2026-09-06):** `#125`'s `tests/garage/receipt-signer.test.ts` edit
+  (adding `LIVE_TEST_TIMEOUT_MS`) is the *second* implementer-role edit to
+  that grader file, after this task's own `04913f8` changed
+  `requireSigner()`'s signature and added a test case. Independently
+  reviewed and found benign both times, but recorded as debt against the
+  separation rule — see AGENTS.md for the full entry.
 
 - [ ] **T2-403 [PLATFORM]** Community evidence surfacing: opt-in per-record
   first-hand evidence on problem pages (001 GAR-04 re-cut). Depends: T2-402,

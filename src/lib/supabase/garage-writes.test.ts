@@ -226,6 +226,7 @@ const VEHICLE: VehicleRow = {
   engine_id: "6g74-sohc",
   odometer_km: 1,
   photo_paths: [EXISTING_PHOTO],
+  cover_photo_path: null,
   is_showcase_public: false,
   is_worklog_public: false,
 };
