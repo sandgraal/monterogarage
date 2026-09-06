@@ -20,9 +20,9 @@
   "confidence": "fsm-confirmed",
   "sources": [
     {
-      "title": "Mitsubishi Motors — PAJERO Workshop Manual, Pub. No. PWJE0001, combined electronic edition for the 2001–2003 model years: includes group 15 (Intake and Exhaust) and group 16 (Engine Electrical), which the two scanned chassis volumes leave out",
-      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/Manual.pdf",
-      "archiveUrl": "https://web.archive.org/web/20260906172658id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/Manual.pdf",
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis Volume 1, Pub. No. PWJE0001(1/2) (February 2000): groups 00 to 23 — group 16, Engine Electrical, §16-41, Ignition Coil <6G7> removal and installation (the coil mounting bolt callout, distinct from the centre cover bolt callout on the same illustration)",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260831203139id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
       "accessed": "2026-09-06",
       "kind": "fsm"
     }

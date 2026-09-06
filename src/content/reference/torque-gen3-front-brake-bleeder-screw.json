@@ -1,0 +1,39 @@
+{
+  "id": "torque-gen3-front-brake-bleeder-screw",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    }
+  },
+  "kind": "torque",
+  "system": "brakes",
+  "torque": {
+    "value": 7.4,
+    "min": 6.0,
+    "max": 8.8,
+    "unit": "nm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis, Pub. No. PWJE0001 (February 2000), second scanned part: groups 25 to 55 — group 35A, Basic Brake System, §35A-46, Front Disc Brake disassembly and reassembly (the bleeder screw callout on the front caliper illustration)",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260906181459id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Front brake caliper bleeder screw tightening torque",
+      "summary": "The tightening torque for the bleeder screw on the front caliper. The rear caliper has its own, different figure on its own page — this one is not a generic brake bleeder torque, and the two are close enough that using the wrong one is easy and far enough apart that the manual bothered to print both. It is a small figure on a fitting that snaps off easily in a corroded caliper and weeps if it is left loose; either failure lets air into the circuit, which is the one thing a brake bleed exists to remove. The manual this comes from is the export PAJERO book; the North American Montero has its own manual and a reader on that truck should confirm the figure there."
+    },
+    "es": {
+      "title": "Par de apriete del tornillo de purga del cáliper delantero",
+      "summary": "El par de apriete del tornillo de purga del cáliper delantero. El cáliper trasero tiene su propia cifra, distinta y en su propia página: esta no es un par de purga genérico, y las dos están lo bastante cerca como para confundirlas y lo bastante lejos como para que el manual se tomara el trabajo de imprimir las dos. Es una cifra pequeña, en una pieza que se quiebra fácil en un cáliper corroído y que gotea si queda floja; cualquiera de las dos fallas mete aire al circuito, que es justo lo que una purga de frenos existe para sacar. El manual del que sale esto es el del PAJERO de exportación; el Montero de Norteamérica tiene su propio manual, y quien ande en ese carro debería confirmar la cifra ahí."
+    }
+  }
+}

@@ -18,7 +18,7 @@
   "confidence": "fsm-confirmed",
   "sources": [
     {
-      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis Volume 1, Pub. No. PWJE0001(1/2) (February 2000): groups 00 to 23",
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis Volume 1, Pub. No. PWJE0001(1/2) (February 2000): groups 00 to 23 — group 11A, Engine <6G7>, §11A-21, Timing Belt installation (the tension torque applied through the tension pulley socket wrench, given as a standard value), and §11A-20, whose caution states what the sprockets do to each other if one is turned out of time",
       "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
       "archiveUrl": "https://web.archive.org/web/20260831203139id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
       "accessed": "2026-09-06",
@@ -28,11 +28,11 @@
   "prose": {
     "en": {
       "title": "Timing belt tension torque — 6G74 GDI",
-      "summary": "Not a fastener: this is the torque the manual has you apply to the tension pulley itself, through the tension pulley socket wrench, to set belt tension on the direct-injection petrol V6. It is applied with the pulley's centre bolt loosened, and the centre bolt is tightened afterwards to its own figure. Getting this wrong is not a leak — on an interference engine it is the whole engine."
+      "summary": "Not a fastener: this is the torque the manual has you apply to the tension pulley itself, through the tension pulley socket wrench, to set belt tension on the direct-injection petrol V6. It is applied with the pulley's centre bolt loosened, and the centre bolt is tightened afterwards to its own figure, and the manual then has you prove the result by measuring the auto-tensioner rod rather than by taking the torque on trust. The manual is direct about what the belt is holding in place on this engine: its caution is that if one of the left bank's camshaft sprockets is turned a full revolution while the timing marks on that bank's other sprocket are aligned, the intake and exhaust valves interfere with each other. That is the manual's own statement, and it is about valves meeting valves — the wider claim that the pistons meet the valves too comes from the trade rather than from this book."
     },
     "es": {
       "title": "Par de tensión de la faja de distribución — 6G74 GDI",
-      "summary": "No es un tornillo: es el par que el manual manda a aplicar sobre la propia polea tensora, con el dado especial de tensión, para dejar la faja de distribución del V6 de gasolina de inyección directa en su tensión de fábrica. Se aplica con el tornillo central de la polea aflojado, y ese tornillo se aprieta después a su propia cifra. Equivocarse aquí no es una fuga: en un motor de interferencia es el motor completo."
+      "summary": "No es un tornillo: es el par que el manual manda a aplicar sobre la propia polea tensora, con el dado especial de tensión, para dejar la faja de distribución del V6 de gasolina de inyección directa en su tensión de fábrica. Se aplica con el tornillo central de la polea aflojado, ese tornillo se aprieta después a su propia cifra, y el manual comprueba el resultado midiendo el vástago del tensor automático en vez de dar el par por bueno. El manual es directo sobre lo que la faja mantiene en su sitio en este motor: su advertencia es que, si se gira una vuelta completa una de las poleas de árbol de levas del banco izquierdo con las marcas de la otra polea de ese mismo banco alineadas, las válvulas de admisión y de escape se topan entre sí. Eso es lo que dice el manual, y habla de válvula contra válvula; la afirmación más amplia de que también se topan pistón y válvula viene del taller, no de este libro."
     }
   }
 }

@@ -50,9 +50,10 @@
     "dimension-gen3-front-brake-pad-thickness-new",
     "dimension-gen3-front-brake-pad-thickness-limit",
     "dimension-gen3-front-brake-disc-thickness-limit",
+    "dimension-gen3-brake-disc-thickness-variation-limit",
     "torque-gen3-front-brake-caliper-guide-pin",
     "torque-gen3-front-brake-caliper-support-bolt",
-    "torque-gen3-brake-bleeder-screw",
+    "torque-gen3-front-brake-bleeder-screw",
     "torque-gen3-wheel-nut"
   ],
   "steps": [
@@ -77,6 +78,7 @@
       "id": "measure-the-disc",
       "specs": [
         "dimension-gen3-front-brake-disc-thickness-limit",
+        "dimension-gen3-brake-disc-thickness-variation-limit",
         "torque-gen3-front-brake-caliper-support-bolt"
       ]
     },
@@ -85,7 +87,7 @@
     },
     {
       "id": "retract-the-pistons",
-      "specs": ["torque-gen3-brake-bleeder-screw"]
+      "specs": ["torque-gen3-front-brake-bleeder-screw"]
     },
     {
       "id": "fit-the-new-pads",
@@ -105,9 +107,9 @@
   "confidence": "fsm-confirmed",
   "sources": [
     {
-      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis, Pub. No. PWJE0001 (February 2000), second scanned part: groups 25 to 55 — group 35A, Basic Brake System: service specifications, Disc Brake Pad Check and Replacement, and Front Disc Brake removal, installation, disassembly and reassembly",
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis, Pub. No. PWJE0001 (February 2000), second scanned part: groups 25 to 55 — group 35A, Basic Brake System: §35A-6, Service Specifications; §35A-31, Disc Brake Pad Check and Replacement; §35A-32, Disc Brake Rotor Check and Brake Disc Thickness Check (the eight-position measurement pattern and the thickness-variation limit); §35A-44 and §35A-45, Front Disc Brake removal and installation; §35A-46 to §35A-48, Front Disc Brake disassembly and reassembly; and §35A-49, the installation service point on unequal pad thickness",
       "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
-      "archiveUrl": "https://web.archive.org/web/20260831203149id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260906181459id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
       "accessed": "2026-09-06",
       "kind": "fsm"
     }
@@ -115,15 +117,15 @@
   "prose": {
     "en": {
       "title": "Front brake pad replacement",
-      "summary": "Pads out, pads in, both sides, measured rather than guessed. The manual checks pad thickness through the caliper body's check port, replaces pads as an axle set and never one wheel alone, and treats the guide pins sliding freely as part of the job rather than an extra. The figures below — new thickness, wear limit, disc limit and the torques — are the manual's; the time and the difficulty are our estimate. If any of what follows is past what you are set up for, this is the system where stopping and paying a qualified mechanic is the cheap decision.",
+      "summary": "Pads out, pads in, both sides, measured rather than guessed. The manual checks pad thickness through the caliper body's check port, replaces pads as an axle set and never one wheel alone, and treats the guide pins sliding freely as part of the job rather than an extra. The figures below — new pad thickness, pad wear limit, disc wear limit, disc thickness variation and the torques — are the manual's; the time and the difficulty are our estimate. Note that the bleeder torque below is the front caliper's: the manual prints a different one for the rear. If any of what follows is past what you are set up for, this is the system where stopping and paying a qualified mechanic is the cheap decision.",
       "steps": {
         "measure-before-you-commit": "Look through the check port in the caliper body at the pad thickness on both sides before you buy anything, and compare what you see against the standard value and the wear limit below. Pads that are unequal side to side, or unequal between the inner and outer pad on one caliper, are telling you about a seized guide pin or a sticking piston — fix that or you will be back here early.",
         "wheels-off-both-sides": "Loosen the wheel nuts with the truck still on the ground, then raise it and put it on stands under a solid part of the chassis. Chock the wheels that stay down. Take both front wheels off: this job is done in axle sets, and doing one side now and the other some other day is how a truck ends up pulling under braking.",
-        "swing-the-caliper-clear": "Undo the guide pin lock bolt, pivot the caliper up off the pads and hang it from the spring with wire. Never let it hang on its brake hose — the hose is not a strap, and the damage it does does not show until the day it lets go. The bolt's torque is below for reassembly.",
+        "swing-the-caliper-clear": "Undo the guide pin lock bolt, pivot the caliper up off the pads and hold it there with wire — the manual says only that, hold it with wires, and leaves you to pick the solid piece of suspension you tie it to. Never let it hang on its brake hose — the hose is not a strap, and the damage it does does not show until the day it lets go. The bolt's torque is below for reassembly.",
         "note-how-the-pads-sit": "Take the pads, the clips and the shims out of the caliper support and lay them on the ground in the order and orientation they came out. The wear indicator sits on one particular pad; the shims and clips go back the same way round or the brake squeals and the pads wear crooked.",
-        "measure-the-disc": "Measure the disc thickness with a vernier or a micrometer, in several places, and compare it against the wear limit below. A disc at or under the limit is finished — it is not a candidate for skimming — and a disc with a deep lip or a heavy score is worth replacing while everything is already apart. If you take the disc off, the caliper support bolts come out and go back at the torque below.",
+        "measure-the-disc": "Measure the disc thickness with a micrometer, and take the measurements the way the manual does rather than wherever the tool happens to reach: eight positions spaced evenly right round the disc, all of them the same short distance in from the outer edge, both figures given on that page. Compare the smallest reading against the wear limit below. Then compare the readings against each other — the manual sets a separate limit, also below, on how much any two of them may differ, and a disc that passes on thickness can still fail on that. A disc at or under the wear limit is finished and is not a candidate for skimming; one that fails only on thickness variation the manual will let you machine on the truck, with the right lathe. Either way, a deep lip or a heavy score is worth replacing while everything is already apart. If you take the disc off, the caliper support bolts come out and go back at the torque below.",
         "clean-and-free-the-pins": "Pull the guide pins, clean them, check their boots for splits and refit them with the grease the repair kit provides so they slide freely by hand. A seized pin makes the outer pad do most of the work; that is the wear pattern you saw in the first step. Clean the caliper support where the clips seat — rust scale there pinches the new pads.",
-        "retract-the-pistons": "Push the pistons back squarely and slowly, watching the brake fluid reservoir the whole time so it cannot overflow. Cleanest is to crack the bleeder screw and let the displaced fluid out into a hose and bottle rather than forcing old fluid backwards through the ABS unit; if you do that, close the bleeder to the torque below and bleed that caliper afterwards. Brake fluid strips paint on contact — wash any spill off with water immediately.",
+        "retract-the-pistons": "Push the pistons back squarely and slowly, watching the brake fluid reservoir the whole time so it cannot overflow. Cleanest is to crack the bleeder screw and let the displaced fluid out into a hose and bottle rather than forcing old fluid backwards through the ABS unit; if you do that, close the bleeder screw to the front caliper figure below and bleed that caliper afterwards. Brake fluid strips paint on contact — wash any spill off with water immediately.",
         "fit-the-new-pads": "Fit the clips, the shims and the new pads the way the old ones came out, with the wear indicator in the right place, and keep oil and grease off the friction faces and the disc — the manual says so plainly and it is the mistake that ruins a new set in one drive. Lower the caliper over the pads without catching the piston boot, and tighten the guide pin and its lock bolt to the torque below.",
         "wheels-back-on": "Refit the wheels, lower the truck and tighten the wheel nuts in a star pattern with a torque wrench to the figure below, on clean dry threads. Re-check that torque after the first short drive.",
         "pump-the-pedal-before-you-move": "Before the truck moves at all, pump the brake pedal until it comes up firm. The first pedal press after a pad change only takes up the gap you created by retracting the pistons — a truck driven off the stands without doing this has no brakes for the first press, in a driveway, with the road at the end of it. Then check the reservoir level and top up if needed.",
@@ -135,7 +137,7 @@
         "piston-retracting-tool": "Piston retracting tool or a large clamp with a flat pad",
         "wire-or-hook": "Wire or a hook to hang the caliper from, so it never hangs on its hose",
         "brake-cleaner-and-brush": "Brake cleaner and a brush",
-        "vernier-or-micrometer": "Vernier or micrometer for the disc and the pads"
+        "vernier-or-micrometer": "Micrometer for the disc — the manual measures it with one, and a vernier will not resolve the thickness-variation limit. A vernier is fine for a rough look at the pads"
       },
       "prerequisites": {
         "truck-level-and-on-stands": "Truck level, on stands on firm ground, with the wheels still on the ground chocked. Never under a truck held only by a jack.",
@@ -146,15 +148,15 @@
     },
     "es": {
       "title": "Cambio de pastillas de freno delanteras",
-      "summary": "Sacar pastillas, poner pastillas, en los dos lados y midiendo en vez de calculando a ojo. El manual revisa el espesor de la pastilla por la ventana del cuerpo del cáliper, cambia las pastillas de freno en juego por eje y nunca en una sola rueda, y trata el deslizamiento libre de los pernos guía como parte del trabajo y no como un extra. Las cifras de abajo —espesor nuevo, límite de desgaste, límite del disco de freno y los pares de apriete— son del manual; el tiempo y la dificultad son estimación nuestra. Si algo de lo que sigue pasa de lo que usted tiene montado, este es el sistema donde parar y pagarle a un mecánico calificado es la decisión barata.",
+      "summary": "Sacar pastillas, poner pastillas, en los dos lados y midiendo en vez de calculando a ojo. El manual revisa el espesor de la pastilla por la ventana del cuerpo del cáliper, cambia las pastillas de freno en juego por eje y nunca en una sola rueda, y trata el deslizamiento libre de los pernos guía como parte del trabajo y no como un extra. Las cifras de abajo —espesor de pastilla nueva, límite de desgaste de la pastilla, límite del disco de freno, variación de espesor del disco y los pares de apriete— son del manual; el tiempo y la dificultad son estimación nuestra. Ojo con una: el par del tornillo de purga que va abajo es el del cáliper delantero, y el manual imprime otro distinto para el trasero. Si algo de lo que sigue pasa de lo que usted puede resolver con lo que tiene, este es el sistema donde parar y pagarle a un mecánico calificado es la decisión barata.",
       "steps": {
         "measure-before-you-commit": "Vea por la ventana de revisión del cuerpo del cáliper el espesor de la pastilla de los dos lados antes de comprar nada, y compárelo con el valor estándar y el límite de desgaste de abajo. Pastillas desiguales de un lado al otro, o desiguales entre la interna y la externa del mismo cáliper, le están hablando de un perno guía pegado o de un pistón que no regresa: arréglelo o va a volver aquí antes de tiempo.",
         "wheels-off-both-sides": "Afloje las tuercas de rueda con el carro todavía en el suelo, después levántelo y póngalo sobre soportes de seguridad apoyados en una parte firme del chasis. Calce las ruedas que quedan abajo. Saque las dos ruedas delanteras: este trabajo se hace en juego por eje, y hacer un lado hoy y el otro otro día es como un carro termina jalando al frenar.",
-        "swing-the-caliper-clear": "Saque el tornillo de fijación del perno guía, voltee el cáliper hacia arriba para liberar las pastillas de freno y cuélguelo del resorte con alambre. Nunca lo deje colgando de la manguera de freno: la manguera no es una faja, y el daño que le hace no se ve hasta el día en que suelta. El par de ese tornillo va abajo para el armado.",
+        "swing-the-caliper-clear": "Saque el tornillo de fijación del perno guía, voltee el cáliper hacia arriba para liberar las pastillas de freno y sosténgalo ahí con alambre; el manual dice justo eso, sosténgalo con alambres, y deja a criterio suyo de cuál parte firme de la suspensión lo amarra. Nunca lo deje colgando de la manguera de freno: la manguera no es una faja, y el daño que le hace no se ve hasta el día en que suelta. El par de ese tornillo va abajo para el armado.",
         "note-how-the-pads-sit": "Saque las pastillas de freno, las prensillas y los shims del soporte del cáliper y déjelos en el suelo en el orden y la posición en que salieron. El indicador de desgaste va en una pastilla específica; los shims y las prensillas vuelven en la misma posición o el freno chilla y las pastillas se desgastan chuecas.",
-        "measure-the-disc": "Mida el espesor del disco de freno con calibrador o micrómetro, en varios puntos, y compárelo con el límite de desgaste de abajo. Un disco de freno en el límite o por debajo ya está terminado —no es candidato a rectificar—, y un disco con filo hondo o muy rayado conviene cambiarlo ahora que todo está abierto. Si saca el disco, los tornillos del soporte del cáliper salen y vuelven al par de abajo.",
+        "measure-the-disc": "Mida el espesor del disco de freno con micrómetro, y tome las medidas como las toma el manual y no donde alcance la herramienta: ocho puntos repartidos parejo por todo el disco, todos a la misma distancia corta del borde exterior; las dos cifras vienen en esa página. Compare la lectura más baja contra el límite de desgaste de abajo. Después compare las lecturas entre ellas: el manual pone un límite aparte, también abajo, a cuánto pueden diferir dos cualesquiera, y un disco que pasa de espesor puede reprobar en eso. Un disco de freno en el límite de desgaste o por debajo ya está terminado y no es candidato a rectificar; uno que solo reprueba en variación de espesor el manual sí permite rectificarlo en el carro, con el torno adecuado. En cualquiera de los dos casos, un filo hondo o un rayado feo conviene cambiarlo ahora que todo está abierto. Si saca el disco, los tornillos del soporte del cáliper salen y vuelven al par de abajo.",
         "clean-and-free-the-pins": "Saque los pernos guía, límpielos, revise que sus fuelles no estén partidos y móntelos con la grasa que trae el juego de reparación, de modo que deslicen libres con la mano. Un perno pegado hace que la pastilla externa haga casi todo el trabajo: ese es el desgaste que usted vio en el primer paso. Limpie el soporte del cáliper donde asientan las prensillas; la costra de óxido ahí aprisiona las pastillas nuevas.",
-        "retract-the-pistons": "Devuelva los pistones derechos y despacio, viendo todo el tiempo el depósito de líquido de frenos para que no se rebalse. Lo más limpio es abrir el tornillo de purga y dejar salir a una manguera y una botella el líquido que se desplaza, en vez de empujar líquido viejo de regreso por el ABS; si lo hace así, cierre la purga al par de abajo y purgue después ese cáliper. El líquido de frenos levanta la pintura apenas la toca: lave con agua de una vez lo que se derrame.",
+        "retract-the-pistons": "Devuelva los pistones derechos y despacio, viendo todo el tiempo el depósito de líquido de frenos para que no se rebalse. Lo más limpio es abrir el tornillo de purga y dejar salir a una manguera y una botella el líquido que se desplaza, en vez de empujar líquido viejo de regreso por el ABS; si lo hace así, cierre el tornillo de purga a la cifra del cáliper delantero de abajo y purgue después ese cáliper. El líquido de frenos levanta la pintura apenas la toca: lave con agua de una vez lo que se derrame.",
         "fit-the-new-pads": "Monte las prensillas, los shims y las pastillas de freno nuevas como salieron las viejas, con el indicador de desgaste en su lugar, y mantenga aceite y grasa fuera de las caras de fricción y del disco de freno: el manual lo dice sin rodeos y es el error que arruina un juego nuevo en un solo viaje. Baje el cáliper sobre las pastillas sin morder el fuelle del pistón y apriete el perno guía y su tornillo de fijación al par de abajo.",
         "wheels-back-on": "Monte las ruedas, baje el carro y apriete las tuercas de rueda en cruz, con llave de torque, a la cifra de abajo y con la rosca limpia y seca. Vuelva a revisar ese apriete después del primer recorrido corto.",
         "pump-the-pedal-before-you-move": "Antes de que el carro se mueva, bombee el pedal de freno hasta que suba firme. La primera pisada después de un cambio de pastillas de freno solo recupera el espacio que usted creó al devolver los pistones: un carro bajado de los soportes y arrancado sin hacer esto se queda sin frenos en la primera pisada, en el patio, con la calle al final. Después revise el nivel del depósito y complete si hace falta.",
@@ -166,7 +168,7 @@
         "piston-retracting-tool": "Herramienta para devolver el pistón, o una prensa grande con apoyo plano",
         "wire-or-hook": "Alambre o gancho para colgar el cáliper, para que nunca quede colgando de la manguera",
         "brake-cleaner-and-brush": "Limpiador de frenos y un cepillo",
-        "vernier-or-micrometer": "Calibrador o micrómetro para el disco de freno y las pastillas"
+        "vernier-or-micrometer": "Micrómetro para el disco de freno: el manual lo mide con micrómetro, y un calibrador no resuelve el límite de variación de espesor. Para verles el ojo a las pastillas, el calibrador basta"
       },
       "prerequisites": {
         "truck-level-and-on-stands": "Carro en piso plano, sobre soportes de seguridad en suelo firme, y con las ruedas que quedan abajo calzadas. Nunca debajo de un carro sostenido solo por la gata.",

@@ -17,9 +17,9 @@
   "confidence": "fsm-confirmed",
   "sources": [
     {
-      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis, Pub. No. PWJE0001 (February 2000), second scanned part: groups 25 to 55",
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis, Pub. No. PWJE0001 (February 2000), second scanned part: groups 25 to 55 — group 26, Front Axle, §26-11, Front Axle Gear Oil Level Check",
       "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
-      "archiveUrl": "https://web.archive.org/web/20260831203149id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260906181459id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
       "accessed": "2026-09-06",
       "kind": "fsm"
     }
@@ -27,11 +27,11 @@
   "prose": {
     "en": {
       "title": "Front differential oil level — maximum drop below the filler plug hole",
-      "summary": "How far below the bottom of the filler plug hole the front differential's oil may sit and still be in specification. The front axle group checks the level at the hole rather than by quantity alone, which is what makes this figure the actual test after a refill — the fill quantity gets you close, the hole tells you when to stop."
+      "summary": "How far below the bottom of the filler plug hole the front differential's oil may sit and still be in specification. The front axle group checks the level at the hole rather than by quantity alone, which is what makes this figure the actual test after a refill — the fill quantity gets you close, the hole tells you when to stop. The manual this comes from is the export PAJERO book; the North American Montero has its own manual and a reader on that truck should confirm the figure there."
     },
     "es": {
       "title": "Nivel de aceite del diferencial delantero — caída máxima bajo el hueco del tapón de llenado",
-      "summary": "Cuánto puede quedar el aceite del diferencial delantero por debajo del borde inferior del hueco del tapón de llenado y seguir estando en especificación. El grupo de eje delantero revisa el nivel en el hueco y no solo por cantidad, y por eso esta cifra es la prueba de verdad después de servir: la cantidad lo deja cerca, el hueco le dice cuándo parar."
+      "summary": "Cuánto puede quedar el aceite del diferencial delantero por debajo del borde inferior del hueco del tapón de llenado y seguir estando en especificación. El grupo de eje delantero revisa el nivel en el hueco y no solo por cantidad, y por eso esta cifra es la prueba de verdad después de servir: la cantidad lo deja cerca, el hueco le dice cuándo parar. El manual del que sale esto es el del PAJERO de exportación; el Montero de Norteamérica tiene su propio manual, y quien ande en ese carro debería confirmar la cifra ahí."
     }
   }
 }

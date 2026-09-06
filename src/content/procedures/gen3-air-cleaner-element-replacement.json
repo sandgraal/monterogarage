@@ -52,9 +52,9 @@
   "confidence": "fsm-confirmed",
   "sources": [
     {
-      "title": "Mitsubishi Motors — PAJERO Workshop Manual, Pub. No. PWJE0001, combined electronic edition for the 2001–2003 model years — group 15, Intake and Exhaust: Air Cleaner removal and installation",
-      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/Manual.pdf",
-      "archiveUrl": "https://web.archive.org/web/20260906172658id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/Manual.pdf",
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis Volume 1, Pub. No. PWJE0001(1/2) (February 2000): groups 00 to 23 — group 15, Intake and Exhaust, §15-4, Air Cleaner removal and installation (the recycled-paper plastic caution, the case-hinge instruction, the removal step list and the duct and bracket torque callouts)",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260831203139id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
       "accessed": "2026-09-06",
       "kind": "fsm"
     }
@@ -62,7 +62,7 @@
   "prose": {
     "en": {
       "title": "Air cleaner element replacement",
-      "summary": "The cheapest service on the truck and the one a dirt road undoes fastest. The element sits in a hinged case between the cover and the body; the manual's own caution is that the case parts are a recycled-paper plastic that does not forgive being levered or dropped, and that the hinges have to engage properly on the way back together. No figures on this job — it is a cover, an element and a clean box. The time and the difficulty are our estimate.",
+      "summary": "The cheapest service on the truck and the one a dirt road undoes fastest. The element sits in a hinged case between the cover and the body; the manual's own caution is that the case parts are a recycled-paper plastic that does not forgive being levered or dropped, and that the hinges have to engage properly on the way back together. The manual gives no figures for the element itself — its page does carry torques, but they belong to the ducts, the air flow sensor and the bracket bolts, none of which you need to disturb to change a filter. The time and the difficulty are our estimate.",
       "steps": {
         "open-the-air-cleaner-cover": "Release the clips around the air cleaner cover and free anything clipped to it. Open it gently: the case is a moulded plastic that cracks at the hinge if you lever it, and a cracked case leaks unfiltered air past the element for the rest of its life.",
         "lift-the-element-out": "Lift the element straight out and note which way up it sat before it leaves the box. Do not knock it against the housing on the way out — everything it shakes loose falls into the clean side.",
@@ -81,7 +81,7 @@
     },
     "es": {
       "title": "Cambio del elemento del filtro de aire",
-      "summary": "El servicio más barato del carro y el que más rápido deshace un camino de lastre. El elemento va en una caja con bisagra, entre la tapa y el cuerpo; la advertencia del propio manual es que esas piezas son de un plástico con papel reciclado que no perdona palancas ni golpes, y que las bisagras tienen que quedar bien encajadas al armar. Este trabajo no lleva cifras: es una tapa, un elemento y una caja limpia. El tiempo y la dificultad son estimación nuestra.",
+      "summary": "El servicio más barato del carro y el que más rápido deshace un camino de lastre. El elemento va en una caja con bisagra, entre la tapa y el cuerpo; la advertencia del propio manual es que esas piezas son de un plástico con papel reciclado que no perdona palancas ni golpes, y que las bisagras tienen que quedar bien encajadas al armar. Para el elemento mismo el manual no da ninguna cifra; esa página sí trae pares de apriete, pero son de los ductos, del sensor de flujo de aire y de los tornillos de la base, y para cambiar un filtro no hay que tocar ninguno. El tiempo y la dificultad son estimación nuestra.",
       "steps": {
         "open-the-air-cleaner-cover": "Suelte los ganchos de la tapa del filtro de aire y libere lo que vaya prensado en ella. Ábrala con cuidado: la caja es de plástico moldeado que se raja en la bisagra si uno hace palanca, y una caja rajada le mete aire sin filtrar por un lado el resto de su vida.",
         "lift-the-element-out": "Saque el elemento derecho hacia arriba y fíjese en qué posición estaba antes de que salga de la caja. No lo golpee contra la caja al sacarlo: todo lo que se le suelte cae del lado limpio.",

@@ -1,0 +1,39 @@
+{
+  "id": "torque-gen3-rear-brake-bleeder-screw",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    }
+  },
+  "kind": "torque",
+  "system": "brakes",
+  "torque": {
+    "value": 7.9,
+    "min": 7.0,
+    "max": 8.8,
+    "unit": "nm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis, Pub. No. PWJE0001 (February 2000), second scanned part: groups 25 to 55 — group 35A, Basic Brake System, §35A-51, Rear Disc Brake disassembly and reassembly (the bleeder screw callout on the rear caliper illustration)",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260906181459id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Rear brake caliper bleeder screw tightening torque",
+      "summary": "The tightening torque for the bleeder screw on the rear caliper, which the manual prints separately from the front one and at a different nominal and a different tolerance. Reach for the front figure at a rear caliper and you will be tightening a small steel fitting in an aluminium body by the wrong number — not by much, and the point of a torque wrench is that \"not by much\" is exactly what it exists to stop. The manual this comes from is the export PAJERO book; the North American Montero has its own manual and a reader on that truck should confirm the figure there."
+    },
+    "es": {
+      "title": "Par de apriete del tornillo de purga del cáliper trasero",
+      "summary": "El par de apriete del tornillo de purga del cáliper trasero, que el manual imprime aparte del delantero, con otro valor nominal y otra tolerancia. Si usted agarra la cifra del delantero para un cáliper trasero, va a apretar una pieza pequeña de acero en un cuerpo de aluminio con el número equivocado: no por mucho, y para eso mismo existe la llave de torque, para que ese «no por mucho» no pase. El manual del que sale esto es el del PAJERO de exportación; el Montero de Norteamérica tiene su propio manual, y quien ande en ese carro debería confirmar la cifra ahí."
+    }
+  }
+}
