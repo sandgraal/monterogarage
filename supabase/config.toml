@@ -264,10 +264,29 @@ enabled = false
 enabled = false
 
 [edge_runtime]
-# No edge functions in this phase. ACC-04 (no third-party SDKs on the auth
-# surface) is easier to keep true when there is no second runtime to slip one
-# into.
-enabled = false
+# On since T2-404, for exactly one function: `sign-receipt`.
+#
+# It was off through T2-2xx and T2-3xx on the reasoning that ACC-04 (no
+# third-party SDKs on the auth surface) is easier to keep true when there is no
+# second runtime to slip one into. That reasoning is intact and is why this is
+# still a one-function runtime: the ban is on what may run here, not on the
+# runtime existing.
+#
+# The function had to exist because a Postgres function cannot mint a Supabase
+# signed URL — signing is a storage-api operation, the same wall T2-202 hit for
+# purging receipt bytes. Authorization stays in Postgres, where the graders
+# reach it (`public.share_read_receipts` validates the token and resolves the
+# path); this runtime signs the path it was handed and never one a caller
+# supplied. See `supabase/functions/sign-receipt/index.ts`, and
+# `tests/garage/receipt-signer.test.ts`, whose unmarked sweep fails if a
+# *second* function ever appears beside it.
+enabled = true
+
+[functions.sign-receipt]
+# The anon key is a valid JWT and the grant holder presents nothing else, so
+# the platform's own JWT gate stays on: it proves the caller reached us through
+# the project's API, and the share token in the body is what actually decides.
+verify_jwt = true
 
 # Product/usage telemetry off. ACC-04 and AGENTS.md forbid an analytics or ad
 # SDK anywhere near the auth surface; the local Logflare container is not that,

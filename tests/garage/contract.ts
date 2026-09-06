@@ -215,13 +215,16 @@ export const RECORD_MEDIA_TABLE: TableContract = {
  * `20260903120100_public_handles.sql`, which is the whole of the promotion
  * `ColumnContract.pending` describes.
  *
- * **`shares` is declared here (pending T2-404), not exempted.** The
+ * **`shares` was declared here, not exempted, before it existed.** The
  * `ungradedTableIssues` sweep goes red for any table in `public` that is
  * neither enumerated here nor in `EXEMPT_PUBLIC_TABLES`, and that sweep is the
  * whole of AGENTS.md's "every user table ships with row-level security proven
  * by graders before content flows". Exempting the grants table — the one table
  * in the schema that holds bearer secrets — to keep a build quiet would
- * re-open the exact hole the sweep was added to close.
+ * re-open the exact hole the sweep was added to close. Its `pending: "T2-404"`
+ * markers, on the table and on all nine of its columns, were deleted by T2-404
+ * in the commit that added `20260906120000_share_grants.sql` — the promotion
+ * `ColumnContract.pending` describes, for the second time.
  */
 export const USER_TABLES: readonly TableContract[] = [
   {
@@ -496,7 +499,6 @@ export const USER_TABLES: readonly TableContract[] = [
      */
     name: "shares",
     requirement: "SHR-05 (a revocable, expiring, capability-scoped grant)",
-    pending: "T2-404",
     ownershipPath: ["vehicle_id", "owner_id"],
     columns: [
       {
@@ -504,14 +506,12 @@ export const USER_TABLES: readonly TableContract[] = [
         requirement: "SHR-05",
         type: /uuid/,
         notNull: true,
-        pending: "T2-404",
       },
       {
         name: "vehicle_id",
         requirement: "SHR-05 (a grant admits its holder to ONE vehicle)",
         type: /uuid/,
         notNull: true,
-        pending: "T2-404",
       },
       {
         // `bytea`, not `text`: `digest(token, 'sha256')` returns bytea, and
@@ -522,7 +522,6 @@ export const USER_TABLES: readonly TableContract[] = [
         requirement: "SHR-05 (the stored value is not the bearer secret)",
         type: /bytea/,
         notNull: true,
-        pending: "T2-404",
       },
       {
         // SHR-05: "A grant SHALL carry a `kind` naming its preset
@@ -533,7 +532,6 @@ export const USER_TABLES: readonly TableContract[] = [
         name: "kind",
         requirement: "SHR-05 (a preset label over explicit capabilities)",
         notNull: true,
-        pending: "T2-404",
       },
       {
         name: "includes_costs",
@@ -541,7 +539,6 @@ export const USER_TABLES: readonly TableContract[] = [
         type: /bool/,
         notNull: true,
         defaultsTo: "false",
-        pending: "T2-404",
       },
       {
         name: "includes_receipts",
@@ -549,7 +546,6 @@ export const USER_TABLES: readonly TableContract[] = [
         type: /bool/,
         notNull: true,
         defaultsTo: "false",
-        pending: "T2-404",
       },
       {
         // `not null`: SHR-08 says every grant "SHALL carry an expiry", and a
@@ -561,7 +557,6 @@ export const USER_TABLES: readonly TableContract[] = [
         requirement: "SHR-08 (every grant SHALL carry an expiry)",
         type: /timestamptz|timestamp with time zone/,
         notNull: true,
-        pending: "T2-404",
       },
       {
         // Nullable, and that is the point: null means live. A revocation is a
@@ -570,14 +565,12 @@ export const USER_TABLES: readonly TableContract[] = [
         name: "revoked_at",
         requirement: "SHR-08 (revocable by its issuer at any time)",
         type: /timestamptz|timestamp with time zone/,
-        pending: "T2-404",
       },
       {
         name: "created_at",
         requirement: "SHR-08 (an owner cannot audit grants they cannot date)",
         type: /timestamptz|timestamp with time zone/,
         notNull: true,
-        pending: "T2-404",
       },
     ],
   },
@@ -1443,6 +1436,12 @@ export const RESERVED_HANDLES = [
   // T702's site-wide search page — same precedent as `mods` above.
   "search",
   "buscar",
+  // T2-404's accountless share page, added when its route segment landed. The
+  // superset check in `handles.test.ts` names both locales the moment
+  // `COLLECTION_ROUTE_SEGMENTS` grows, which is what caught `mods`,
+  // `procedures` and `search` before this.
+  "share",
+  "compartir",
 ] as const;
 
 /* -------------------------------------------------------------------------

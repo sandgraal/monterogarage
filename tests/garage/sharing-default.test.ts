@@ -135,11 +135,27 @@ describe("every visibility flag is declared private-by-default", () => {
     }
   );
 
-  it("BOTH flag partitions are non-empty — neither sweep is vacuous", () => {
+  it("the SHIPPED flag sweep is non-empty, and the partition is total", () => {
     // `it.each([])` registers nothing and reports nothing. Without this, a bug
     // that put every flag on one side would delete half the file in silence.
+    //
+    // ## The pending half emptied for real when T2-404 landed
+    //
+    // It held `shares.includes_costs` and `shares.includes_receipts` from
+    // T2-401 until the migration that created them. The original form asserted
+    // *both* halves non-empty, which reads as a vacuity guard but is really a
+    // claim that some flag is always unbuilt — and that claim stops being true
+    // exactly when the schema is finished, so honouring it would mean the
+    // contract can never be completed without a red suite.
+    //
+    // The hazard is only ever about the half that carries the unmarked sweeps.
+    // That is `FLAGS`, which is asserted non-empty here and enumerated
+    // column-by-column above; an empty `PENDING_FLAGS` registers no `it.fails`
+    // graders and there is, by definition, no unbuilt flag they could have
+    // graded. The totality check is what stops a flag falling out of both
+    // lists, which is the failure the original was reaching for.
     expect(FLAGS.length).toBeGreaterThanOrEqual(4);
-    expect(PENDING_FLAGS.length).toBeGreaterThan(0);
+    expect(FLAGS.length + PENDING_FLAGS.length).toBe(SHARE_FLAG_COLUMNS.length);
   });
 
   it("declares NO boolean defaulting to true, anywhere, whatever it is called", () => {

@@ -176,15 +176,15 @@ describe("SHR-09: nothing in the schema lets a grant surface a record", () => {
  * ====================================================================== */
 
 describe("the grant lifecycle RPCs (SHR-05, SHR-08)", () => {
-  it.fails(`ships ${CONTRACT_SCHEMA}.${SHARE_CREATE_FUNCTION}`, () => {
+  it(`ships ${CONTRACT_SCHEMA}.${SHARE_CREATE_FUNCTION}`, () => {
     expect(requireGrantRoutine(SHARE_CREATE_FUNCTION)).toHaveLength(1);
   });
 
-  it.fails(`ships ${CONTRACT_SCHEMA}.${SHARE_REVOKE_FUNCTION}`, () => {
+  it(`ships ${CONTRACT_SCHEMA}.${SHARE_REVOKE_FUNCTION}`, () => {
     expect(requireGrantRoutine(SHARE_REVOKE_FUNCTION)).toHaveLength(1);
   });
 
-  it.fails("neither lifecycle RPC is reachable without a session", () => {
+  it("neither lifecycle RPC is reachable without a session", () => {
     // SHR-07 makes the accountless path read-only. Issuing and revoking are
     // writes, and they are the owner's writes: an anonymous caller able to mint
     // a grant is an anonymous caller able to grant themselves one.
@@ -197,7 +197,7 @@ describe("the grant lifecycle RPCs (SHR-05, SHR-08)", () => {
     expect(reachable).toEqual([]);
   });
 
-  it.fails("revocation consults nothing but the caller's ownership", () => {
+  it("revocation consults nothing but the caller's ownership", () => {
     // > SHALL never be gated by payment, by plan, or by any other condition
     // > — SHR-08, restated as 003 MON-02
     //
@@ -257,7 +257,7 @@ describe("the grant lifecycle RPCs (SHR-05, SHR-08)", () => {
     expect(revoke.header).not.toContain("p_vehicle_id");
   });
 
-  it.fails("the create RPC hands back the grant's id beside its token", () => {
+  it("the create RPC hands back the grant's id beside its token", () => {
     // The consequence of pinning revocation to an id: the issuer has to be
     // given one. A token is a secret the owner copies once and cannot be asked
     // to keep; an id is how they manage what they issued.
@@ -271,24 +271,21 @@ describe("the grant lifecycle RPCs (SHR-05, SHR-08)", () => {
     }
   });
 
-  it.fails(
-    "the create RPC returns the token ONCE and stores only its hash",
-    () => {
-      // The token is 256 bits the owner has to be able to copy. It exists in
-      // plaintext for exactly one response and never again — so the create RPC is
-      // the only routine in the schema allowed to emit it, and the row it writes
-      // must carry the digest.
-      const [create] = requireGrantRoutine(SHARE_CREATE_FUNCTION);
+  it("the create RPC returns the token ONCE and stores only its hash", () => {
+    // The token is 256 bits the owner has to be able to copy. It exists in
+    // plaintext for exactly one response and never again — so the create RPC is
+    // the only routine in the schema allowed to emit it, and the row it writes
+    // must carry the digest.
+    const [create] = requireGrantRoutine(SHARE_CREATE_FUNCTION);
 
-      expect(create.body).toMatch(/gen_random_bytes\s*\(\s*32\s*\)/);
-      expect(create.body).toMatch(/digest\s*\(/);
-      expect(create.body).not.toMatch(/insert[\s\S]*\btoken\b\s*[,)]/);
-    }
-  );
+    expect(create.body).toMatch(/gen_random_bytes\s*\(\s*32\s*\)/);
+    expect(create.body).toMatch(/digest\s*\(/);
+    expect(create.body).not.toMatch(/insert[\s\S]*\btoken\b\s*[,)]/);
+  });
 });
 
 describe("SHR-05: the preset is a label, never a branch", () => {
-  it.fails("no anon-reachable routine branches on the grant's `kind`", () => {
+  it("no anon-reachable routine branches on the grant's `kind`", () => {
     // "the preset SHALL be a label over explicit capability fields, never a
     // branch in consuming code". A reader that says `if kind = 'mechanic'` has
     // made the label load-bearing and the capability columns decorative — and a
@@ -297,7 +294,7 @@ describe("SHR-05: the preset is a label, never a branch", () => {
     expect(requireAnonSurface().flatMap(presetBranchIssues)).toEqual([]);
   });
 
-  it.fails("the create RPC constrains `kind` to the two named presets", () => {
+  it("the create RPC constrains `kind` to the two named presets", () => {
     // The closed set, in the style of `records.kind`. A free-text preset makes
     // the label unusable for the one thing it is for — telling the owner, and
     // the holder, what this grant was meant to be.
@@ -314,7 +311,7 @@ describe("SHR-05: the preset is a label, never a branch", () => {
 });
 
 describe("SHR-06: costs and receipts are two decisions", () => {
-  it.fails("every anon-reachable routine gates the data it returns", () => {
+  it("every anon-reachable routine gates the data it returns", () => {
     // A routine returning cost columns must test `includes_costs`; one
     // returning receipt data must test `includes_receipts`; and neither may
     // stand behind the other.
@@ -327,20 +324,17 @@ describe("SHR-06: costs and receipts are two decisions", () => {
     expect(requireAnonSurface().flatMap(capabilityGateIssues)).toEqual([]);
   });
 
-  it.fails(
-    "the two capability columns are separately named in the schema",
-    () => {
-      const sql = migrationSql();
+  it("the two capability columns are separately named in the schema", () => {
+    const sql = migrationSql();
 
-      for (const column of SHARE_CAPABILITY_COLUMNS) {
-        expect(sql, `${column} is not declared`).toContain(column);
-      }
+    for (const column of SHARE_CAPABILITY_COLUMNS) {
+      expect(sql, `${column} is not declared`).toContain(column);
     }
-  );
+  });
 });
 
 describe("SHR-08: the refusal is not an existence oracle (SMELL CHECK)", () => {
-  it.fails("no anon-reachable routine raises more than one refusal", () => {
+  it("no anon-reachable routine raises more than one refusal", () => {
     // **This does not prove SHR-08.** Indistinguishability is a property of
     // responses on a wire; the proof is the three-way Tier B comparison below.
     // What this catches, on every PR with no Docker, is the likeliest way to
@@ -386,7 +380,7 @@ function readAsHolder(
 describe.skipIf(!live.available)(
   liveTitle("SHR-08: unknown, expired, and revoked are one answer", live),
   () => {
-    it.fails("all three refusals are byte-for-byte identical", async () => {
+    it("all three refusals are byte-for-byte identical", async () => {
       // The requirement, run. "Same status, same body, same shape — so that the
       // surface is not an existence oracle."
       //
@@ -428,7 +422,7 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails("POSITIVE CONTROL: a live grant answers DIFFERENTLY", async () => {
+    it("POSITIVE CONTROL: a live grant answers DIFFERENTLY", async () => {
       // Without this, "the three refusals match" is satisfied by a surface that
       // refuses everything — including the grant just issued — which would be a
       // broken feature reported as a secure one.
@@ -450,7 +444,7 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails("revocation takes effect on the NEXT request", async () => {
+    it("revocation takes effect on the NEXT request", async () => {
       // "SHALL take effect on the next request". The likeliest defect in the
       // whole feature is a reader that validates the hash and the expiry and
       // never reads `revoked_at` — and it passes every hand-test, because a
@@ -473,43 +467,35 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails(
-      "revoking ONE grant leaves the owner's other grant alive",
-      async () => {
-        // SHR-08 is per-grant: "revocable by its issuer at any time" is about a
-        // grant, not about a truck. An owner who gave their mechanic a link in
-        // March and a buyer a link in June must be able to end one without ending
-        // the other — and a `revoke_share_grant(p_vehicle_id)` cannot express
-        // that, which is why `contract.ts` pins the id signature.
-        const scenario = await provisionScenario(stackOf(live));
-        try {
-          const { vehicleId } = await ownedVehicle(scenario);
-          const first = await issueGrant(scenario, scenario.ownerA, vehicleId);
-          const second = await issueGrant(
-            scenario,
-            scenario.ownerA,
-            vehicleId,
-            {
-              kind: SHARE_GRANT_KINDS[1],
-            }
-          );
+    it("revoking ONE grant leaves the owner's other grant alive", async () => {
+      // SHR-08 is per-grant: "revocable by its issuer at any time" is about a
+      // grant, not about a truck. An owner who gave their mechanic a link in
+      // March and a buyer a link in June must be able to end one without ending
+      // the other — and a `revoke_share_grant(p_vehicle_id)` cannot express
+      // that, which is why `contract.ts` pins the id signature.
+      const scenario = await provisionScenario(stackOf(live));
+      try {
+        const { vehicleId } = await ownedVehicle(scenario);
+        const first = await issueGrant(scenario, scenario.ownerA, vehicleId);
+        const second = await issueGrant(scenario, scenario.ownerA, vehicleId, {
+          kind: SHARE_GRANT_KINDS[1],
+        });
 
-          await revokeGrant(scenario, scenario.ownerA, first.shareId);
+        await revokeGrant(scenario, scenario.ownerA, first.shareId);
 
-          expect((await readAsHolder(scenario, first.token)).ok).toBe(false);
-          expect((await readAsHolder(scenario, second.token)).ok).toBe(true);
-        } finally {
-          await teardownScenario(scenario);
-        }
+        expect((await readAsHolder(scenario, first.token)).ok).toBe(false);
+        expect((await readAsHolder(scenario, second.token)).ok).toBe(true);
+      } finally {
+        await teardownScenario(scenario);
       }
-    );
+    });
   }
 );
 
 describe.skipIf(!live.available)(
   liveTitle("SHR-06: the four-cell capability matrix", live),
   () => {
-    it.fails.each<[boolean, boolean]>([
+    it.each<[boolean, boolean]>([
       [false, false],
       [true, false],
       [false, true],
@@ -567,6 +553,20 @@ describe.skipIf(!live.available)(
           expect(receipts.ok).toBe(includesReceipts);
           if (includesReceipts) {
             expect(receiptRows.length).toBeGreaterThan(0);
+
+            // `receipts.ok` and the row count above are satisfied by a reader
+            // that returns every receipt row with `amount`/`currency` always
+            // attached — the exact regression the migration's own comments
+            // (T2-404 review, F1) name and fix: those two fields are the
+            // grant's *cost* decision, not its *receipt* decision, and stay
+            // gated on `includesCosts` even in this cell, where receipts are
+            // open. `createOwnedFixture` puts a non-null `amount` (123.45) on
+            // the one receipt this vehicle has, so `hasOwn` below is a real
+            // presence check, not one an empty or null field would pass by
+            // accident.
+            const receiptRow = receiptRows[0] as Record<string, unknown>;
+            expect(Object.hasOwn(receiptRow, "amount")).toBe(includesCosts);
+            expect(Object.hasOwn(receiptRow, "currency")).toBe(includesCosts);
           } else {
             expect(receiptRows).toHaveLength(0);
           }
@@ -576,44 +576,41 @@ describe.skipIf(!live.available)(
       }
     );
 
-    it.fails(
-      "a grant reaches ONE vehicle, not the owner's garage",
-      async () => {
-        // A grant is issued per vehicle (SHR-05). An owner with two trucks who
-        // hands a mechanic a link to one has not handed over the other, and the
-        // failure mode — a reader that resolves the token to an *owner* and then
-        // reads that owner's records — returns exactly the right data for the
-        // single-vehicle case that everybody tests by hand.
-        const scenario = await provisionScenario(stackOf(live));
-        try {
-          const first = await ownedVehicle(scenario, "1");
-          const second = await ownedVehicle(scenario, "2");
-          const grant = await issueGrant(
-            scenario,
-            scenario.ownerA,
-            first.vehicleId
-          );
+    it("a grant reaches ONE vehicle, not the owner's garage", async () => {
+      // A grant is issued per vehicle (SHR-05). An owner with two trucks who
+      // hands a mechanic a link to one has not handed over the other, and the
+      // failure mode — a reader that resolves the token to an *owner* and then
+      // reads that owner's records — returns exactly the right data for the
+      // single-vehicle case that everybody tests by hand.
+      const scenario = await provisionScenario(stackOf(live));
+      try {
+        const first = await ownedVehicle(scenario, "1");
+        const second = await ownedVehicle(scenario, "2");
+        const grant = await issueGrant(
+          scenario,
+          scenario.ownerA,
+          first.vehicleId
+        );
 
-          const history = await readAsHolder(scenario, grant.token);
-          const rows = Array.isArray(history.body) ? history.body : [];
+        const history = await readAsHolder(scenario, grant.token);
+        const rows = Array.isArray(history.body) ? history.body : [];
 
-          expect(history.ok).toBe(true);
-          expect(history.text).not.toContain(second.vehicleId);
-          for (const row of rows as Record<string, unknown>[]) {
-            expect(row.vehicle_id).toBe(first.vehicleId);
-          }
-        } finally {
-          await teardownScenario(scenario);
+        expect(history.ok).toBe(true);
+        expect(history.text).not.toContain(second.vehicleId);
+        for (const row of rows as Record<string, unknown>[]) {
+          expect(row.vehicle_id).toBe(first.vehicleId);
         }
+      } finally {
+        await teardownScenario(scenario);
       }
-    );
+    });
   }
 );
 
 describe.skipIf(!live.available)(
   liveTitle("SHR-07: the accountless path is read-only", live),
   () => {
-    it.fails("a holder with no session cannot INSERT a record", async () => {
+    it("a holder with no session cannot INSERT a record", async () => {
       // "WHILE a request carries no authenticated session, no grant SHALL admit
       // any write." Graded over the **table**, because the requirement is about
       // the path: whatever a token buys, it does not buy a row.
@@ -647,7 +644,7 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails("a holder with no session cannot UPDATE a record", async () => {
+    it("a holder with no session cannot UPDATE a record", async () => {
       // The other verb, and the more tempting one: a mechanic "correcting" an
       // odometer reading is the exact feature 003's propose-and-accept exists
       // to provide *with* an account and an owner's acceptance (PRO-02, PRO-03).
@@ -708,7 +705,7 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails("a holder cannot issue a grant of their own", async () => {
+    it("a holder cannot issue a grant of their own", async () => {
       // The escalation. A grant that can mint a grant is a grant with no
       // expiry, whatever its `expires_at` says.
       const scenario = await provisionScenario(stackOf(live));
@@ -734,7 +731,7 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails("owner B cannot revoke owner A's grant", async () => {
+    it("owner B cannot revoke owner A's grant", async () => {
       // Revocation is ungated (SHR-08) but it is not unowned. The two are easy
       // to conflate while implementing the first one.
       const scenario = await provisionScenario(stackOf(live));

@@ -706,20 +706,39 @@ describe("the declared contract is internally coherent", () => {
     ]);
   });
 
-  it("splits into a shipped half and a pending half, both non-empty", () => {
-    // The partition every `it.each` in this directory now depends on. If
-    // either half emptied, a whole sweep would register zero graders and
-    // report nothing at all — the failure mode `it.each` makes invisible.
+  it("splits into a shipped half and a pending half, and both are named", () => {
+    // The partition every `it.each` in this directory depends on, pinned as an
+    // exhaustive pair rather than as a count. Whichever half a table is in, it
+    // is in this assertion — so a table that quietly changed sides, or one
+    // that fell out of both, fails here by name.
+    //
+    // ## The pending half is EMPTY as of T2-404, and that is a real state
+    //
+    // It was `["shares"]` from T2-401 until T2-404 created the table. Both
+    // halves used to be asserted non-empty, on the reasoning that an empty
+    // half means a sweep registering zero graders and reporting nothing — the
+    // failure mode `it.each` makes invisible. That reasoning is right about
+    // the *hazard* and wrong about where the guard belongs: "is anything
+    // waiting" is not a property the schema controls, and a schema with
+    // nothing outstanding is the state this whole file is working towards.
+    // Asserting it can never be reached would make finishing the contract a
+    // test failure.
+    //
+    // What the hazard actually needs is the *shipped* half never emptying,
+    // because that is the half every unmarked sweep iterates — and that is
+    // asserted exhaustively below, by name. An empty pending half costs
+    // nothing: `it.fails.each([])` registers no graders, and there is by
+    // definition no unbuilt table for them to have graded.
     expect(SHIPPED_USER_TABLES.map((table) => table.name)).toEqual([
       "profiles",
       "vehicles",
       "records",
       "receipts",
       "record_media",
-    ]);
-    expect(UNSHIPPED_USER_TABLES.map((table) => table.name)).toEqual([
       "shares",
     ]);
+    expect(UNSHIPPED_USER_TABLES.map((table) => table.name)).toEqual([]);
+    expect(SHIPPED_USER_TABLES.length).toBeGreaterThan(0);
     expect(SHIPPED_USER_TABLES.length + UNSHIPPED_USER_TABLES.length).toBe(
       USER_TABLES.length
     );
