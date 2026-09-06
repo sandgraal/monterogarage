@@ -6,13 +6,16 @@
  * Both audits are otherwise only exercised end-to-end, where a wrong base
  * prefix looks like a passing run over zero pages, or — worse — like a
  * passing run over an unstyled page whose CSS 404'd. These are the two pure
- * functions where that mistake is visible.
+ * functions where that mistake is visible — plus the preview server's
+ * content-encoding negotiation, which is the third way the harness can grade
+ * a document the deployed site never serves.
  *
  * refs specs/001-foundation (SCF-03, SCF-06)
  */
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import zlib from "node:zlib";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -22,7 +25,14 @@ import {
   normalizeBase,
   resolveChromePath,
 } from "../scripts/lib/audit-targets.mjs";
-import { resolveRequest } from "../scripts/serve-dist.mjs";
+import {
+  MIN_COMPRESS_BYTES,
+  compressedCacheSize,
+  isCompressibleType,
+  negotiateEncoding,
+  resolveRequest,
+  startServer,
+} from "../scripts/serve-dist.mjs";
 
 const LOCALES = ["en", "es"];
 
@@ -329,5 +339,326 @@ describe("serve-dist resolveRequest", () => {
     const resolved = resolveRequest("/Gitana-Montero/%E0%A4%A", config);
     expect(resolved.file).toBeNull();
     expect(resolved.reason).toBe("undecodable path");
+  });
+});
+
+/*
+ * Compression is graded here because an uncompressed preview server is a
+ * *silent* defect: every page still renders, every a11y rule still passes,
+ * and only the Lighthouse performance number moves — by enough, on a heavy
+ * page, to cross SCF-06's budget and back between runs. Production (Vercel)
+ * answers `content-encoding: br` to any browser that asks, so a harness that
+ * does not is measuring a document no visitor downloads.
+ */
+describe("serve-dist isCompressibleType", () => {
+  it("compresses text and the structured text types", () => {
+    for (const type of [
+      "text/html; charset=utf-8",
+      "text/css; charset=utf-8",
+      "text/javascript; charset=utf-8",
+      "application/json; charset=utf-8",
+      "application/xml; charset=utf-8",
+      "image/svg+xml",
+    ]) {
+      expect(isCompressibleType(type), type).toBe(true);
+    }
+  });
+
+  it("leaves already-compressed formats alone", () => {
+    // Gzipping a woff2 makes it *bigger* (34940 → 34973 bytes for
+    // `archivo-400-800-latin.woff2`), which is the opposite of the fidelity
+    // this server exists for.
+    for (const type of [
+      "font/woff2",
+      "font/woff",
+      "image/png",
+      "image/jpeg",
+      "image/webp",
+      "image/x-icon",
+      "application/octet-stream",
+      undefined,
+    ]) {
+      expect(isCompressibleType(type), String(type)).toBe(false);
+    }
+  });
+});
+
+describe("serve-dist negotiateEncoding", () => {
+  it("prefers brotli when the client offers both, as production does", () => {
+    expect(negotiateEncoding("gzip, deflate, br")).toBe("br");
+    expect(negotiateEncoding("br;q=1.0, gzip;q=1.0")).toBe("br");
+  });
+
+  it("falls back to gzip for a client that only speaks gzip", () => {
+    expect(negotiateEncoding("gzip, deflate")).toBe("gzip");
+  });
+
+  it("sends identity when the client did not ask", () => {
+    expect(negotiateEncoding(undefined)).toBeNull();
+    expect(negotiateEncoding("")).toBeNull();
+    expect(negotiateEncoding("identity")).toBeNull();
+  });
+
+  it("reads q=0 as a refusal, not as an offer", () => {
+    expect(negotiateEncoding("br;q=0, gzip;q=0")).toBeNull();
+    expect(negotiateEncoding("br;q=0, gzip")).toBe("gzip");
+  });
+
+  it("honours explicit quality over preference order", () => {
+    expect(negotiateEncoding("br;q=0.1, gzip;q=0.9")).toBe("gzip");
+  });
+
+  it("accepts the wildcard, and its refusal", () => {
+    expect(negotiateEncoding("*")).toBe("br");
+    expect(negotiateEncoding("identity, *;q=0")).toBeNull();
+    expect(negotiateEncoding("*;q=0, gzip")).toBe("gzip");
+  });
+
+  it("ignores case and stray whitespace", () => {
+    expect(negotiateEncoding("  GZIP ;Q=1 ")).toBe("gzip");
+  });
+
+  /*
+   * A duplicate list member is malformed input that RFC 9110 does not define,
+   * so the only question is which way to be wrong. Last-write-wins could turn
+   * a stated acceptance into a refusal, and on this server a refusal means
+   * serving the uncompressed 266 KB page the whole fix exists to stop
+   * grading. Highest-q keeps an acceptance an acceptance and makes the answer
+   * independent of header order.
+   */
+  it("keeps the highest q when a codec is listed twice, in either order", () => {
+    expect(negotiateEncoding("br;q=1, br;q=0")).toBe("br");
+    expect(negotiateEncoding("br;q=0, br;q=1")).toBe("br");
+    expect(negotiateEncoding("gzip;q=0, gzip;q=0.5, br;q=0")).toBe("gzip");
+    expect(negotiateEncoding("*;q=0, *;q=1")).toBe("br");
+    // A codec refused every time it appears is still refused.
+    expect(negotiateEncoding("br;q=0, br;q=0")).toBeNull();
+  });
+});
+
+describe("serve-dist compression over HTTP", () => {
+  let distDir: string;
+  let server: {
+    origin: string;
+    close: () => Promise<void>;
+  };
+
+  /**
+   * A glossary-page-shaped fixture: ~160 KB of deterministic pseudo-random
+   * prose, not a repeated string.
+   *
+   * The entropy is the point. The first version of this fixture repeated one
+   * `<p>` 400 times, which brotli squeezes to *identical* output at q3 and
+   * q5 — so the level assertion below passed against the very quality this
+   * file exists to rule out. A fixture that cannot fail is not a grader.
+   * Here q3 / q5 / q11 land at 28406 / 25731 / 20432 bytes, all distinct.
+   */
+  const page = (() => {
+    let seed = 20260905;
+    const random = () =>
+      (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+    const words = [
+      "montero",
+      "pajero",
+      "shogun",
+      "gitana",
+      "blanca",
+      "diferencial",
+      "balatas",
+      "refrigerante",
+      "transferencia",
+      "suspension",
+      "amortiguador",
+      "cardan",
+      "rotula",
+      "bujia",
+      "inyector",
+      "turbo",
+      "intercooler",
+      "radiador",
+      "alternador",
+      "embrague",
+    ];
+    const rows: string[] = [];
+    for (let i = 0; i < 900; i += 1) {
+      const text = Array.from(
+        { length: 3 + Math.floor(random() * 9) },
+        () => words[Math.floor(random() * words.length)]
+      ).join(" ");
+      rows.push(
+        `<li id="t${i}" data-k="${Math.floor(random() * 1e9).toString(36)}">` +
+          `<h3>${text}</h3><p>${text} ${Math.floor(random() * 1e6)}</p></li>`
+      );
+    }
+    return `<!doctype html><html lang="en"><body><ul>${rows.join("")}</ul></body></html>`;
+  })();
+  const tiny = "<!doctype html><html lang=en><body>hi</body></html>";
+  /** Binary bytes standing in for a webfont; served byte-for-byte or not at all. */
+  const font = Buffer.from(
+    Array.from({ length: 4096 }, (_, index) => (index * 37 + 11) % 256)
+  );
+
+  beforeAll(async () => {
+    distDir = await mkdtemp(path.join(os.tmpdir(), "serve-dist-gzip-"));
+    await mkdir(path.join(distDir, "en"), { recursive: true });
+    await writeFile(path.join(distDir, "en", "index.html"), page);
+    await writeFile(path.join(distDir, "404.html"), page);
+    await writeFile(path.join(distDir, "tiny.html"), tiny);
+    await writeFile(path.join(distDir, "font.woff2"), font);
+    server = await startServer({ distDir, base: "/" });
+  });
+
+  afterAll(async () => {
+    await server?.close();
+    await rm(distDir, { recursive: true, force: true });
+  });
+
+  it("compresses HTML with brotli for a browser-shaped request", async () => {
+    const response = await fetch(`${server.origin}/en/`, {
+      headers: { "accept-encoding": "gzip, deflate, br" },
+    });
+    expect(response.headers.get("content-encoding")).toBe("br");
+    expect(response.headers.get("vary")).toBe("accept-encoding");
+    // `fetch` decodes transparently — which is the point: Lighthouse, Pa11y
+    // and Playwright all read the original markup, and only the bytes on the
+    // wire changed.
+    expect(await response.text()).toBe(page);
+    expect(Number(response.headers.get("content-length"))).toBeLessThan(
+      Buffer.byteLength(page) / 2
+    );
+  });
+
+  /*
+   * The level is pinned, not just the codec. Serving a *lighter* response
+   * than production is the one failure mode of this server that no other
+   * check would catch: the page renders, the a11y sweep passes, and the
+   * budget simply grades a document lighter than the deployed one, passing a
+   * page that would miss SCF-06 in front of a real visitor. Measured against
+   * the live site on 2026-09-05, Vercel compresses at brotli q3 / gzip 5 —
+   * `/en/glossary/` came back as exactly `brotliCompressSync(raw, q3)`, to
+   * the byte. Changing either number here is a claim about production, so it
+   * has to be re-measured, not tuned.
+   */
+  it("compresses at production's level, never lighter", async () => {
+    const raw = Buffer.from(page);
+
+    const brotlied = await fetch(`${server.origin}/en/`, {
+      headers: { "accept-encoding": "br" },
+    });
+    expect(Number(brotlied.headers.get("content-length"))).toBe(
+      zlib.brotliCompressSync(raw, {
+        params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 3 },
+      }).length
+    );
+
+    const gzipped = await fetch(`${server.origin}/en/`, {
+      headers: { "accept-encoding": "gzip" },
+    });
+    expect(Number(gzipped.headers.get("content-length"))).toBe(
+      zlib.gzipSync(raw, { level: 5 }).length
+    );
+
+    // The direction that matters, stated as its own assertion: brotli's
+    // default (q11) would be far lighter than anything production sends.
+    expect(Number(brotlied.headers.get("content-length"))).toBeGreaterThan(
+      zlib.brotliCompressSync(raw).length
+    );
+  });
+
+  it("falls back to gzip, and to identity when nothing is offered", async () => {
+    const gzipped = await fetch(`${server.origin}/en/`, {
+      headers: { "accept-encoding": "gzip" },
+    });
+    expect(gzipped.headers.get("content-encoding")).toBe("gzip");
+    expect(await gzipped.text()).toBe(page);
+
+    const plain = await fetch(`${server.origin}/en/`, {
+      headers: { "accept-encoding": "identity" },
+    });
+    expect(plain.headers.get("content-encoding")).toBeNull();
+    expect(plain.headers.get("content-length")).toBe(
+      String(Buffer.byteLength(page))
+    );
+    expect(await plain.text()).toBe(page);
+  });
+
+  it("leaves fonts and sub-kilobyte files uncompressed, as production does", async () => {
+    expect(tiny.length).toBeLessThan(MIN_COMPRESS_BYTES);
+    const small = await fetch(`${server.origin}/tiny.html`, {
+      headers: { "accept-encoding": "gzip, deflate, br" },
+    });
+    expect(small.headers.get("content-encoding")).toBeNull();
+    expect(await small.text()).toBe(tiny);
+
+    const woff = await fetch(`${server.origin}/font.woff2`, {
+      headers: { "accept-encoding": "gzip, deflate, br" },
+    });
+    expect(woff.headers.get("content-encoding")).toBeNull();
+    expect(woff.headers.get("vary")).toBeNull();
+    expect(Buffer.from(await woff.arrayBuffer())).toEqual(font);
+  });
+
+  /*
+   * `Vary` is a claim that the representation can differ by request header.
+   * For a file under the size floor it cannot — every client gets the same
+   * bytes — so advertising it describes a negotiation that never happens.
+   */
+  it("only advertises Vary where the representation can actually differ", async () => {
+    const negotiable = await fetch(`${server.origin}/en/`, {
+      headers: { "accept-encoding": "identity" },
+    });
+    // Identity *this time*, but a different client would get brotli.
+    expect(negotiable.headers.get("content-encoding")).toBeNull();
+    expect(negotiable.headers.get("vary")).toBe("accept-encoding");
+
+    const notNegotiable = await fetch(`${server.origin}/tiny.html`, {
+      headers: { "accept-encoding": "gzip, deflate, br" },
+    });
+    expect(notNegotiable.headers.get("vary")).toBeNull();
+  });
+
+  /*
+   * The cache holds one body per (encoding, file), not one per file
+   * *version*: a long-lived `npm run serve:dist` across rebuilds must not
+   * accumulate a copy of every past build. Not observable from a response,
+   * so it is graded through `compressedCacheSize()`.
+   */
+  it("keeps one cache entry per file across rebuilds, and never a stale body", async () => {
+    const rebuilt = path.join(distDir, "rebuilt.html");
+    const first = `<!doctype html><html lang="en"><body>${"first ".repeat(400)}</body></html>`;
+    const second = `<!doctype html><html lang="en"><body>${"second ".repeat(400)}</body></html>`;
+
+    await writeFile(rebuilt, first);
+    const before = compressedCacheSize();
+    const one = await fetch(`${server.origin}/rebuilt.html`, {
+      headers: { "accept-encoding": "br" },
+    });
+    expect(await one.text()).toBe(first);
+    expect(compressedCacheSize()).toBe(before + 1);
+
+    // A second request for the unchanged file is a cache hit, not a new entry.
+    await fetch(`${server.origin}/rebuilt.html`, {
+      headers: { "accept-encoding": "br" },
+    });
+    expect(compressedCacheSize()).toBe(before + 1);
+
+    // Rebuild: same path, new bytes, new mtime.
+    await writeFile(rebuilt, second);
+    const two = await fetch(`${server.origin}/rebuilt.html`, {
+      headers: { "accept-encoding": "br" },
+    });
+    expect(await two.text()).toBe(second);
+    // Overwritten, not accumulated — this is the assertion that fails when
+    // the version is baked into the cache key.
+    expect(compressedCacheSize()).toBe(before + 1);
+  });
+
+  it("still serves the 404 page, compressed, with its 404 status", async () => {
+    const response = await fetch(`${server.origin}/nowhere/`, {
+      headers: { "accept-encoding": "gzip, deflate, br" },
+    });
+    expect(response.status).toBe(404);
+    expect(response.headers.get("content-encoding")).toBe("br");
+    expect(await response.text()).toBe(page);
   });
 });

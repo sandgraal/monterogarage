@@ -1,0 +1,822 @@
+---
+/**
+ * Site-wide search (T702, SRCH-01, SRCH-02).
+ *
+ * > **SRCH-01** THE site SHALL provide client-side search per locale over
+ * > titles, symptoms, glossary terms and aliases, and part numbers.
+ * > **SRCH-02** WHEN a visitor searches a regional alias (e.g. `balatas`),
+ * > THE results SHALL include the canonical entry (GLO-03).
+ *
+ * ## One page, two URLs, one component (I18N-01)
+ *
+ * The same seam every other collection page in this repo shares: the segment
+ * is translated (`/en/search/` and `/es/buscar/`), `getStaticPaths` reads
+ * both values from `src/i18n/routes.ts`'s registry, and neither locale is a
+ * redirect of the other.
+ *
+ * ## What is indexed, and why not everything
+ *
+ * Four collections today — `glossary`, `problems`, `parts`, `mods` — each
+ * mapped to the collection-agnostic `SearchDocument` shape
+ * `src/lib/search.ts` defines. Adding a fifth is one more `getCollection`
+ * call and one more small `.map()` below; the matching logic in
+ * `src/lib/search.ts` never changes (see that module's docstring).
+ *
+ * - **`procedures` is not indexed yet, even though T502 (merged since this
+ *   page first landed) gave it a route.** Adding it is exactly the one
+ *   adapter + one `getCollection` call this docstring describes and nothing
+ *   more — deliberately left for its own small change rather than folded
+ *   into an unrelated performance-fix branch. The collection is empty today
+ *   regardless (T504 authors the entries), so nothing is missing from a
+ *   reader's results in the meantime.
+ * - **`garage` is deliberately never indexed.** 002 MIG-03 makes a user's
+ *   garage entries private data behind Supabase RLS. This page is public and
+ *   statically built; indexing garage entries would publish private records
+ *   in the built HTML of every reader's search results, not just the
+ *   owner's. `community` is left out for the same "read the spec line, not
+ *   the ambition" reason: SRCH-01 names titles, symptoms, glossary terms and
+ *   aliases, and part numbers — not the community directory, which already
+ *   has its own on-page search (T703a).
+ *
+ * ## Two filters, one shape — the glossary's rule, generalized
+ *
+ * `type` (a result kind pill) and `query` (free text) AND together and both
+ * default to permissive, reproducing the full server-rendered listing on
+ * load — `src/lib/search.ts`'s `matchesSearchFilter`, the same contract
+ * `glossary-filter.ts` and `problems-filter.ts` state for their own pages.
+ * Progressive enhancement follows the same pattern: the toolbar is laid out
+ * only once `BaseLayout` marks the document `html.js`, so a visitor with no
+ * JavaScript sees the complete, unfiltered result list and no dead control.
+ *
+ * **One difference from those two (PR #106 code review, SCF-06):**
+ * `matchesSearchFilter` does not normalize the query text itself — the
+ * `input` handler below calls `normalizeForSearch` exactly once per
+ * keystroke and stores the result in `state.normalizedQuery`, so the
+ * per-card loop that follows (221 cards at this index's current size) never
+ * repeats that work. `glossary-filter.ts` and `problems-filter.ts` still
+ * normalize inside their own `matchesFilter`, once per card per keystroke —
+ * fine at their smaller scale, and not this task's collection to change.
+ *
+ * ## Haystack built from the rendered card (SCF-06)
+ *
+ * As with every other filtered listing on this site, the search index is
+ * never serialized into the page a second time. The client script reads each
+ * card's own already-rendered title, subtitle, snippet, badge chips, code
+ * chips and "extra" chips (aliases, symptom bullets, cross-reference rows —
+ * whichever the type carries) and builds the haystack from that
+ * (`src/lib/search.ts`'s `buildSearchHaystack`), the same discipline
+ * `[glossarySegment].astro` and `[problemsSegment].astro` already document at
+ * length.
+ *
+ * **The snippet is the one exception, and it is deliberate (PR #106,
+ * SCF-06):** `problems` entries' summaries average over a thousand
+ * characters, and across 221 cards that was the index's single largest
+ * weight contributor — measurably so on CI's Lighthouse budget, which
+ * `/es/buscar/` (whose `prose.es` runs longer than `prose.en` throughout this
+ * corpus) missed by more than `/en/search/` did for exactly that reason.
+ * `splitSnippet` (`src/lib/search.ts`) divides a long snippet into a short
+ * `visible` prefix and a `hidden` remainder rendered in a `display: none`
+ * span — see that function's own docs for why this, and not a `title`
+ * attribute carrying the whole snippet a second time, is the fix that
+ * actually reduces page weight. `element.textContent` still walks into the
+ * hidden span, so `buildSearchHaystack` sees the complete original snippet
+ * and no word is lost to search, only to the card's own display.
+ *
+ * ## No vehicle-fitment filter here (deliberate scope cut)
+ *
+ * Every other listing page on this site layers FIT-03's dim-and-tag vehicle
+ * filter on top of its own facets. This page does not: SRCH-01/SRCH-02 name
+ * nothing about fitment, and wiring FIT-03 across four collections whose
+ * `fitment` shapes are not being merged into one `SearchDocument` here would
+ * be a second feature riding on this task's branch. A reader who wants
+ * fitment-aware results follows a result to its own collection page, which
+ * already carries the vehicle filter.
+ *
+ * refs specs/001-foundation (SRCH-01, SRCH-02, GLO-03, I18N-01, I18N-04, I18N-08)
+ */
+import { getCollection } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import {
+  LOCALES,
+  LOCALE_BCP47,
+  isLocale,
+  localeHref,
+  type Locale,
+} from "../../i18n/routing";
+import {
+  COLLECTION_ROUTE_SEGMENTS,
+  collectionRoutePath,
+  collectionRouteParams,
+  collectionRoutePaths,
+  entryRoutePath,
+} from "../../i18n/routes";
+import {
+  glossarySystemLabel,
+  problemSeverityLabel,
+  searchTypeLabel,
+  t,
+} from "../../i18n/ui";
+import { formatCount, glossaryTermDomId } from "../../lib/glossary-filter";
+import { problemRoutePath } from "../../lib/problems";
+import {
+  EXTRA_MAX_LENGTH,
+  SEARCH_DOCUMENT_TYPES,
+  splitSnippet,
+  type SearchDocument,
+  type SearchDocumentType,
+} from "../../lib/search";
+
+export function getStaticPaths() {
+  return collectionRouteParams("search", "searchSegment");
+}
+
+const { locale: param } = Astro.params;
+if (!isLocale(param)) {
+  throw new Error(`Unknown locale segment: ${String(param)}`);
+}
+const locale: Locale = param;
+const strings = t(locale);
+const routes = collectionRoutePaths("search");
+
+const collator = new Intl.Collator(LOCALE_BCP47[locale], {
+  sensitivity: "base",
+});
+
+const otherLocales = LOCALES.filter((candidate) => candidate !== locale);
+
+/**
+ * `doc.href` is unprefixed and already this locale's own route (the same
+ * contract `entryRoutePath` and `collectionRoutePath` promise elsewhere on
+ * this site) — `null` in, `null` out, so a document with no route to link to
+ * renders its title unlinked rather than linking somewhere plausible-but-wrong
+ * (`[partsSegment].astro`'s and `[modsSegment].astro`'s own rule).
+ */
+function docHref(routePath: string | null): string | null {
+  return routePath === null ? null : localeHref(locale, routePath);
+}
+
+/* -------------------------------------------------------------------------
+ * One adapter per indexed collection — the only collection-specific code on
+ * this page. Each maps that collection's own already-typed entries into the
+ * shared `SearchDocument` shape; `src/lib/search.ts`'s matching functions
+ * never see which collection a document came from.
+ * ---------------------------------------------------------------------- */
+
+const glossaryEntries = await getCollection("glossary");
+const glossaryDocuments: SearchDocument[] = glossaryEntries.map((entry) => {
+  const { system, aliases } = entry.data;
+  const gloss = otherLocales
+    .map((other) => entry.data.prose[other].title)
+    .filter((term) => term.length > 0);
+
+  return {
+    id: `glossary:${entry.id}`,
+    type: "glossary",
+    href: `${collectionRoutePath("glossary", locale)}#${glossaryTermDomId(entry.id)}`,
+    title: entry.data.prose[locale].title,
+    subtitle: gloss.length > 0 ? gloss.join(" / ") : null,
+    snippet: entry.data.prose[locale].summary,
+    badges: [glossarySystemLabel(strings, system)],
+    codes: [],
+    /**
+     * SRCH-02: every alias renders on the canonical entry's own card, term
+     * and countries together (`rin (CR/MX)`) — the same text
+     * `[glossarySegment].astro`'s alias chips show, so a reader who searches
+     * `balatas` finds this card exactly because it already says `balatas`.
+     */
+    extra: aliases.map(
+      (alias) => `${alias.term} (${alias.countries.join("/")})`
+    ),
+  };
+});
+
+const problemsSegment = COLLECTION_ROUTE_SEGMENTS.problems[locale];
+const problemEntries = await getCollection("problems");
+const problemDocuments: SearchDocument[] = problemEntries.map((entry) => {
+  const { data } = entry;
+  const prose = data.prose[locale];
+
+  return {
+    id: `problems:${entry.id}`,
+    type: "problems",
+    href: problemRoutePath(problemsSegment, prose.slug),
+    title: prose.title,
+    subtitle: null,
+    snippet: prose.summary,
+    badges: [
+      glossarySystemLabel(strings, data.system),
+      problemSeverityLabel(strings, data.severity),
+    ],
+    codes: [],
+    /** SRCH-01's "symptoms" — the same resolved text the problems index shows. */
+    extra: data.symptoms.map((id) => prose.symptoms[id] ?? id),
+  };
+});
+
+const partsEntries = await getCollection("parts");
+const partsDocuments: SearchDocument[] = partsEntries.map((entry) => {
+  const { id, oemNumber, system, crossReferences } = entry.data;
+  const local = entry.data.prose[locale];
+  const crossRefs = crossReferences ?? [];
+
+  return {
+    id: `parts:${id}`,
+    type: "parts",
+    href: entryRoutePath("parts", id, locale),
+    title: local.title,
+    subtitle: null,
+    snippet: local.summary,
+    badges: [glossarySystemLabel(strings, system)],
+    /** SRCH-01's "part numbers": the OEM number and every cross-referenced one. */
+    codes: [oemNumber, ...crossRefs.map((cross) => cross.partNumber)],
+    extra: crossRefs.map((cross) => `${cross.brand} ${cross.partNumber}`),
+  };
+});
+
+const modsEntries = await getCollection("mods");
+const modsDocuments: SearchDocument[] = modsEntries.map((entry) => {
+  const { id, system } = entry.data;
+  const local = entry.data.prose[locale];
+
+  return {
+    id: `mods:${id}`,
+    type: "mods",
+    href: entryRoutePath("mods", id, locale),
+    title: local.title,
+    subtitle: null,
+    snippet: local.summary,
+    badges: [glossarySystemLabel(strings, system)],
+    codes: [],
+    extra: [],
+  };
+});
+
+const documents = [
+  ...glossaryDocuments,
+  ...problemDocuments,
+  ...partsDocuments,
+  ...modsDocuments,
+].sort((a, b) => collator.compare(a.title, b.title));
+
+/** Only types with at least one document get a pill (the glossary page's rule). */
+const typeOptions = (SEARCH_DOCUMENT_TYPES as readonly SearchDocumentType[])
+  .filter((type) => documents.some((doc) => doc.type === type))
+  .map((type) => ({ code: type, label: searchTypeLabel(strings, type) }));
+---
+
+<BaseLayout
+  locale={locale}
+  routePathByLocale={routes}
+  title={`${strings.searchHeading} — ${strings.siteTagline}`}
+  description={strings.searchIntro}
+>
+  <section class="search" data-search>
+    <div class="search__intro">
+      <h1>{strings.searchHeading}</h1>
+      <p>{strings.searchIntro}</p>
+    </div>
+
+    {
+      documents.length === 0 ? (
+        <p class="search__empty">{strings.searchEmpty}</p>
+      ) : (
+        <>
+          <div class="search__toolbar" data-search-toolbar>
+            <div class="search__input">
+              <label class="visually-hidden" for="search-input">
+                {strings.searchInputLabel}
+              </label>
+              <svg
+                class="search__input-icon"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+              <input
+                id="search-input"
+                type="search"
+                autocomplete="off"
+                data-search-input
+                placeholder={strings.searchInputPlaceholder}
+              />
+            </div>
+            {typeOptions.length > 0 && (
+              <div
+                class="search__types"
+                role="group"
+                aria-label={strings.searchFilterTypeLabel}
+              >
+                <button type="button" data-type="" aria-pressed="true">
+                  {strings.searchFilterTypeAll}
+                </button>
+                {typeOptions.map((option) => (
+                  <button
+                    type="button"
+                    data-type={option.code}
+                    aria-pressed="false"
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <p
+            class="search__count"
+            data-search-count
+            data-count-template={strings.searchCountTemplate}
+            data-total={String(documents.length)}
+            aria-live="polite"
+          >
+            {formatCount(
+              strings.searchCountTemplate,
+              documents.length,
+              documents.length
+            )}
+          </p>
+
+          <ul class="search__list" data-search-list>
+            {documents.map((doc) => {
+              const href = docHref(doc.href);
+              /**
+               * SCF-06 follow-up (PR #106 review): `visible` and `hidden`
+               * are complementary, non-overlapping halves of `doc.snippet`
+               * (`splitSnippet`'s own docs walk through why — the first
+               * version of this fix duplicated the whole snippet into a
+               * `title` attribute, which made the page *larger*, not
+               * smaller). `hidden` renders inside a `display: none` span
+               * below, so `element.textContent` — what
+               * `buildSearchHaystack` reads — sees the complete original
+               * text, while only `visible` costs any layout or paint.
+               *
+               * The `extra` chip gets the same treatment, joined first and
+               * then split at the shorter `EXTRA_MAX_LENGTH` — a chip never
+               * needed `SNIPPET_MAX_LENGTH`'s budget (see that constant's
+               * own docs for the corpus numbers behind both figures).
+               */
+              const snippet = splitSnippet(doc.snippet);
+              const extra = splitSnippet(
+                doc.extra.join(" · "),
+                EXTRA_MAX_LENGTH
+              );
+              return (
+                <li class="search-result" data-type={doc.type}>
+                  <span class="search-result__type">
+                    {searchTypeLabel(strings, doc.type)}
+                  </span>
+                  <h2 class="search-result__title">
+                    {href === null ? doc.title : <a href={href}>{doc.title}</a>}
+                    {doc.subtitle !== null && (
+                      <span class="search-result__subtitle">
+                        {doc.subtitle}
+                      </span>
+                    )}
+                  </h2>
+                  <p class="search-result__snippet">
+                    {snippet.visible}
+                    {snippet.hidden !== "" && (
+                      <span
+                        class="search-result__hidden-rest"
+                        aria-hidden="true"
+                      >
+                        {snippet.hidden}
+                      </span>
+                    )}
+                  </p>
+                  {(doc.badges.length > 0 || doc.codes.length > 0) && (
+                    <p class="search-result__chips">
+                      {doc.badges.map((badge) => (
+                        <span class="chip search-result__badge">{badge}</span>
+                      ))}
+                      {doc.codes.map((code) => (
+                        <span class="chip datum search-result__code">
+                          {code}
+                        </span>
+                      ))}
+                    </p>
+                  )}
+                  {doc.extra.length > 0 && (
+                    <p class="search-result__extra">
+                      {/*
+                       * One chip holding every item, joined — not one chip
+                       * per alias/symptom. Perf fix (PR #106 follow-up,
+                       * SCF-06): a glossary term with several aliases or a
+                       * problem with several symptom bullets used to add one
+                       * `<span>` per item, and across 221 cards that was 655
+                       * extra elements — measurably real page weight, not
+                       * noise (see the commit message for the before/after
+                       * byte counts). The joined string still carries every
+                       * word a reader could search for (SRCH-02's alias
+                       * recall is unchanged: `buildSearchHaystack` reads
+                       * this element's `textContent`, which still contains
+                       * every alias), it is simply one node instead of many.
+                       *
+                       * The joined chip is itself split-and-hidden past
+                       * `EXTRA_MAX_LENGTH`, the same treatment the snippet
+                       * gets and for the same reason (second SCF-06 round):
+                       * `problems`' symptom lists, joined, run long enough
+                       * to be worth cutting too.
+                       */}
+                      <span class="chip search-result__extra-item">
+                        {extra.visible}
+                        {extra.hidden !== "" && (
+                          <span
+                            class="search-result__hidden-rest"
+                            aria-hidden="true"
+                          >
+                            {extra.hidden}
+                          </span>
+                        )}
+                      </span>
+                    </p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+
+          <p class="search__none" data-search-none hidden>
+            {strings.searchNoResults}
+          </p>
+        </>
+      )
+    }
+  </section>
+</BaseLayout>
+
+<script>
+  import {
+    buildSearchHaystack,
+    matchesSearchFilter,
+    type SearchFilterState,
+  } from "../../lib/search";
+  import { formatCount } from "../../lib/glossary-filter";
+  import { normalizeForSearch } from "../../lib/text";
+
+  /**
+   * Client-side filtering (T702). Enhancement only — the toolbar is laid out
+   * only when the document is marked script-capable, so a visitor with no
+   * JavaScript sees the complete listing and no dead control. Only DOM
+   * wiring lives here: which elements to read, what to toggle. Every
+   * decision (does this card match? what does the counter say? what counts
+   * as its searchable text?) is a pure function in `src/lib/search.ts`.
+   */
+  function enhance(root: HTMLElement): void {
+    const toolbar = root.querySelector<HTMLElement>("[data-search-toolbar]");
+    const input = root.querySelector<HTMLInputElement>("[data-search-input]");
+    const count = root.querySelector<HTMLElement>("[data-search-count]");
+    const none = root.querySelector<HTMLElement>("[data-search-none]");
+    if (!toolbar || !input || !count || !none) return;
+
+    /**
+     * Plain `textContent` — which is exactly why `.search-result__snippet`'s
+     * `display: none` remainder span (`splitSnippet`'s `hidden` half, see the
+     * server template's comment) works with no special-casing here:
+     * `textContent` walks into hidden descendants regardless of their CSS
+     * `display`, so a truncated card's full, untruncated snippet text is
+     * already part of what this reads.
+     */
+    const textOf = (element: Element, selector: string): string[] =>
+      [...element.querySelectorAll<HTMLElement>(selector)].map(
+        (node) => node.textContent ?? ""
+      );
+
+    // The haystack is read from each card's own rendered text — never a
+    // second server-serialized copy — and built exactly once here, not on
+    // every keystroke (the glossary page's own rule, for the same reason).
+    const cards = [...root.querySelectorAll<HTMLElement>(".search-result")].map(
+      (element) => ({
+        element,
+        type: element.dataset.type ?? "",
+        haystack: buildSearchHaystack({
+          title: textOf(element, ".search-result__title"),
+          subtitle: textOf(element, ".search-result__subtitle"),
+          snippet: textOf(element, ".search-result__snippet"),
+          badges: textOf(element, ".search-result__badge"),
+          codes: textOf(element, ".search-result__code"),
+          extra: textOf(element, ".search-result__extra-item"),
+        }),
+      })
+    );
+
+    const template = count.dataset.countTemplate ?? "";
+    const total = Number(count.dataset.total ?? cards.length);
+    const buttons = [
+      ...toolbar.querySelectorAll<HTMLButtonElement>("[data-type]"),
+    ];
+    let state: SearchFilterState = { type: "", normalizedQuery: "" };
+
+    function apply(): void {
+      let shown = 0;
+      for (const card of cards) {
+        const visible = matchesSearchFilter(card, state);
+        card.element.hidden = !visible;
+        if (visible) shown += 1;
+      }
+      count!.textContent = formatCount(template, shown, total);
+      none!.hidden = shown > 0;
+    }
+
+    for (const button of buttons) {
+      button.addEventListener("click", () => {
+        const type = button.dataset.type ?? "";
+        state = { ...state, type };
+        for (const other of buttons) {
+          other.setAttribute(
+            "aria-pressed",
+            String((other.dataset.type ?? "") === type)
+          );
+        }
+        apply();
+      });
+    }
+
+    input.addEventListener("input", () => {
+      // Normalized exactly once per keystroke, here — not inside
+      // `matchesSearchFilter`, which would otherwise redo the same
+      // NFD-decompose-and-strip-marks work once per rendered card (221 at
+      // this index's current size) on every single keystroke (PR #106 code
+      // review, SCF-06's Lighthouse performance budget).
+      state = { ...state, normalizedQuery: normalizeForSearch(input.value) };
+      apply();
+    });
+
+    apply();
+  }
+
+  for (const root of document.querySelectorAll<HTMLElement>("[data-search]")) {
+    enhance(root);
+  }
+</script>
+
+<style is:global>
+  /*
+   * Palette from specs/001-foundation/design/HANDOFF-DESIGN.md, scoped to
+   * this page via the `.search` prefix — the same substitute for Astro's
+   * scoped CSS the glossary page's own docstring explains (a per-node
+   * `data-astro-cid-…` attribute at this many result cards is real page
+   * weight for no reader benefit).
+   */
+  .search {
+    --paper: #f7f4ee;
+    --panel: #ffffff;
+    --ink: #2b2620;
+    --muted: #6e6559;
+    --muted-strong: #55493c;
+    --line: #e4ddd1;
+    --chip: #efe9dd;
+    --rust-deep: #93441f;
+
+    font-family: Archivo, "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-width: 75rem;
+  }
+
+  .search .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .search .search__intro h1 {
+    margin: 0 0 0.375rem;
+    font-size: 1.875rem;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+  }
+
+  .search .search__intro p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--muted);
+    max-width: 62ch;
+  }
+
+  .search .search__input {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    flex: 1 1 20rem;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    color: var(--muted);
+  }
+
+  .search .search__input input {
+    flex: 1;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    font-size: 0.875rem;
+    color: var(--ink);
+    min-height: 1.75rem;
+  }
+
+  .search .search__input input::placeholder {
+    color: var(--muted);
+    opacity: 1;
+  }
+
+  .search .search__types {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .search .search__types button {
+    font: inherit;
+    font-size: 0.8125rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.5rem 1rem;
+    min-height: 2.75rem;
+    background: var(--panel);
+    color: var(--muted-strong);
+    cursor: pointer;
+  }
+
+  .search .search__types button[aria-pressed="true"] {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--paper);
+    font-weight: 700;
+  }
+
+  .search .search__count,
+  .search .search__none,
+  .search .search__empty {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--muted);
+  }
+
+  .search .search__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .search .search-result {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .search .search-result[hidden] {
+    display: none;
+  }
+
+  .search .search-result__type {
+    display: block;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .search .search-result__title {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: 1.0625rem;
+    font-weight: 700;
+  }
+
+  .search .search-result__title a {
+    color: var(--rust-deep);
+    text-decoration: none;
+  }
+
+  .search .search-result__title a:hover {
+    color: var(--ink);
+    text-decoration: underline;
+  }
+
+  .search .search-result__subtitle {
+    font-size: 0.8125rem;
+    font-weight: 400;
+    color: var(--muted);
+  }
+
+  .search .search-result__snippet {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.55;
+    color: var(--muted-strong);
+  }
+
+  /*
+   * SCF-06 follow-up (PR #106 review): `splitSnippet`'s `hidden` half,
+   * present only so `element.textContent` — what the client script's
+   * `buildSearchHaystack` call reads — sees the complete original snippet
+   * (SRCH-01 recall). Deliberately `display: none`, not this page's
+   * `.visually-hidden` (the sr-only recipe used for the search box's own
+   * `<label>`): that recipe keeps content in the accessibility tree, which
+   * is right for a label nobody should lose but wrong here — this text is
+   * not meant to be read by anyone, sighted or not, only found by the
+   * search index, and `display: none` is both the correct semantics for
+   * that and the cheaper one: a `display: none` subtree costs no layout or
+   * paint at all, however long the text inside it, which is the entire
+   * point of splitting the snippet in the first place.
+   */
+  .search .search-result__hidden-rest {
+    display: none;
+  }
+
+  .search .search-result__chips,
+  .search .search-result__extra {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+
+  .search .chip {
+    font-size: 0.75rem;
+    background: var(--chip);
+    border-radius: 4px;
+    padding: 0.125rem 0.5rem;
+    color: var(--muted-strong);
+  }
+
+  .search .datum {
+    font-family:
+      "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  @media (max-width: 48rem) {
+    .search .search__intro h1 {
+      font-size: 1.5rem;
+    }
+  }
+</style>
+
+<style>
+  /*
+   * Code review finding (2026-09-05): this rule was originally inside the
+   * `is:global` block above, as `:global(html.js) .search .search__toolbar`.
+   * `:global()` is a *scoped-style* escape hatch — it has no meaning once the
+   * whole block is already `is:global`, so Astro passed the text through
+   * unchanged and browsers rejected the unknown `:global` pseudo-class
+   * outright, dropping the whole rule. The toolbar's `display: none` above
+   * then had nothing to override it, so the search box and type pills never
+   * rendered, with or without JavaScript, in either locale.
+   *
+   * The fix is this second, ordinary **scoped** `<style>` block, holding only
+   * the two rules that need `:global()` to mean something:
+   * `[problemsSegment].astro` proves the same pattern compiles correctly
+   * (`:global(html.js) .problems__toolbar` → `html.js
+   * .problems__toolbar[data-astro-cid-…]`) — verified for this page too, via
+   * a real Chromium instance's `document.styleSheets` and `getBoundingClientRect`
+   * showing the toolbar with a real, non-zero size once `html.js` is present.
+   *
+   * The big `is:global` block above stays global on purpose (same SCF-06
+   * page-weight reason `[glossarySegment].astro` documents): this page lists
+   * up to ~280 result cards, and a `data-astro-cid-…` attribute on every
+   * child of every card is real, measured page weight for no reader benefit.
+   * Only this one small, single-element rule needs real scoping so
+   * `:global()` inside it means what it says.
+   */
+  .search__toolbar {
+    display: none;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  :global(html.js) .search__toolbar {
+    display: flex;
+  }
+</style>

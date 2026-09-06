@@ -70,19 +70,29 @@ import { validateSlugRegistry, type SlugRegistry } from "../schemas/slugs.ts";
 /**
  * `{ [collection]: { [entryId]: { en, es } } }`.
  *
- * Empty for both collections today: T501 and T601 built the schemas and the
- * page templates, and T503 / T602 author the entries. An empty table is a
- * valid registry — it maps every one of its zero entries to exactly one slug
- * per locale — and the build checks (`src/integrations/validate-parts.ts`,
- * `validate-mods.ts`) turn the first unlisted entry into a named error.
+ * `parts` is still empty: T501 built the schema and the page templates and
+ * T503 authors the entries. An empty table is a valid registry — it maps every
+ * one of its zero entries to exactly one slug per locale — and the build checks
+ * (`src/integrations/validate-parts.ts`, `validate-mods.ts`) turn the first
+ * unlisted entry into a named error.
+ *
+ * `mods` is populated by T602's wave-1 set. The ES slugs are a Costa Rican
+ * reader's own words rather than the English one transliterated, per the note
+ * above: `levante-de-suspension`, `barras-laterales-de-acero`,
+ * `bloqueo-del-diferencial-trasero`. They are unaccented because they are URLs,
+ * which is the same call `problems` and `glossary` already made.
+ *
+ * `barras-laterales-de-acero` rather than `estribos-de-acero` on purpose: the
+ * merged `problems` content already uses `estribos` for the *sills* — the
+ * structural rocker panels that rust — and this entry's whole argument is that
+ * a bolt-on side rail is not a structure. Reusing the word would have inverted
+ * an established term on a safety-critical page (T602 bilingual review, #8).
  */
 export const ENTRY_SLUGS: Readonly<
   Record<string, Readonly<Record<string, Readonly<Record<Locale, string>>>>>
 > = {
   /** PRT-01 — one page per part number. Populated by T503. */
   parts: {},
-  /** MOD-01 — one page per modification. Populated by T602. */
-  mods: {},
   /**
    * PRC-01 — one page per job. Populated by T504.
    *
@@ -96,6 +106,49 @@ export const ENTRY_SLUGS: Readonly<
    * with an accent: `cambio-de-aceite-6g74`, not `oil-change-6g74`.
    */
   procedures: {},
+  /** MOD-01 — one page per modification. Wave 1 (T602). */
+  mods: {
+    "gen3-suspension-lift-springs": {
+      en: "suspension-lift",
+      es: "levante-de-suspension",
+    },
+    "gen3-wheels-tires-33-inch-tires": {
+      en: "33-inch-tires",
+      es: "llantas-de-33",
+    },
+    "gen3-drivetrain-regear-third-member-swap": {
+      en: "regearing",
+      es: "cambio-de-relacion-del-diferencial",
+    },
+    "gen3-body-front-skid-plates": {
+      en: "front-skid-plates",
+      es: "protectores-de-carter-delanteros",
+    },
+    "gen3-body-steel-side-rails": {
+      en: "steel-side-rails",
+      es: "barras-laterales-de-acero",
+    },
+    "gen3-body-steel-front-bumper": {
+      en: "steel-front-bumper",
+      es: "bumper-delantero-de-acero",
+    },
+    "gen3-body-roof-rack-and-roof-load": {
+      en: "roof-rack-and-roof-load",
+      es: "parrilla-de-techo-y-carga",
+    },
+    "gen3-interior-drawer-system": {
+      en: "drawer-system",
+      es: "sistema-de-gavetas",
+    },
+    "gen3-electrical-dual-battery": {
+      en: "dual-battery",
+      es: "doble-bateria",
+    },
+    "gen3-drivetrain-rear-air-locker": {
+      en: "rear-air-locker",
+      es: "bloqueo-del-diferencial-trasero",
+    },
+  },
 };
 
 const registryIssues = validateSlugRegistry(ENTRY_SLUGS as SlugRegistry);
