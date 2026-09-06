@@ -558,10 +558,11 @@ Vercel is an owner action inside T2-102 (the task prepares the exact records).
   both still empty, so there is nothing yet to link.
   <br>**Correction (2026-09-06):** the "12th photo silently failed to reach
   storage" claim below never happened — the owner confirmed there was no
-  12th photo and no failed upload. `vehicles.photo_paths` has held exactly
-  12 entries since the original seed, which is what "11 of 12 ... seeded"
-  should have read as complete rather than one short. Struck the false claim
-  in place rather than deleting it, so a future reader does not wonder why
+  *failed or missing* 12th photo. All 12 documentation photos uploaded
+  successfully on the first pass; `vehicles.photo_paths` has held exactly
+  12 entries since the original seed. "11 of 12 ... seeded" should have read
+  as complete (12 of 12), not one short. Struck the false claim in place
+  rather than deleting it, so a future reader does not wonder why
   the line vanished.
   <br>**Added mid-task (2026-09-02): the interview surfaced a real gap.**
   Gitana Blanca's seed data includes WhatsApp photos, videos, and voice notes
