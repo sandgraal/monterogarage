@@ -825,7 +825,7 @@ Vercel is an owner action inside T2-102 (the task prepares the exact records).
   recorded here rather than acted on. No storage object is uploaded by any of them: the
   designation is a claim about two columns, and borrowing the bucket would
   make every cover grader depend on the storage API being up.
-- [ ] **T2-306 [PLATFORM]** Cover-photo UI (owner-approved addition,
+- [x] **T2-306 [PLATFORM]** Cover-photo UI (owner-approved addition,
   2026-09-02): a "Set as cover" control per photo on the vehicle edit view,
   a "Remove cover" affordance, and rendering the designated cover — never
   just the first array entry — on the garage vehicle list card in place of

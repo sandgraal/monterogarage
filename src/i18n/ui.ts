@@ -474,6 +474,13 @@ export interface UiStrings
   /** `{size}` is `MAX_PHOTO_BYTES`, formatted by `Intl` at render time. */
   readonly garagePhotoSizeRejectedTemplate: string;
   readonly garagePhotosPrivateNote: string;
+  /* The cover-photo designation (GAR-01′, T2-306) */
+  /** The per-photo control when this photo is not the cover. */
+  readonly garageSetCover: string;
+  /** The same control, once this photo already is the cover. */
+  readonly garageRemoveCover: string;
+  /** The label on the photo currently designated as the cover. */
+  readonly garageCoverBadge: string;
   readonly garageUseForBrowsing: string;
   readonly garageUsedForBrowsing: string;
   readonly garageIdentityIncomplete: string;
@@ -1203,6 +1210,9 @@ const en: UiStrings = {
   garagePhotoSizeRejectedTemplate: "That photo is larger than {size}.",
   garagePhotosPrivateNote:
     "Photos are held in private storage. Nobody without your session can open one, and the links this page uses expire on their own.",
+  garageSetCover: "Set as cover",
+  garageRemoveCover: "Remove cover",
+  garageCoverBadge: "Cover",
   garageUseForBrowsing: "Browse the site as this truck",
   garageUsedForBrowsing: "The site is filtered to this truck.",
   garageIdentityIncomplete:
@@ -1818,6 +1828,9 @@ const es: UiStrings = {
   garagePhotoSizeRejectedTemplate: "Esa foto pasa de {size}.",
   garagePhotosPrivateNote:
     "Las fotos quedan en almacenamiento privado. Nadie sin su sesión puede abrir una, y los enlaces que usa esta página se vencen solos.",
+  garageSetCover: "Usar como portada",
+  garageRemoveCover: "Quitar la portada",
+  garageCoverBadge: "Portada",
   garageUseForBrowsing: "Ver el sitio como este carro",
   garageUsedForBrowsing: "El sitio está filtrado para este carro.",
   garageIdentityIncomplete:

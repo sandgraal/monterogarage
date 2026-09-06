@@ -75,6 +75,13 @@ export interface VehicleRow {
   readonly odometer_km: number | null;
   /** Object paths in the private `vehicle-photos` bucket — see `./photos.ts`. */
   readonly photo_paths: readonly string[];
+  /**
+   * The designated cover, or `null` (GAR-01′, T2-306). Resolve it with
+   * {@link resolveCoverPath} in `./cover.ts` — never by reading
+   * `photo_paths[0]` — and never write it through {@link VehicleWrite}; see
+   * that interface's own note on why the cover is a write of its own.
+   */
+  readonly cover_photo_path: string | null;
   readonly is_showcase_public: boolean;
   readonly is_worklog_public: boolean;
 }
@@ -96,6 +103,12 @@ export interface VehicleRow {
  * Not `photo_paths`: photos are added and removed one upload at a time,
  * against the storage bucket, and folding them into the profile form's save
  * would let a stale form field drop a photo somebody just added.
+ *
+ * Not `cover_photo_path` either, and for the same shape of reason: the "Set as
+ * cover" / "Remove cover" controls write it on their own, through
+ * `setVehicleCover` and `coverPhotoWrite` (`./cover.ts`), so a reader who opens
+ * the profile in one tab, sets a cover in another, and saves the first cannot
+ * revert the second (`./cover.test.ts` grades this exact guard).
  */
 export interface VehicleWrite {
   readonly display_name: string;
