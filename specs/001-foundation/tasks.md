@@ -580,7 +580,7 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
     reaching for this precedent to ship anything beyond a throwing stub, or
     reaching for it without the same "Vitest cannot execute this surface at all"
     necessity, is re-opening a decision, not applying this one.
-- [ ] **T504b [PLATFORM]** Implements the T504a seam: `enhanceProceduresIndex(root,
+- [x] **T504b [PLATFORM]** Implements the T504a seam: `enhanceProceduresIndex(root,
   win)` in `src/lib/procedures/index-view.ts`, replacing the `not implemented:
   T504a` stub — cards render, hrefs resolve, filters work, T204's
   provisional-match indicator shows correctly (and only) on a partial fitment
