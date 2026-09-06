@@ -39,15 +39,18 @@
  *
  * refs specs/002-montero-garage (SHR-05, SHR-07, SHR-08), 003 (MEC-04)
  */
+import { getTransformedRoutes } from "@vercel/routing-utils";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { LOCALES } from "../../src/i18n/routing.ts";
 import {
   SHARE_TOKEN_FRAGMENT_KEY,
   shareLinkFor,
   shareTokenFromUrl,
 } from "../../src/lib/garage/share-link.ts";
+import { SHARE_ROUTE_SEGMENTS } from "../../src/lib/garage/share-route.ts";
 
 /** Repo root, resolved from this file so the sweeps are cwd-independent. */
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
@@ -246,6 +249,56 @@ describe("the share page sends no referrer (SHR-05)", () => {
     expect(matching.map((rule) => rule.source ?? "").join(" ")).toMatch(
       /compartir|share|\/s\//
     );
+  });
+
+  it("the `source` pattern actually matches the share route, not just its name (T2-404 review, F11)", () => {
+    // The test above only checks that `source` *mentions* "share" or
+    // "compartir" somewhere in the string — which the original, broken
+    // pattern also did. `/(en|es)/(share|compartir)/:path*` read like a match
+    // for this route and was not one: `:path*`'s optional trailing group
+    // cannot also absorb the bare trailing slash `trailingSlash: true`
+    // guarantees on every route, so it never matched `/en/share/` or
+    // `/es/compartir/` themselves — the page's *only* request path, since the
+    // token lives in the URL fragment and the page is never requested with a
+    // further path segment (`[shareSegment].astro`'s own doc comment). A
+    // string-shaped assertion cannot catch that; compiling the rule with
+    // `@vercel/routing-utils` — the library Vercel's own build uses to turn
+    // `vercel.json` into routes — can.
+    interface HeaderRule {
+      readonly source?: string;
+      readonly headers?: readonly { key?: string; value?: string }[];
+    }
+    const rules = (config().headers ?? []) as readonly HeaderRule[];
+    const shareRule = rules.find((rule) =>
+      (rule.headers ?? []).some(
+        (header) => header.key?.toLowerCase() === "referrer-policy"
+      )
+    );
+    expect(shareRule?.source).toBeTruthy();
+
+    const compiled = getTransformedRoutes({
+      headers: [
+        { source: shareRule!.source!, headers: [{ key: "x", value: "1" }] },
+      ],
+    });
+    expect(compiled.error).toBeNull();
+    const compiledSource = compiled.routes?.[0]?.src;
+    expect(typeof compiledSource).toBe("string");
+    const re = new RegExp(compiledSource as string);
+
+    for (const locale of LOCALES) {
+      const segment = SHARE_ROUTE_SEGMENTS[locale];
+      // Both forms the page is actually requested at: bare, and with the
+      // trailing slash `trailingSlash: true` always adds.
+      expect(re.test(`/${locale}/${segment}`)).toBe(true);
+      expect(re.test(`/${locale}/${segment}/`)).toBe(true);
+    }
+
+    // Near misses a looser (or a future, sloppier) pattern could start
+    // matching, or a stricter one could stop matching.
+    expect(re.test("/fr/share/")).toBe(false);
+    expect(re.test("/en/garage/")).toBe(false);
+    expect(re.test("/en/sharex/")).toBe(false);
   });
 });
 
