@@ -247,6 +247,22 @@ Stop and ask before any of these:
   live in a browser. Exactly the failure mode this ledger exists to catch,
   and exactly why the substituted assurance has to be an independent pass,
   not the author's own tests passing.
+  **T502 joined the ledger on 2026-09-05, on different terms — a gap left
+  open by design, not a wrong grader shipped.** The procedures index page
+  (`[proceduresSegment].astro`) has no render-test coverage: its list branch
+  cannot render until T504 fills `ENTRY_SLUGS.procedures`, and an independent
+  reviewer agreed that the implementer authoring that grader for his own
+  freshly-written listing page would reproduce the exact T601-F2 failure
+  mode (a self-authored grader asserting the page's own defect as correct)
+  on the exact surface (a filtered listing with a provisional-match
+  indicator) where it already bit once. **Named owner and trigger, per the
+  reviewer's own condition for accepting the deferral: T504a `[TEST]` authors
+  `procedures-index.render.test.ts`, and T504 `[CONTENT]` does not merge without
+  it.** `tests/e2e/hidden-guard.spec.ts`'s two new rows for
+  `/en/procedures/`/`/es/procedimientos/` are not a substitute — that sweep
+  checks one invariant (`[hidden]` computes `display:none`), not that the
+  page renders cards, resolves hrefs, filters, or shows the provisional
+  indicator at all, which is precisely T501's recorded lesson repeating.
 - A clean fact-check, a clean bilingual edit, and all required branch-protection
   checks authorize the `pr-shepherd` to merge without another confirmation.
 - Never `--no-verify`, never a bare force-push, never `gh pr merge --admin`,
