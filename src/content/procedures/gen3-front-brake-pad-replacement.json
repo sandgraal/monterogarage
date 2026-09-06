@@ -1,0 +1,179 @@
+{
+  "id": "gen3-front-brake-pad-replacement",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    }
+  },
+  "system": "brakes",
+  "difficulty": 3,
+  "time": {
+    "value": 90,
+    "unit": "min"
+  },
+  "prerequisites": [
+    {
+      "id": "truck-level-and-on-stands"
+    },
+    {
+      "id": "pads-as-an-axle-set"
+    },
+    {
+      "id": "reservoir-checked-first"
+    }
+  ],
+  "tools": [
+    {
+      "id": "socket-set-and-breaker-bar"
+    },
+    {
+      "id": "torque-wrench-brakes"
+    },
+    {
+      "id": "piston-retracting-tool"
+    },
+    {
+      "id": "wire-or-hook"
+    },
+    {
+      "id": "brake-cleaner-and-brush"
+    },
+    {
+      "id": "vernier-or-micrometer"
+    }
+  ],
+  "partsConsumed": [],
+  "specs": [
+    "dimension-gen3-front-brake-pad-thickness-new",
+    "dimension-gen3-front-brake-pad-thickness-limit",
+    "dimension-gen3-front-brake-disc-thickness-limit",
+    "torque-gen3-front-brake-caliper-guide-pin",
+    "torque-gen3-front-brake-caliper-support-bolt",
+    "torque-gen3-brake-bleeder-screw",
+    "torque-gen3-wheel-nut"
+  ],
+  "steps": [
+    {
+      "id": "measure-before-you-commit",
+      "specs": [
+        "dimension-gen3-front-brake-pad-thickness-new",
+        "dimension-gen3-front-brake-pad-thickness-limit"
+      ]
+    },
+    {
+      "id": "wheels-off-both-sides"
+    },
+    {
+      "id": "swing-the-caliper-clear",
+      "specs": ["torque-gen3-front-brake-caliper-guide-pin"]
+    },
+    {
+      "id": "note-how-the-pads-sit"
+    },
+    {
+      "id": "measure-the-disc",
+      "specs": [
+        "dimension-gen3-front-brake-disc-thickness-limit",
+        "torque-gen3-front-brake-caliper-support-bolt"
+      ]
+    },
+    {
+      "id": "clean-and-free-the-pins"
+    },
+    {
+      "id": "retract-the-pistons",
+      "specs": ["torque-gen3-brake-bleeder-screw"]
+    },
+    {
+      "id": "fit-the-new-pads",
+      "specs": ["torque-gen3-front-brake-caliper-guide-pin"]
+    },
+    {
+      "id": "wheels-back-on",
+      "specs": ["torque-gen3-wheel-nut"]
+    },
+    {
+      "id": "pump-the-pedal-before-you-move"
+    },
+    {
+      "id": "bed-them-in-and-check-again"
+    }
+  ],
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis, Pub. No. PWJE0001 (February 2000), second scanned part: groups 25 to 55 — group 35A, Basic Brake System: service specifications, Disc Brake Pad Check and Replacement, and Front Disc Brake removal, installation, disassembly and reassembly",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260831203149id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Front brake pad replacement",
+      "summary": "Pads out, pads in, both sides, measured rather than guessed. The manual checks pad thickness through the caliper body's check port, replaces pads as an axle set and never one wheel alone, and treats the guide pins sliding freely as part of the job rather than an extra. The figures below — new thickness, wear limit, disc limit and the torques — are the manual's; the time and the difficulty are our estimate. If any of what follows is past what you are set up for, this is the system where stopping and paying a qualified mechanic is the cheap decision.",
+      "steps": {
+        "measure-before-you-commit": "Look through the check port in the caliper body at the pad thickness on both sides before you buy anything, and compare what you see against the standard value and the wear limit below. Pads that are unequal side to side, or unequal between the inner and outer pad on one caliper, are telling you about a seized guide pin or a sticking piston — fix that or you will be back here early.",
+        "wheels-off-both-sides": "Loosen the wheel nuts with the truck still on the ground, then raise it and put it on stands under a solid part of the chassis. Chock the wheels that stay down. Take both front wheels off: this job is done in axle sets, and doing one side now and the other some other day is how a truck ends up pulling under braking.",
+        "swing-the-caliper-clear": "Undo the guide pin lock bolt, pivot the caliper up off the pads and hang it from the spring with wire. Never let it hang on its brake hose — the hose is not a strap, and the damage it does does not show until the day it lets go. The bolt's torque is below for reassembly.",
+        "note-how-the-pads-sit": "Take the pads, the clips and the shims out of the caliper support and lay them on the ground in the order and orientation they came out. The wear indicator sits on one particular pad; the shims and clips go back the same way round or the brake squeals and the pads wear crooked.",
+        "measure-the-disc": "Measure the disc thickness with a vernier or a micrometer, in several places, and compare it against the wear limit below. A disc at or under the limit is finished — it is not a candidate for skimming — and a disc with a deep lip or a heavy score is worth replacing while everything is already apart. If you take the disc off, the caliper support bolts come out and go back at the torque below.",
+        "clean-and-free-the-pins": "Pull the guide pins, clean them, check their boots for splits and refit them with the grease the repair kit provides so they slide freely by hand. A seized pin makes the outer pad do most of the work; that is the wear pattern you saw in the first step. Clean the caliper support where the clips seat — rust scale there pinches the new pads.",
+        "retract-the-pistons": "Push the pistons back squarely and slowly, watching the brake fluid reservoir the whole time so it cannot overflow. Cleanest is to crack the bleeder screw and let the displaced fluid out into a hose and bottle rather than forcing old fluid backwards through the ABS unit; if you do that, close the bleeder to the torque below and bleed that caliper afterwards. Brake fluid strips paint on contact — wash any spill off with water immediately.",
+        "fit-the-new-pads": "Fit the clips, the shims and the new pads the way the old ones came out, with the wear indicator in the right place, and keep oil and grease off the friction faces and the disc — the manual says so plainly and it is the mistake that ruins a new set in one drive. Lower the caliper over the pads without catching the piston boot, and tighten the guide pin and its lock bolt to the torque below.",
+        "wheels-back-on": "Refit the wheels, lower the truck and tighten the wheel nuts in a star pattern with a torque wrench to the figure below, on clean dry threads. Re-check that torque after the first short drive.",
+        "pump-the-pedal-before-you-move": "Before the truck moves at all, pump the brake pedal until it comes up firm. The first pedal press after a pad change only takes up the gap you created by retracting the pistons — a truck driven off the stands without doing this has no brakes for the first press, in a driveway, with the road at the end of it. Then check the reservoir level and top up if needed.",
+        "bed-them-in-and-check-again": "Bed the new pads in with a series of moderate stops from moderate speed, not one hard stop, and avoid holding the truck stationary on a hot brake straight afterwards. Then look at the wheels: an unusually hot wheel, a smell, or a pull to one side means stop and find out why. Re-check the wheel nut torque and the fluid level the next day."
+      },
+      "tools": {
+        "socket-set-and-breaker-bar": "Socket set and breaker bar",
+        "torque-wrench-brakes": "Torque wrench — the guide pins, the caliper support bolts and the wheel nuts all have figures and none of them is a feel",
+        "piston-retracting-tool": "Piston retracting tool or a large clamp with a flat pad",
+        "wire-or-hook": "Wire or a hook to hang the caliper from, so it never hangs on its hose",
+        "brake-cleaner-and-brush": "Brake cleaner and a brush",
+        "vernier-or-micrometer": "Vernier or micrometer for the disc and the pads"
+      },
+      "prerequisites": {
+        "truck-level-and-on-stands": "Truck level, on stands on firm ground, with the wheels still on the ground chocked. Never under a truck held only by a jack.",
+        "pads-as-an-axle-set": "A full axle set of pads on the bench — both sides — plus the clip and shim hardware if yours is corroded.",
+        "reservoir-checked-first": "Look at the brake fluid reservoir before you start and note its level. Retracting the pistons pushes fluid back up into it, and a reservoir already at maximum will overflow onto paint."
+      },
+      "safetyNotes": "Brakes are the system this site will not soften. Do not drive the truck until the pedal has been pumped back up firm and feels normal. Replace pads as an axle set, never one wheel; never let a caliper hang on its brake hose; keep grease and oil off the pads and disc. If a guide pin is seized, a piston will not retract squarely, a bleeder screw snaps, the disc is at or under its wear limit, or the pedal is soft or sinking afterwards, stop and have the work finished by a qualified mechanic — this is not a system to hand back to the road with an open question on it."
+    },
+    "es": {
+      "title": "Cambio de pastillas de freno delanteras",
+      "summary": "Sacar pastillas, poner pastillas, en los dos lados y midiendo en vez de calculando a ojo. El manual revisa el espesor de la pastilla por la ventana del cuerpo del cáliper, cambia las pastillas de freno en juego por eje y nunca en una sola rueda, y trata el deslizamiento libre de los pernos guía como parte del trabajo y no como un extra. Las cifras de abajo —espesor nuevo, límite de desgaste, límite del disco de freno y los pares de apriete— son del manual; el tiempo y la dificultad son estimación nuestra. Si algo de lo que sigue pasa de lo que usted tiene montado, este es el sistema donde parar y pagarle a un mecánico calificado es la decisión barata.",
+      "steps": {
+        "measure-before-you-commit": "Vea por la ventana de revisión del cuerpo del cáliper el espesor de la pastilla de los dos lados antes de comprar nada, y compárelo con el valor estándar y el límite de desgaste de abajo. Pastillas desiguales de un lado al otro, o desiguales entre la interna y la externa del mismo cáliper, le están hablando de un perno guía pegado o de un pistón que no regresa: arréglelo o va a volver aquí antes de tiempo.",
+        "wheels-off-both-sides": "Afloje las tuercas de rueda con el carro todavía en el suelo, después levántelo y póngalo sobre soportes de seguridad apoyados en una parte firme del chasis. Calce las ruedas que quedan abajo. Saque las dos ruedas delanteras: este trabajo se hace en juego por eje, y hacer un lado hoy y el otro otro día es como un carro termina jalando al frenar.",
+        "swing-the-caliper-clear": "Saque el tornillo de fijación del perno guía, voltee el cáliper hacia arriba para liberar las pastillas de freno y cuélguelo del resorte con alambre. Nunca lo deje colgando de la manguera de freno: la manguera no es una faja, y el daño que le hace no se ve hasta el día en que suelta. El par de ese tornillo va abajo para el armado.",
+        "note-how-the-pads-sit": "Saque las pastillas de freno, las prensillas y los shims del soporte del cáliper y déjelos en el suelo en el orden y la posición en que salieron. El indicador de desgaste va en una pastilla específica; los shims y las prensillas vuelven en la misma posición o el freno chilla y las pastillas se desgastan chuecas.",
+        "measure-the-disc": "Mida el espesor del disco de freno con calibrador o micrómetro, en varios puntos, y compárelo con el límite de desgaste de abajo. Un disco de freno en el límite o por debajo ya está terminado —no es candidato a rectificar—, y un disco con filo hondo o muy rayado conviene cambiarlo ahora que todo está abierto. Si saca el disco, los tornillos del soporte del cáliper salen y vuelven al par de abajo.",
+        "clean-and-free-the-pins": "Saque los pernos guía, límpielos, revise que sus fuelles no estén partidos y móntelos con la grasa que trae el juego de reparación, de modo que deslicen libres con la mano. Un perno pegado hace que la pastilla externa haga casi todo el trabajo: ese es el desgaste que usted vio en el primer paso. Limpie el soporte del cáliper donde asientan las prensillas; la costra de óxido ahí aprisiona las pastillas nuevas.",
+        "retract-the-pistons": "Devuelva los pistones derechos y despacio, viendo todo el tiempo el depósito de líquido de frenos para que no se rebalse. Lo más limpio es abrir el tornillo de purga y dejar salir a una manguera y una botella el líquido que se desplaza, en vez de empujar líquido viejo de regreso por el ABS; si lo hace así, cierre la purga al par de abajo y purgue después ese cáliper. El líquido de frenos levanta la pintura apenas la toca: lave con agua de una vez lo que se derrame.",
+        "fit-the-new-pads": "Monte las prensillas, los shims y las pastillas de freno nuevas como salieron las viejas, con el indicador de desgaste en su lugar, y mantenga aceite y grasa fuera de las caras de fricción y del disco de freno: el manual lo dice sin rodeos y es el error que arruina un juego nuevo en un solo viaje. Baje el cáliper sobre las pastillas sin morder el fuelle del pistón y apriete el perno guía y su tornillo de fijación al par de abajo.",
+        "wheels-back-on": "Monte las ruedas, baje el carro y apriete las tuercas de rueda en cruz, con llave de torque, a la cifra de abajo y con la rosca limpia y seca. Vuelva a revisar ese apriete después del primer recorrido corto.",
+        "pump-the-pedal-before-you-move": "Antes de que el carro se mueva, bombee el pedal de freno hasta que suba firme. La primera pisada después de un cambio de pastillas de freno solo recupera el espacio que usted creó al devolver los pistones: un carro bajado de los soportes y arrancado sin hacer esto se queda sin frenos en la primera pisada, en el patio, con la calle al final. Después revise el nivel del depósito y complete si hace falta.",
+        "bed-them-in-and-check-again": "Asiente las pastillas de freno nuevas con varias frenadas moderadas desde velocidad moderada, no con un frenazo, y no deje el carro parado con el freno caliente justo después. Después revise las ruedas: una rueda mucho más caliente que las otras, un olor raro o un jalón hacia un lado significan parar y averiguar por qué. Vuelva a revisar el apriete de las tuercas de rueda y el nivel del líquido de frenos al día siguiente."
+      },
+      "tools": {
+        "socket-set-and-breaker-bar": "Juego de cubos y barra de fuerza",
+        "torque-wrench-brakes": "Llave de torque — los pernos guía, los tornillos del soporte del cáliper y las tuercas de rueda tienen cifra, y ninguna es a pulso",
+        "piston-retracting-tool": "Herramienta para devolver el pistón, o una prensa grande con apoyo plano",
+        "wire-or-hook": "Alambre o gancho para colgar el cáliper, para que nunca quede colgando de la manguera",
+        "brake-cleaner-and-brush": "Limpiador de frenos y un cepillo",
+        "vernier-or-micrometer": "Calibrador o micrómetro para el disco de freno y las pastillas"
+      },
+      "prerequisites": {
+        "truck-level-and-on-stands": "Carro en piso plano, sobre soportes de seguridad en suelo firme, y con las ruedas que quedan abajo calzadas. Nunca debajo de un carro sostenido solo por la gata.",
+        "pads-as-an-axle-set": "Un juego completo de pastillas de freno por eje en el banco —los dos lados— más las prensillas y los shims si los suyos están corroídos.",
+        "reservoir-checked-first": "Vea el depósito de líquido de frenos antes de empezar y fíjese en el nivel. Devolver los pistones le empuja líquido de regreso, y un depósito que ya está al máximo se rebalsa sobre la pintura."
+      },
+      "safetyNotes": "Los frenos son el sistema en el que este sitio no baja el tono. No mueva el carro hasta que el pedal haya vuelto a subir firme y se sienta normal. Cambie las pastillas de freno en juego por eje, nunca en una sola rueda; nunca deje el cáliper colgando de la manguera de freno; mantenga grasa y aceite fuera de las pastillas y del disco de freno. Si un perno guía está pegado, si un pistón no se devuelve derecho, si se le quiebra un tornillo de purga, si el disco de freno está en el límite o por debajo, o si después el pedal queda blando o se le va hundiendo, pare y deje que termine el trabajo un mecánico calificado: este no es un sistema para devolverle a la calle con una duda encima."
+    }
+  }
+}

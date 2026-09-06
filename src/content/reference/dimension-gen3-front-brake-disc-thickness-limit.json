@@ -1,0 +1,37 @@
+{
+  "id": "dimension-gen3-front-brake-disc-thickness-limit",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    }
+  },
+  "kind": "dimension",
+  "system": "brakes",
+  "dimension": {
+    "value": 24.4,
+    "unit": "mm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis, Pub. No. PWJE0001 (February 2000), second scanned part: groups 25 to 55",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260831203149id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Front brake disc thickness — wear limit",
+      "summary": "The thickness below which the brake group says the front disc is finished. It matters at every pad change, because a disc that is already near the limit cannot be skimmed to clean up a lip or a judder — and a disc machined past this figure heats faster and cracks, which is a failure at the far end of a downhill, not in the driveway."
+    },
+    "es": {
+      "title": "Espesor del disco de freno delantero — límite de desgaste",
+      "summary": "El espesor bajo el cual el grupo de frenos da por terminado el disco de freno delantero. Importa en cada cambio de pastillas de freno, porque un disco que ya anda cerca del límite no se puede rectificar para quitarle el filo o una vibración; y un disco rectificado más allá de esta cifra se calienta más rápido y se raja, que es una falla al final de una bajada, no en el patio de la casa."
+    }
+  }
+}

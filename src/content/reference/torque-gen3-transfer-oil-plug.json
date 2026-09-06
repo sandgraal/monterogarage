@@ -1,0 +1,40 @@
+{
+  "id": "torque-gen3-transfer-oil-plug",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    },
+    "transferCases": ["super-select-ii"]
+  },
+  "kind": "torque",
+  "system": "transfer-case",
+  "torque": {
+    "value": 32,
+    "min": 30,
+    "max": 34,
+    "unit": "nm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis Volume 1, Pub. No. PWJE0001(1/2) (February 2000): groups 00 to 23 — group 23, Automatic Transmission, On-vehicle Service: Transfer Oil Check and Transfer Oil Change",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260831203139id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Transfer case oil filler and drain plug tightening torque",
+      "summary": "The tightening torque the manual gives for the transfer case oil plugs, printed in the transfer's on-vehicle service pages inside the automatic transmission group. The plugs seal on a washer and thread into an aluminium case, so this is a figure worth using rather than a feel — a stripped filler plug hole turns an oil change into a case repair."
+    },
+    "es": {
+      "title": "Par de apriete de los tapones de llenado y drenaje de la caja de transferencia",
+      "summary": "El par de apriete que el manual indica para los tapones de aceite de la caja de transferencia, impreso en las páginas de servicio sobre el vehículo de la transferencia, dentro del grupo de transmisión automática. Los tapones sellan por empaque y roscan en una caja de aluminio, así que esta cifra vale la pena usarla y no apretar a pulso: un hueco de llenado barrido convierte un cambio de aceite en una reparación de caja."
+    }
+  }
+}

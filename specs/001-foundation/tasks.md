@@ -377,7 +377,49 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
   mode on the exact surface it happened on once already. Depends: T502
   merged. Fixtures need real entries: author alongside T504 (coordinate with
   T504's author rather than inventing procedure fixtures from nothing). *(PRC-01, SCF-06)*
-- [ ] **T504 [CONTENT]** Procedures wave 1: maintenance set (oil, filters, timing belt 6G74, diffs/tcase fluid, brakes, plugs) — bilingual, cited, safety-flagged where due. Depends: T502. Does not merge without T504a's grader landing alongside it — see AGENTS.md's `[TEST]`-debt ledger, T502 entry. *(PRC-01, PRC-02, PRC-03)*
+- [x] **T504 [CONTENT]** Procedures wave 1: maintenance set (oil, filters, timing belt 6G74, diffs/tcase fluid, brakes, plugs) — bilingual, cited, safety-flagged where due. Depends: T502. Does not merge without T504a's grader landing alongside it — see AGENTS.md's `[TEST]`-debt ledger, T502 entry. *(PRC-01, PRC-02, PRC-03)*
+  - **Shipped (2026-09-06).** Eight procedures, all `fsm-confirmed`, all sourced
+    from the PAJERO workshop manual (PWJE0001): `gen3-engine-oil-and-filter-change`,
+    `gen3-air-cleaner-element-replacement`, `gen3-spark-plug-replacement`,
+    `gen3-timing-belt-replacement`, `gen3-differential-oil-change`,
+    `gen3-transfer-case-oil-change`, `gen3-front-brake-pad-replacement`,
+    `gen3-brake-fluid-change`. The last two are `system: brakes`, so
+    `isSafetyCritical` derives the flag and both render T401's `SafetyNotice.astro`;
+    the other six are not safety-critical, and five of those six still carry their own
+    `safetyNotes` in both locales (hot oil, ignition work on a direct-injection
+    engine, an interference engine with the belt off, working under a truck) — seven
+    of the eight in total. Only the air cleaner element change has none, because a
+    hazard notice on a job with no hazard is a notice nobody reads.
+  - **Nineteen new `reference` rows carry every figure** (PRC-03): 11 `torque`,
+    8 `dimension`. Nothing numeric is typed into either locale's prose — the
+    detector in `src/lib/procedures/figures.ts` was hit exactly zero times, and the
+    three `check:glossary` / `check:es-register` hits this branch did take were all
+    vocabulary, not figures (see the bilingual notes below).
+  - **`partsConsumed` is empty on all eight, deliberately.** T503 has not landed, so
+    the `parts` collection is empty and every id would be a dangling reference the
+    build rejects. **T503's author should backfill** `partsConsumed` on this wave:
+    oil filter and drain-plug washer, air cleaner element, six spark plugs, the
+    timing belt kit (belt, tensioner, tensioner pulley, idler, water pump and
+    gaskets), gear oil, brake pad axle set with clips and shims, brake fluid.
+  - **No service intervals, and that is a sourcing gap, not an oversight.** The
+    workshop manual carries no maintenance schedule (it lives in the owner's manual
+    / warranty booklet, which was not reachable), so no interval figure is claimed
+    anywhere on this branch. `gen3-timing-belt-overdue` (T404) already handles the
+    belt interval at its own weaker tier, and this wave does not contradict it.
+  - **Fitment note for reviewers.** Rows and jobs derived from the engine and
+    ignition groups are scoped `engines: ["6g74-gdi"]`, because that is the only
+    6G7 the export manual documents; the lubrication, axle, transfer and brake
+    figures carry no engine facet, because the manual prints them for the whole
+    model range. Years follow the merged gen3 corpus' existing `1999–2002`
+    convention rather than the manual's own `2001–2003` cover.
+  - **Fixtures for T504a** (its task line asks for real entries): the index page
+    renders 8 cards across 4 systems (`engine` ×3, `drivetrain`, `transfer-case`,
+    `brakes` ×2); **`gen3-transfer-case-oil-change` is the provisional-match case**
+    — it is the only entry whose fitment carries a facet outside FIT-03's
+    quadruple (`transferCases: ["super-select-ii"]`), so it is what makes T204's
+    provisional indicator render on a filtered listing. `gen3-spark-plug-replacement`
+    and `gen3-timing-belt-replacement` exercise the engine facet;
+    `gen3-front-brake-pad-replacement` is the safety-critical card.
 
 ## Phase 6 — Modifications
 - [x] **T601 [PLATFORM]** Mods schema (typed requires/breaks references) + page template. Depends: T203. *(MOD-01, MOD-02)*

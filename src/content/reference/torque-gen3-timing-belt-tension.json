@@ -1,0 +1,38 @@
+{
+  "id": "torque-gen3-timing-belt-tension",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    },
+    "engines": ["6g74-gdi"]
+  },
+  "kind": "torque",
+  "system": "engine",
+  "torque": {
+    "value": 4.4,
+    "unit": "nm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis Volume 1, Pub. No. PWJE0001(1/2) (February 2000): groups 00 to 23",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260831203139id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Timing belt tension torque — 6G74 GDI",
+      "summary": "Not a fastener: this is the torque the manual has you apply to the tension pulley itself, through the tension pulley socket wrench, to set belt tension on the direct-injection petrol V6. It is applied with the pulley's centre bolt loosened, and the centre bolt is tightened afterwards to its own figure. Getting this wrong is not a leak — on an interference engine it is the whole engine."
+    },
+    "es": {
+      "title": "Par de tensión de la faja de distribución — 6G74 GDI",
+      "summary": "No es un tornillo: es el par que el manual manda a aplicar sobre la propia polea tensora, con el dado especial de tensión, para dejar la faja de distribución del V6 de gasolina de inyección directa en su tensión de fábrica. Se aplica con el tornillo central de la polea aflojado, y ese tornillo se aprieta después a su propia cifra. Equivocarse aquí no es una fuga: en un motor de interferencia es el motor completo."
+    }
+  }
+}

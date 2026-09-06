@@ -1,0 +1,102 @@
+{
+  "id": "gen3-air-cleaner-element-replacement",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    }
+  },
+  "system": "engine",
+  "difficulty": 1,
+  "time": {
+    "value": 15,
+    "unit": "min"
+  },
+  "prerequisites": [
+    {
+      "id": "engine-off-and-cool-enough-to-touch"
+    }
+  ],
+  "tools": [
+    {
+      "id": "screwdriver-set"
+    },
+    {
+      "id": "vacuum-or-clean-rag"
+    }
+  ],
+  "partsConsumed": [],
+  "specs": [],
+  "steps": [
+    {
+      "id": "open-the-air-cleaner-cover"
+    },
+    {
+      "id": "lift-the-element-out"
+    },
+    {
+      "id": "read-what-the-old-element-tells-you"
+    },
+    {
+      "id": "clean-the-housing"
+    },
+    {
+      "id": "fit-the-new-element"
+    },
+    {
+      "id": "close-the-cover-and-check-the-ducting"
+    }
+  ],
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, Pub. No. PWJE0001, combined electronic edition for the 2001–2003 model years — group 15, Intake and Exhaust: Air Cleaner removal and installation",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/Manual.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260906172658id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/Manual.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Air cleaner element replacement",
+      "summary": "The cheapest service on the truck and the one a dirt road undoes fastest. The element sits in a hinged case between the cover and the body; the manual's own caution is that the case parts are a recycled-paper plastic that does not forgive being levered or dropped, and that the hinges have to engage properly on the way back together. No figures on this job — it is a cover, an element and a clean box. The time and the difficulty are our estimate.",
+      "steps": {
+        "open-the-air-cleaner-cover": "Release the clips around the air cleaner cover and free anything clipped to it. Open it gently: the case is a moulded plastic that cracks at the hinge if you lever it, and a cracked case leaks unfiltered air past the element for the rest of its life.",
+        "lift-the-element-out": "Lift the element straight out and note which way up it sat before it leaves the box. Do not knock it against the housing on the way out — everything it shakes loose falls into the clean side.",
+        "read-what-the-old-element-tells-you": "Look at the old element before you throw it away. Even loading and grey dust is normal service. Fine red dust means the roads you drive, and it means checking this more often than any schedule says. Oil or soot on the clean side, or a rodent nest, is a different problem and worth chasing before you refit anything.",
+        "clean-the-housing": "Wipe out the housing with a damp rag, or vacuum it. Do not blow it out with an air line while the element is out — that pushes dirt down the intake, which is the one place all this exists to keep clean.",
+        "fit-the-new-element": "Set the new element in the same orientation, seated flat all the way round with its seal in the groove. An element that is cocked in the box lets dust past the edge, and the engine cannot tell the difference between that and no filter at all.",
+        "close-the-cover-and-check-the-ducting": "Engage the case hinges properly, close the cover and refit every clip. Then check the ducting and the intake hose clamps between the box and the engine: a split duct or a loose clamp downstream of the filter makes the new element pointless."
+      },
+      "tools": {
+        "screwdriver-set": "Screwdriver set, for the cover clips and any hose clamp in the way",
+        "vacuum-or-clean-rag": "Vacuum cleaner, or a damp clean rag, for the inside of the housing"
+      },
+      "prerequisites": {
+        "engine-off-and-cool-enough-to-touch": "Engine off and cool enough to work around."
+      }
+    },
+    "es": {
+      "title": "Cambio del elemento del filtro de aire",
+      "summary": "El servicio más barato del carro y el que más rápido deshace un camino de lastre. El elemento va en una caja con bisagra, entre la tapa y el cuerpo; la advertencia del propio manual es que esas piezas son de un plástico con papel reciclado que no perdona palancas ni golpes, y que las bisagras tienen que quedar bien encajadas al armar. Este trabajo no lleva cifras: es una tapa, un elemento y una caja limpia. El tiempo y la dificultad son estimación nuestra.",
+      "steps": {
+        "open-the-air-cleaner-cover": "Suelte los ganchos de la tapa del filtro de aire y libere lo que vaya prensado en ella. Ábrala con cuidado: la caja es de plástico moldeado que se raja en la bisagra si uno hace palanca, y una caja rajada le mete aire sin filtrar por un lado el resto de su vida.",
+        "lift-the-element-out": "Saque el elemento derecho hacia arriba y fíjese en qué posición estaba antes de que salga de la caja. No lo golpee contra la caja al sacarlo: todo lo que se le suelte cae del lado limpio.",
+        "read-what-the-old-element-tells-you": "Vea el elemento viejo antes de botarlo. Suciedad pareja y polvo gris es uso normal. Polvo rojo fino habla de los caminos donde usted anda, y quiere decir revisarlo más seguido de lo que diga cualquier programa de mantenimiento. Aceite u hollín del lado limpio, o un nido de ratones, es otro problema y conviene resolverlo antes de montar nada.",
+        "clean-the-housing": "Limpie la caja por dentro con un trapo húmedo o con aspiradora. No la sople con pistola de aire con el elemento afuera: eso le manda la mugre para adentro de la admisión, que es justo lo que todo esto existe para mantener limpio.",
+        "fit-the-new-element": "Ponga el elemento nuevo en la misma posición, bien asentado en todo el contorno y con el sello en su canal. Un elemento montado chueco deja pasar polvo por la orilla, y para el motor eso es igual que andar sin filtro.",
+        "close-the-cover-and-check-the-ducting": "Encaje bien las bisagras de la caja, cierre la tapa y vuelva a poner todos los ganchos. Después revise los ductos y las abrazaderas de la manguera de admisión entre la caja y el motor: un ducto partido o una abrazadera floja después del filtro deja el elemento nuevo sin sentido."
+      },
+      "tools": {
+        "screwdriver-set": "Juego de destornilladores, para los ganchos de la tapa y cualquier abrazadera que estorbe",
+        "vacuum-or-clean-rag": "Aspiradora, o un trapo limpio húmedo, para el interior de la caja"
+      },
+      "prerequisites": {
+        "engine-off-and-cool-enough-to-touch": "Motor apagado y lo bastante frío para trabajar alrededor."
+      }
+    }
+  }
+}

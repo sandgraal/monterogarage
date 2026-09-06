@@ -1,0 +1,37 @@
+{
+  "id": "dimension-gen3-front-brake-pad-thickness-new",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    }
+  },
+  "kind": "dimension",
+  "system": "brakes",
+  "dimension": {
+    "value": 10.0,
+    "unit": "mm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis, Pub. No. PWJE0001 (February 2000), second scanned part: groups 25 to 55",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260831203149id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Front brake pad thickness — standard value (new)",
+      "summary": "The friction thickness the brake group gives as the standard value for a front pad. Read together with the wear limit it is what lets you work out how much life is left rather than guessing from a glance through the caliper port."
+    },
+    "es": {
+      "title": "Espesor de la pastilla de freno delantera — valor estándar (nueva)",
+      "summary": "El espesor de material de fricción que el grupo de frenos da como valor estándar para una pastilla de freno delantera. Leído junto con el límite de desgaste, es lo que le permite calcular cuánta vida le queda en vez de calcular a ojo por la ventana del cáliper."
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "id": "dimension-gen3-rear-differential-oil-level",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    }
+  },
+  "kind": "dimension",
+  "system": "drivetrain",
+  "dimension": {
+    "value": 5,
+    "unit": "mm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis, Pub. No. PWJE0001 (February 2000), second scanned part: groups 25 to 55",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260831203149id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Rear differential oil level — maximum drop below the filler plug hole",
+      "summary": "How far below the bottom of the filler plug hole the rear differential's oil may sit and still be in specification. The rear axle group states a tighter figure than the front axle group does, so the two housings are not checked to the same mark even though the job looks identical from under the truck."
+    },
+    "es": {
+      "title": "Nivel de aceite del diferencial trasero — caída máxima bajo el hueco del tapón de llenado",
+      "summary": "Cuánto puede quedar el aceite del diferencial trasero por debajo del borde inferior del hueco del tapón de llenado y seguir estando en especificación. El grupo de eje trasero da una cifra más estricta que la del eje delantero, así que las dos cajas no se revisan contra la misma marca aunque desde abajo el trabajo se vea igual."
+    }
+  }
+}

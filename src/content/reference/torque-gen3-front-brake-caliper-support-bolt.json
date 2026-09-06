@@ -1,0 +1,39 @@
+{
+  "id": "torque-gen3-front-brake-caliper-support-bolt",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    }
+  },
+  "kind": "torque",
+  "system": "brakes",
+  "torque": {
+    "value": 113,
+    "min": 104,
+    "max": 122,
+    "unit": "nm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis, Pub. No. PWJE0001 (February 2000), second scanned part: groups 25 to 55",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260831203149id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Front brake caliper support-to-knuckle bolt tightening torque",
+      "summary": "The tightening torque for the two bolts that hold the front caliper support (the bracket the caliper and pads sit in) to the steering knuckle. You do not have to disturb these to change pads; you do have to when the disc comes off, and they are the fasteners that keep the whole brake on the truck."
+    },
+    "es": {
+      "title": "Par de apriete de los tornillos del soporte del cáliper delantero a la muñeca",
+      "summary": "El par de apriete de los dos tornillos que sujetan el soporte del cáliper delantero —la base donde asientan el cáliper y las pastillas de freno— a la muñeca de dirección. Para cambiar pastillas no hay que tocarlos; para sacar el disco de freno sí, y son los tornillos que mantienen todo el freno sujeto al carro."
+    }
+  }
+}

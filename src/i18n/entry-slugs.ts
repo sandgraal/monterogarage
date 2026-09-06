@@ -104,8 +104,48 @@ export const ENTRY_SLUGS: Readonly<
    *
    * The ES slug is a Costa Rican reader's own words, never the English one
    * with an accent: `cambio-de-aceite-6g74`, not `oil-change-6g74`.
+   *
+   * Wave 1 (T504) is the maintenance set. Two ES slugs are deliberately
+   * shorter than their English counterparts rather than transliterations of
+   * them: `pastillas-de-freno-delanteras` is what a Costa Rican driver asks a
+   * `taller` for, and `cambio-de-aceite-de-transferencia` is how the job is
+   * named out loud — nobody says "cambio de aceite de la caja de
+   * transferencia" twice in the same conversation.
    */
-  procedures: {},
+  procedures: {
+    "gen3-engine-oil-and-filter-change": {
+      en: "engine-oil-and-filter-change",
+      es: "cambio-de-aceite-y-filtro",
+    },
+    "gen3-air-cleaner-element-replacement": {
+      en: "air-filter-replacement",
+      es: "cambio-de-filtro-de-aire",
+    },
+    "gen3-spark-plug-replacement": {
+      en: "spark-plug-replacement",
+      es: "cambio-de-bujias",
+    },
+    "gen3-timing-belt-replacement": {
+      en: "timing-belt-replacement",
+      es: "cambio-de-faja-de-distribucion",
+    },
+    "gen3-differential-oil-change": {
+      en: "differential-oil-change",
+      es: "cambio-de-aceite-de-diferenciales",
+    },
+    "gen3-transfer-case-oil-change": {
+      en: "transfer-case-oil-change",
+      es: "cambio-de-aceite-de-transferencia",
+    },
+    "gen3-front-brake-pad-replacement": {
+      en: "front-brake-pads",
+      es: "pastillas-de-freno-delanteras",
+    },
+    "gen3-brake-fluid-change": {
+      en: "brake-fluid-change",
+      es: "cambio-de-liquido-de-frenos",
+    },
+  },
   /** MOD-01 — one page per modification. Wave 1 (T602). */
   mods: {
     "gen3-suspension-lift-springs": {

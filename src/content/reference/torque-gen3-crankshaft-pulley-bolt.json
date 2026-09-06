@@ -1,0 +1,40 @@
+{
+  "id": "torque-gen3-crankshaft-pulley-bolt",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    },
+    "engines": ["6g74-gdi"]
+  },
+  "kind": "torque",
+  "system": "engine",
+  "torque": {
+    "value": 182,
+    "min": 178,
+    "max": 186,
+    "unit": "nm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis Volume 1, Pub. No. PWJE0001(1/2) (February 2000): groups 00 to 23",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260831203139id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Crankshaft pulley bolt tightening torque — 6G74 GDI",
+      "summary": "The tightening torque the engine group gives for the crankshaft pulley centre bolt on the direct-injection petrol V6, from the timing belt removal-and-installation illustration. It is a high figure, and the manual reaches it with the crankshaft held by its own special tools rather than by the starter or a jammed flywheel. This site carries a separate problem entry on what a loose or previously over-heated version of this bolt does to the crankshaft snout — read it before reusing anything."
+    },
+    "es": {
+      "title": "Par de apriete del tornillo de la polea del cigüeñal — 6G74 GDI",
+      "summary": "El par de apriete que el grupo de motor indica para el tornillo central de la polea del cigüeñal del V6 de gasolina de inyección directa, tomado de la lámina de desmontaje y montaje de la faja de distribución. Es una cifra alta, y el manual la alcanza sujetando el cigüeñal con sus herramientas especiales, no con el motor de arranque ni trabando el volante. En este sitio hay una entrada aparte sobre lo que un tornillo flojo o recalentado le hace a la punta del cigüeñal: léala antes de reutilizar nada."
+    }
+  }
+}

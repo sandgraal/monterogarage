@@ -1,0 +1,149 @@
+{
+  "id": "gen3-engine-oil-and-filter-change",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    }
+  },
+  "system": "engine",
+  "difficulty": 2,
+  "time": {
+    "value": 45,
+    "unit": "min"
+  },
+  "prerequisites": [
+    {
+      "id": "engine-at-operating-temperature"
+    },
+    {
+      "id": "truck-level-and-secured"
+    },
+    {
+      "id": "new-gasket-and-filter-to-hand"
+    }
+  ],
+  "tools": [
+    {
+      "id": "socket-set-and-ratchet"
+    },
+    {
+      "id": "torque-wrench"
+    },
+    {
+      "id": "oil-filter-strap-wrench"
+    },
+    {
+      "id": "drain-pan-and-funnel"
+    },
+    {
+      "id": "gloves-and-rags"
+    }
+  ],
+  "partsConsumed": [],
+  "specs": [
+    "torque-gen3-engine-oil-drain-plug",
+    "fluid-gen3-engine-oil-6g74-gdi"
+  ],
+  "steps": [
+    {
+      "id": "warm-the-engine"
+    },
+    {
+      "id": "open-the-filler-cap"
+    },
+    {
+      "id": "drain-the-oil"
+    },
+    {
+      "id": "change-the-filter"
+    },
+    {
+      "id": "refit-the-drain-plug",
+      "specs": ["torque-gen3-engine-oil-drain-plug"]
+    },
+    {
+      "id": "refill",
+      "specs": ["fluid-gen3-engine-oil-6g74-gdi"]
+    },
+    {
+      "id": "run-and-check-for-leaks"
+    },
+    {
+      "id": "check-the-level-again"
+    },
+    {
+      "id": "take-the-used-oil-away"
+    }
+  ],
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis Volume 1, Pub. No. PWJE0001(1/2) (February 2000): groups 00 to 23 — group 12, Engine Lubrication, On-vehicle Service",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260831203139id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Engine oil and filter change",
+      "summary": "The routine service the whole truck depends on, done the way the lubrication group sets it out: drain warm, new sealing washer on the drain plug, new filter, refill to the stated quantity and then confirm on the dipstick. The grade and the fill quantity shown below are the ones the manual gives for the petrol V6 — the diesel engines take a different quantity, and their own reference rows carry it. The time and the difficulty are our estimate; the torque and the fill are the manual's.",
+      "steps": {
+        "warm-the-engine": "Run the engine until it reaches operating temperature, then shut it off. Warm oil carries the dirt out with it; cold oil leaves a share of it behind in the pan.",
+        "open-the-filler-cap": "Take the oil filler cap off first. It vents the crankcase so the oil drains cleanly, and it is a hard mistake to make in the other order — an empty engine with the cap still on the bench is how people drive away dry.",
+        "drain-the-oil": "Put the pan under the sump, undo the drain plug and let it drain fully. The oil is hot enough to scald; keep your forearm out of the stream and let the plug fall into the pan rather than chasing it. If a skid plate or under cover is in the way, take it off rather than working around it.",
+        "change-the-filter": "Undo the old filter with a strap wrench, catching what runs out of it, and wipe the mounting face clean. Check that the old O-ring came away with the filter and is not still stuck to the flange — a doubled seal blows out as soon as there is pressure. Smear clean oil on the new filter's O-ring, screw it on by hand until the seal touches the flange, then about three quarters of a turn further. That is how the manual states it, and it is tighter than most people expect and looser than a wrench will leave it.",
+        "refit-the-drain-plug": "Fit a new drain plug sealing washer, facing the way the manual's illustration shows, and tighten the plug with a torque wrench to the figure below. The oil pan thread is soft and a stripped pan is a much larger repair than the plug it started with.",
+        "refill": "Refill through the filler with the grade and quantity below, then refit the cap. The quantity is what the system takes including the volume inside the filter, so it lands close but not exactly on the dipstick mark.",
+        "run-and-check-for-leaks": "Start the engine and let it idle. The oil pressure lamp should go out within a few seconds; if it stays on, shut it down and find out why before it runs any longer. With it idling, look under the truck at the filter and the drain plug for leaks.",
+        "check-the-level-again": "Shut the engine off, wait for the oil to drain back, and check the dipstick with the truck level. Top up to the upper mark if it needs it. The quantity is a guide and the dipstick is the answer.",
+        "take-the-used-oil-away": "Take the used oil and the old filter to a collection point that accepts them. A litre of used oil in a ditch is a lot of water spoiled, and in Costa Rica the workshops and service stations that sell you the oil will normally take the old oil back."
+      },
+      "tools": {
+        "socket-set-and-ratchet": "Socket set and ratchet",
+        "torque-wrench": "Torque wrench",
+        "oil-filter-strap-wrench": "Oil filter strap wrench (a commercial tool; the manual names its own filter wrenches, but a strap wrench does this job)",
+        "drain-pan-and-funnel": "Drain pan large enough for the full fill, and a funnel",
+        "gloves-and-rags": "Gloves and rags — the manual's own warning about repeated contact with used oil is worth reading"
+      },
+      "prerequisites": {
+        "engine-at-operating-temperature": "Engine warmed to operating temperature and then switched off.",
+        "truck-level-and-secured": "Truck level, parking brake on, wheels chocked. If you raise it to reach the plug, put it on stands — never work under it on a jack.",
+        "new-gasket-and-filter-to-hand": "A new drain plug sealing washer and a new oil filter on the bench before you start. The washer is a single-use part and the reason a plug seeps."
+      },
+      "safetyNotes": "Drained oil is hot enough to burn and used engine oil is a skin hazard the manual warns about directly. Wear gloves, keep your face and arms out of the stream, and wash off any oil that gets on you rather than leaving it on your skin for the rest of the job."
+    },
+    "es": {
+      "title": "Cambio de aceite y filtro de aceite del motor",
+      "summary": "El servicio de rutina del que depende todo el carro, hecho como lo plantea el grupo de lubricación: drenar en caliente, empaque nuevo en el tapón, filtro de aceite nuevo, servir la cantidad indicada y después confirmar con la varilla. El grado y la cantidad que se muestran abajo son los que el manual da para el V6 de gasolina; los motores diésel llevan otra cantidad y esa va en sus propias entradas de referencia. El tiempo y la dificultad son estimación nuestra; el par de apriete y el llenado son del manual.",
+      "steps": {
+        "warm-the-engine": "Ponga a calentar el motor hasta la temperatura de operación y apáguelo. El aceite caliente se lleva la mugre; el frío deja buena parte pegada en el cárter.",
+        "open-the-filler-cap": "Quite primero la tapa de llenado de aceite. Así entra aire y el cárter drena parejo, y además es un error difícil de cometer al revés: un motor vacío con la tapa todavía en el banco es como la gente arranca sin aceite.",
+        "drain-the-oil": "Ponga la bandeja debajo del cárter, afloje el tapón de drenaje y deje salir todo. El aceite sale lo bastante caliente para quemar: mantenga el antebrazo fuera del chorro y deje que el tapón caiga en la bandeja en vez de andarlo agarrando. Si el protector de cárter estorba, quítelo en vez de trabajar de medio lado.",
+        "change-the-filter": "Suelte el filtro de aceite viejo con la llave de cincho, recogiendo lo que se derrame, y limpie la cara de apoyo. Revise que el empaque redondo viejo salió con el filtro y no quedó pegado en la brida: un empaque doble se bota apenas hay presión. Unte aceite limpio en el empaque del filtro nuevo, enrósquelo a mano hasta que el empaque toque la brida y déle unos tres cuartos de vuelta más. Así lo indica el manual, y queda más apretado de lo que uno cree y más flojo de lo que lo deja una llave.",
+        "refit-the-drain-plug": "Ponga empaque nuevo en el tapón de drenaje, en el sentido que muestra la ilustración del manual, y apriete el tapón con llave de torque a la cifra de abajo. La rosca del cárter es blanda, y un cárter barrido es una reparación mucho más cara que el tapón que la empezó.",
+        "refill": "Sirva por el llenado el grado y la cantidad de abajo, y ponga la tapa. La cantidad es lo que recibe el sistema incluyendo lo que queda dentro del filtro de aceite, así que lo deja cerca de la marca de la varilla, pero no exactamente en ella.",
+        "run-and-check-for-leaks": "Arranque y déjelo en marcha mínima. La luz de presión de aceite debe apagarse en pocos segundos; si se queda encendida, apague y averigüe por qué antes de dejarlo trabajar más. Con el motor en marcha, revise por debajo el filtro de aceite y el tapón de drenaje por fugas.",
+        "check-the-level-again": "Apague el motor, espere a que el aceite se devuelva al cárter y revise la varilla con el carro en piso plano. Complete hasta la marca superior si hace falta. La cantidad es una guía; la varilla es la respuesta.",
+        "take-the-used-oil-away": "Lleve el aceite usado y el filtro de aceite viejo a un centro que los reciba. Un litro de aceite tirado en una cuneta echa a perder muchísima agua, y en Costa Rica los talleres y las gasolineras que le venden el aceite normalmente le reciben el usado."
+      },
+      "tools": {
+        "socket-set-and-ratchet": "Juego de cubos y ratchet",
+        "torque-wrench": "Llave de torque",
+        "oil-filter-strap-wrench": "Llave de cincho para filtro de aceite (herramienta comercial; el manual nombra sus propias llaves de filtro, pero la de cincho hace este trabajo)",
+        "drain-pan-and-funnel": "Bandeja de drenaje con capacidad para todo el llenado, y un embudo",
+        "gloves-and-rags": "Guantes y trapos — vale la pena leer la advertencia del propio manual sobre el contacto repetido con aceite usado"
+      },
+      "prerequisites": {
+        "engine-at-operating-temperature": "Motor calentado a temperatura de operación y luego apagado.",
+        "truck-level-and-secured": "Carro en piso plano, freno de mano puesto y llantas calzadas. Si lo levanta para llegar al tapón, póngalo sobre soportes de seguridad; nunca trabaje debajo sostenido solo por la gata.",
+        "new-gasket-and-filter-to-hand": "Empaque nuevo del tapón de drenaje y filtro de aceite nuevo listos en el banco antes de empezar. El empaque es de un solo uso y es la razón por la que un tapón queda llorando."
+      },
+      "safetyNotes": "El aceite drenado sale lo bastante caliente para quemar, y el aceite usado es un riesgo para la piel sobre el que el propio manual advierte. Use guantes, mantenga la cara y los brazos fuera del chorro, y lávese el aceite que le caiga en vez de dejarlo en la piel el resto del trabajo."
+    }
+  }
+}

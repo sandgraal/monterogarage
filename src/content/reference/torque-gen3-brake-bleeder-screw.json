@@ -1,0 +1,39 @@
+{
+  "id": "torque-gen3-brake-bleeder-screw",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    }
+  },
+  "kind": "torque",
+  "system": "brakes",
+  "torque": {
+    "value": 7.4,
+    "min": 6.0,
+    "max": 8.8,
+    "unit": "nm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis, Pub. No. PWJE0001 (February 2000), second scanned part: groups 25 to 55",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260831203149id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Brake caliper bleeder screw tightening torque",
+      "summary": "The tightening torque for the caliper bleeder screw. It is a small figure on a fitting that is easy to snap off in a corroded caliper and easy to leave weeping if it is left loose — either failure lets air into the circuit, which is the one thing a brake bleed exists to remove."
+    },
+    "es": {
+      "title": "Par de apriete del tornillo de purga del cáliper",
+      "summary": "El par de apriete del tornillo de purga del cáliper. Es una cifra pequeña, en una pieza que se quiebra fácil en un cáliper corroído y que gotea si queda floja; cualquiera de las dos fallas mete aire al circuito, que es justo lo que una purga de frenos existe para sacar."
+    }
+  }
+}

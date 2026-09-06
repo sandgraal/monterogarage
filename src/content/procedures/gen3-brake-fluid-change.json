@@ -1,0 +1,153 @@
+{
+  "id": "gen3-brake-fluid-change",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    }
+  },
+  "system": "brakes",
+  "difficulty": 4,
+  "time": {
+    "value": 2,
+    "unit": "h"
+  },
+  "prerequisites": [
+    {
+      "id": "know-which-brake-system-you-have"
+    },
+    {
+      "id": "sealed-fresh-fluid"
+    },
+    {
+      "id": "a-second-person"
+    },
+    {
+      "id": "truck-secure"
+    }
+  ],
+  "tools": [
+    {
+      "id": "scan-tool",
+      "special": true,
+      "sstNumber": "MB991502"
+    },
+    {
+      "id": "bleeder-spanner"
+    },
+    {
+      "id": "clear-hose-and-bottle"
+    },
+    {
+      "id": "torque-wrench-small"
+    },
+    {
+      "id": "syringe-or-turkey-baster"
+    },
+    {
+      "id": "water-and-rags"
+    }
+  ],
+  "partsConsumed": [],
+  "specs": ["fluid-gen3-brake-fluid", "torque-gen3-brake-bleeder-screw"],
+  "steps": [
+    {
+      "id": "find-out-what-you-are-working-on"
+    },
+    {
+      "id": "depressurise-before-anything-opens"
+    },
+    {
+      "id": "empty-and-refill-the-reservoir",
+      "specs": ["fluid-gen3-brake-fluid"]
+    },
+    {
+      "id": "bleed-in-the-manuals-order",
+      "specs": ["torque-gen3-brake-bleeder-screw"]
+    },
+    {
+      "id": "keep-the-reservoir-up"
+    },
+    {
+      "id": "where-a-home-bleed-stops"
+    },
+    {
+      "id": "check-the-pedal-and-the-lamps"
+    },
+    {
+      "id": "road-test-carefully"
+    }
+  ],
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis, Pub. No. PWJE0001 (February 2000), second scanned part: groups 25 to 55 — group 35A, Basic Brake System, On-vehicle Service: Bleeding (vehicles with ABS, including the hydraulic brake booster system) and Bleeding (vehicles without ABS), plus the lubricants and special tools tables",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260831203149id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Brake fluid change and bleeding",
+      "summary": "Brake fluid absorbs water, and water is what boils on a long descent and leaves you with a pedal and no brakes. Changing it is straightforward on a truck without ABS and genuinely is not on one with the hydraulic brake booster, where the system holds pressure in an accumulator after the engine is off and the manual's full bleed needs the factory scan tool. This entry tells you which truck you have, what you can do safely, and exactly where the job stops being a driveway job. The fluid specification and the bleeder torque below are the manual's; the time and the difficulty are our estimate.",
+      "steps": {
+        "find-out-what-you-are-working-on": "Establish first whether your truck has ABS and a hydraulic brake booster. The manual gives two completely different bleeding procedures, and the powered system is not a conventional vacuum-boosted brake: it stores pressure, its pump motor runs with the ignition on, and its full bleed sequence is driven through the factory scan tool. Getting this wrong is not a mess, it is a brake failure.",
+        "depressurise-before-anything-opens": "On a truck with the powered booster, depressurise before you open anything: ignition off, then press the brake pedal repeatedly — the manual states the number of presses — until the pedal goes hard. That hard pedal is the accumulator empty. Opening a line or a bleeder on a system that still holds pressure sprays fluid under pressure at whatever is in front of it, including your face.",
+        "empty-and-refill-the-reservoir": "Draw the old fluid out of the reservoir with a syringe and refill it with fresh fluid of the specification below, from a sealed container. Never mix in anything that is not that specification, and never pour back fluid that has been standing open — it has already taken up water. Wipe the cap and the area first so nothing falls in.",
+        "bleed-in-the-manuals-order": "Bleed one caliper at a time, in the order the manual gives for your system, with a clear hose from the bleeder into a bottle so you can see when clean fluid arrives. Close each bleeder to the torque below before moving on. On the ABS system the manual is explicit that only a small quantity comes out at a time and that the pump motor must be allowed to stop between bleeds — this is not the place to drain a caliper dry.",
+        "keep-the-reservoir-up": "Watch the reservoir the entire time and keep it between its minimum and maximum marks. If it runs low, air goes into the pump motor and what was a fluid change becomes a workshop job. Fluid on paint is permanent, so wash spills off with water immediately rather than at the end.",
+        "where-a-home-bleed-stops": "Refreshing the fluid at the calipers is within reach at home. Bleeding the powered booster itself — the accumulator, the power supply system and the ABS unit, which the manual drives through the factory scan tool with the ignition on and the pedal depressed — is not, and neither is any bleed that follows a component being replaced or the reservoir running dry. At that point the honest answer is a qualified mechanic with the tool, and it is a short conversation compared to what a failed system costs.",
+        "check-the-pedal-and-the-lamps": "With everything closed up, check the pedal: firm, high, and it must not sink slowly under steady foot pressure. Check the reservoir level. Turn the ignition on and confirm the brake and ABS warning lamps behave normally and go out. A lamp that stays on after this job is the truck telling you the system is not ready.",
+        "road-test-carefully": "Test it at walking pace in a clear space before you take it anywhere — a couple of stops, feeling for a soft or sinking pedal or a pull. Only then drive it, gently at first, and check the reservoir and every bleeder for weeping afterwards. Dispose of the old fluid the way you would used oil; it is not something to pour out on the ground."
+      },
+      "tools": {
+        "scan-tool": "The factory scan tool, which the manual uses to drive the ABS unit's own air-bleeding routine. There is no home substitute for this half of the job",
+        "bleeder-spanner": "Bleeder spanner of the right size, ideally a flare-nut type so it does not round the fitting",
+        "clear-hose-and-bottle": "Clear hose and a bottle, so you can see the fluid and the air coming out",
+        "torque-wrench-small": "Small-range torque wrench for the bleeder screws",
+        "syringe-or-turkey-baster": "Syringe or baster for emptying the reservoir",
+        "water-and-rags": "Water and rags for spills — brake fluid takes paint off on contact"
+      },
+      "prerequisites": {
+        "know-which-brake-system-you-have": "Know whether your truck has ABS and the hydraulic brake booster before you start. It decides which procedure applies and whether the job is finishable at home at all.",
+        "sealed-fresh-fluid": "Fresh fluid of the specified type, from a container that has not been opened before. An opened bottle from last year has already absorbed water and is not worth putting into a brake system.",
+        "a-second-person": "A second person for the pedal, unless you have a pressure bleeder.",
+        "truck-secure": "Truck level, parking brake applied, wheels chocked, and on stands if you need to be underneath it."
+      },
+      "safetyNotes": "This is a safety-critical system with stored pressure. Depressurise the hydraulic brake booster before opening any line, fitting or bleeder — ignition off, pedal pumped until it goes hard — and wear eye protection. Never let the reservoir run dry, never mix in a fluid that is not the specified type, and never reuse fluid that has been standing open. Do not drive the truck until the pedal is firm and high and stays there under steady pressure, and until the brake and ABS lamps go out. If the pedal stays soft, if a warning lamp stays on, if a bleeder screw rounds or snaps, or if the booster system itself needs bleeding, stop and take it to a qualified mechanic with the factory scan tool. Nothing about this system is worth a guess."
+    },
+    "es": {
+      "title": "Cambio y purga del líquido de frenos",
+      "summary": "El líquido de frenos absorbe agua, y el agua es lo que hierve en una bajada larga y lo deja a usted con pedal y sin frenos. Cambiarlo es sencillo en un carro sin ABS y de verdad no lo es en uno con el booster de freno hidráulico, donde el sistema guarda presión en su propio depósito a presión aun con el motor apagado y la purga completa del manual necesita el escáner de fábrica. Esta entrada le dice qué carro tiene, qué puede hacer con seguridad y en qué punto exacto el trabajo deja de ser de patio de casa. La especificación del líquido y el par del tornillo de purga que van abajo son del manual; el tiempo y la dificultad son estimación nuestra.",
+      "steps": {
+        "find-out-what-you-are-working-on": "Lo primero es establecer si su carro tiene ABS y booster de freno hidráulico. El manual da dos procedimientos de purga completamente distintos, y el sistema con bomba no es un freno con booster de vacío común: guarda presión, su motobomba trabaja con el suiche en contacto, y su secuencia completa de purga se maneja con el escáner de fábrica. Equivocarse aquí no es un desorden, es una falla de frenos.",
+        "depressurise-before-anything-opens": "En un carro con booster con bomba, quítele la presión antes de abrir nada: suiche apagado y después pise el pedal de freno una y otra vez —el manual dice cuántas veces— hasta que el pedal quede duro. Ese pedal duro es el depósito a presión ya vacío. Abrir una línea o una purga con el sistema todavía con presión lanza líquido a presión contra lo que tenga enfrente, incluida su cara.",
+        "empty-and-refill-the-reservoir": "Saque el líquido viejo del depósito con una jeringa y llénelo con líquido nuevo de la especificación de abajo, de un envase sellado. Nunca mezcle nada que no sea esa especificación, y nunca devuelva líquido que estuvo destapado: ya tomó agua. Limpie la tapa y el área antes, para que no le caiga nada adentro.",
+        "bleed-in-the-manuals-order": "Purgue un cáliper a la vez, en el orden que el manual da para su sistema, con una manguera transparente del tornillo de purga a una botella para ver cuándo llega líquido limpio. Cierre cada purga al par de abajo antes de pasar a la siguiente. En el sistema con ABS el manual es explícito en que solo sale una cantidad pequeña por vez y en que hay que dejar que la motobomba se detenga entre una purga y la siguiente: este no es el lugar para vaciar un cáliper.",
+        "keep-the-reservoir-up": "Vigile el depósito todo el tiempo y manténgalo entre las marcas de mínimo y máximo. Si se baja, le entra aire a la motobomba y lo que era un cambio de líquido se vuelve trabajo de taller. El líquido sobre la pintura es permanente, así que lave con agua lo que se derrame de una vez y no al final.",
+        "where-a-home-bleed-stops": "Renovar el líquido en los cáliper está al alcance en casa. Purgar el propio booster con bomba —el depósito a presión, el sistema de alimentación y el módulo de ABS, que el manual maneja con el escáner de fábrica, con el suiche en contacto y el pedal pisado— no lo está, y tampoco lo está ninguna purga después de cambiar un componente o de que el depósito se haya secado. En ese punto la respuesta honesta es un mecánico calificado con la herramienta, y es una conversación corta comparada con lo que cuesta un sistema fallado.",
+        "check-the-pedal-and-the-lamps": "Con todo cerrado, revise el pedal: firme, alto, y no se debe ir hundiendo despacio con el pie sostenido. Revise el nivel del depósito. Ponga el suiche en contacto y confirme que las luces de advertencia de freno y de ABS se comporten normal y se apaguen. Una luz que se queda encendida después de este trabajo es el carro diciéndole que el sistema no está listo.",
+        "road-test-carefully": "Pruébelo a paso de hombre en un espacio despejado antes de salir a ninguna parte: un par de frenadas, sintiendo si el pedal queda blando o se hunde, o si jala. Solo entonces maneje, suave al principio, y después revise el depósito y cada tornillo de purga por goteo. Deseche el líquido viejo como haría con el aceite usado; no es algo para botar en el suelo."
+      },
+      "tools": {
+        "scan-tool": "El escáner de fábrica, con el que el manual ejecuta la rutina de purga del propio módulo de ABS. Para esa mitad del trabajo no hay sustituto casero",
+        "bleeder-spanner": "Llave del tamaño correcto para la purga, de preferencia de estría, para no redondear la pieza",
+        "clear-hose-and-bottle": "Manguera transparente y una botella, para ver el líquido y el aire que salen",
+        "torque-wrench-small": "Llave de torque de rango bajo para los tornillos de purga",
+        "syringe-or-turkey-baster": "Jeringa o pera para vaciar el depósito",
+        "water-and-rags": "Agua y trapos para los derrames — el líquido de frenos levanta la pintura al contacto"
+      },
+      "prerequisites": {
+        "know-which-brake-system-you-have": "Sepa antes de empezar si su carro tiene ABS y booster de freno hidráulico. Eso define cuál procedimiento aplica y si el trabajo se puede terminar en casa del todo.",
+        "sealed-fresh-fluid": "Líquido nuevo del tipo especificado, de un envase que no se haya abierto antes. Una botella abierta del año pasado ya absorbió agua y no vale la pena meterla en un sistema de frenos.",
+        "a-second-person": "Una segunda persona para el pedal, salvo que tenga purgadora a presión.",
+        "truck-secure": "Carro en piso plano, freno de mano puesto, llantas calzadas, y sobre soportes de seguridad si necesita meterse debajo."
+      },
+      "safetyNotes": "Este es un sistema crítico de seguridad y con presión almacenada. Quítele la presión al booster de freno hidráulico antes de abrir cualquier línea, conexión o tornillo de purga —suiche apagado y pedal bombeado hasta que quede duro— y use protección para los ojos. Nunca deje que el depósito se seque, nunca mezcle un líquido que no sea el tipo especificado y nunca reutilice líquido que estuvo destapado. No maneje hasta que el pedal esté firme y alto y se mantenga así con el pie sostenido, y hasta que las luces de freno y de ABS se apaguen. Si el pedal queda blando, si una luz de advertencia se queda encendida, si un tornillo de purga se redondea o se quiebra, o si hay que purgar el propio sistema del booster, pare y llévelo a un mecánico calificado con el escáner de fábrica. Nada de este sistema vale una adivinada."
+    }
+  }
+}

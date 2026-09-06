@@ -1,0 +1,39 @@
+{
+  "id": "dimension-gen3-spark-plug-gap",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    },
+    "engines": ["6g74-gdi"]
+  },
+  "kind": "dimension",
+  "system": "engine",
+  "dimension": {
+    "min": 0.5,
+    "max": 0.6,
+    "unit": "mm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, Pub. No. PWJE0001, combined electronic edition for the 2001–2003 model years: includes group 15 (Intake and Exhaust) and group 16 (Engine Electrical), which the two scanned chassis volumes leave out",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/Manual.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260906172658id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/Manual.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Spark plug gap — standard value, 6G74 GDI",
+      "summary": "The plug gap the ignition system group gives as the standard value for the direct-injection petrol V6. The manual is explicit that the iridium plugs this engine uses are not to be gapped by hand — the figure is what a new plug measures, and what you check a used one against, not something to bend the earth electrode towards."
+    },
+    "es": {
+      "title": "Separación de electrodos de la bujía — valor estándar, 6G74 GDI",
+      "summary": "La separación de electrodos que el grupo de sistema de encendido da como valor estándar para el V6 de gasolina de inyección directa. El manual es claro en que las bujías de iridio de este motor no se calibran a mano: la cifra es lo que mide una bujía nueva y contra lo que se compara una usada, no algo que uno ande doblando en el electrodo de masa."
+    }
+  }
+}

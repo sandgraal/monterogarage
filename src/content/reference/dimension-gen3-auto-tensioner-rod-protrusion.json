@@ -1,0 +1,39 @@
+{
+  "id": "dimension-gen3-auto-tensioner-rod-protrusion",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    },
+    "engines": ["6g74-gdi"]
+  },
+  "kind": "dimension",
+  "system": "engine",
+  "dimension": {
+    "min": 3.8,
+    "max": 5.0,
+    "unit": "mm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis Volume 1, Pub. No. PWJE0001(1/2) (February 2000): groups 00 to 23",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260831203139id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Timing belt auto-tensioner rod protrusion — standard value, 6G74 GDI",
+      "summary": "How far the auto-tensioner push rod should stand proud once the belt is on, the crankshaft has been turned through two full revolutions and the tensioner has been left to settle for several minutes. It is the manual's own check that the tension it just had you set actually took: outside this range, the tensioning sequence is repeated rather than accepted."
+    },
+    "es": {
+      "title": "Salida del vástago del tensor automático — valor estándar, 6G74 GDI",
+      "summary": "Cuánto debe sobresalir el vástago del tensor automático una vez montada la faja, girado el cigüeñal dos vueltas completas y dejado el tensor asentarse unos minutos. Es la comprobación del propio manual de que la tensión que acaba de poner sí quedó: fuera de este rango se repite la secuencia de tensado en vez de darla por buena."
+    }
+  }
+}

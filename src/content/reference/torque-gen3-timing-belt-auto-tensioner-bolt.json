@@ -1,0 +1,40 @@
+{
+  "id": "torque-gen3-timing-belt-auto-tensioner-bolt",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    },
+    "engines": ["6g74-gdi"]
+  },
+  "kind": "torque",
+  "system": "engine",
+  "torque": {
+    "value": 23,
+    "min": 20,
+    "max": 26,
+    "unit": "nm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis Volume 1, Pub. No. PWJE0001(1/2) (February 2000): groups 00 to 23",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260831203139id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P1_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Timing belt auto-tensioner bolt tightening torque — 6G74 GDI",
+      "summary": "The tightening torque for the bolts that hold the hydraulic auto-tensioner to the block on the direct-injection petrol V6. The tensioner goes on with its setting pin still in place, and the pin only comes out once the belt is on and tensioned — pull it early and the rod extends into nothing."
+    },
+    "es": {
+      "title": "Par de apriete de los tornillos del tensor automático — 6G74 GDI",
+      "summary": "El par de apriete de los tornillos que sujetan el tensor hidráulico automático al bloque del V6 de gasolina de inyección directa. El tensor se monta con su pasador de sujeción puesto, y el pasador solo sale cuando la faja ya está montada y tensada: si lo saca antes, el vástago se extiende al vacío."
+    }
+  }
+}

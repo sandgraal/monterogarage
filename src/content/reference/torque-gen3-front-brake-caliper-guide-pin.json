@@ -1,0 +1,39 @@
+{
+  "id": "torque-gen3-front-brake-caliper-guide-pin",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    }
+  },
+  "kind": "torque",
+  "system": "brakes",
+  "torque": {
+    "value": 88,
+    "min": 83,
+    "max": 93,
+    "unit": "nm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis, Pub. No. PWJE0001 (February 2000), second scanned part: groups 25 to 55",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260831203149id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Front brake caliper guide pin and lock bolt tightening torque",
+      "summary": "The tightening torque the front disc brake section gives for the caliper's guide pin and its guide pin lock bolt — the two fasteners you undo to swing the caliper off the pads and the two you must put back correctly. The pins also have to slide freely in their bushings: a seized pin makes one pad do the work of two, and torque alone does not tell you that."
+    },
+    "es": {
+      "title": "Par de apriete del perno guía y del tornillo de fijación del cáliper delantero",
+      "summary": "El par de apriete que la sección de freno de disco delantero indica para el perno guía del cáliper y su tornillo de fijación: los dos que uno saca para voltear el cáliper y liberar las pastillas de freno, y los dos que hay que dejar bien puestos. Los pernos además tienen que deslizar libres en sus bujes: un perno pegado hace que una sola pastilla haga todo el trabajo, y eso el par de apriete no se lo dice."
+    }
+  }
+}
