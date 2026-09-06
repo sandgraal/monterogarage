@@ -263,6 +263,29 @@ Stop and ask before any of these:
   checks one invariant (`[hidden]` computes `display:none`), not that the
   page renders cards, resolves hrefs, filters, or shows the provisional
   indicator at all, which is precisely T501's recorded lesson repeating.
+  **`tests/garage/receipt-signer.test.ts` opened a different kind of debt on
+  2026-09-06: the implementer role editing a grader file it does not own.**
+  This is not a [TEST]-pairing gap like the entries above — the grader
+  exists (authored under T2-401a `[TEST]`, landed 2026-09-02) — it is the
+  boundary `.claude/agents/implementer.md` states directly: activation is a
+  marker deletion, nothing else; "Never edit assertions, fixtures, or
+  expectations of a test that grades your work." It has happened twice on
+  the same file. **04913f8** (T2-404 `[PLATFORM]`, merged) changed
+  `requireSigner()`'s signature and added a new test case ("the seam still
+  names its subject when a file goes missing") in the course of activating
+  the grader. **6da5763** (PR #123's Copilot follow-up branch,
+  `fix/002-t2-404-copilot-followups`, merged as #125) added a
+  `LIVE_TEST_TIMEOUT_MS` constant and applied it to all 10 `it()` calls
+  across the file's two live `describe` blocks. An independent
+  code-reviewer mutation-tested the second edit — broke `sign-receipt`'s
+  refusal status code, confirmed the grader still failed correctly,
+  reverted the break — and found it benign, but named the repeat pattern
+  itself as the thing worth tracking: whatever the quality of any one edit,
+  an implementer going back into a grader file more than once is exactly
+  what the separation rule exists to prevent. **Tracked rather than
+  re-litigated per incident:** the next edit to this file, or a repeat of
+  this pattern on any other grader, is a test-writer's change, not another
+  implementer mutation-testing its own diff after the fact.
 - A clean fact-check, a clean bilingual edit, and all required branch-protection
   checks authorize the `pr-shepherd` to merge without another confirmation.
 - Never `--no-verify`, never a bare force-push, never `gh pr merge --admin`,
