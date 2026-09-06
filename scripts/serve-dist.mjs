@@ -60,10 +60,9 @@
  *   compressed format makes it bigger (`archivo-400-800-latin.woff2`: 34940
  *   bytes raw, 34973 gzipped), so the type list is an allowlist.
  *
- * Compressed bodies are cached in memory per file *version* (path + mtime +
- * size), which is what a CDN serving a static build does and what keeps the
- * per-response cost off the shared assets every one of the audited pages
- * pulls in.
+ * Compressed bodies are cached in memory, one per encoding per file, which is
+ * what a CDN serving a static build does and what keeps the per-response cost
+ * off the shared assets every one of the audited pages pulls in.
  *
  * Usage:
  *   node scripts/serve-dist.mjs [--port 4321] [--dist dist]
@@ -182,6 +181,16 @@ export function isCompressibleType(contentType) {
  * order, so a browser listing `gzip, br` still gets brotli — the same choice
  * production makes.
  *
+ * A codec listed twice keeps its **highest** q-value. RFC 9110 does not say
+ * what a duplicate list member means — it is malformed input — so the only
+ * choice available is which way to be wrong, and last-write-wins is the one
+ * reading that can turn an acceptance into a refusal: `br;q=1, br;q=0` would
+ * drop to gzip or to identity, and on this server identity means grading a
+ * 266 KB page that no visitor downloads. Taking the maximum keeps a stated
+ * acceptance stated, and makes the result independent of header order, which
+ * is the property a negotiator should have. Chrome never sends a duplicate,
+ * so this is robustness, not a live path.
+ *
  * Exported for `tests/audit-targets.test.ts`: negotiation is the one piece of
  * this file with enough branches to be worth grading without a socket.
  *
@@ -210,8 +219,8 @@ export function negotiateEncoding(header, available = ENCODINGS) {
       if (Number.isFinite(parsed)) quality = parsed;
     }
 
-    if (codec === "*") wildcard = quality;
-    else offered.set(codec, quality);
+    if (codec === "*") wildcard = Math.max(wildcard ?? 0, quality);
+    else offered.set(codec, Math.max(offered.get(codec) ?? 0, quality));
   }
 
   let best = null;
@@ -225,24 +234,41 @@ export function negotiateEncoding(header, available = ENCODINGS) {
 }
 
 /**
- * Compressed bodies, keyed by file *version*. `dist/` does not change while
- * an audit runs, but keying on mtime and size rather than on path alone means
- * a rebuild under a long-lived `npm run serve:dist` cannot serve stale bytes.
+ * Compressed bodies: **one entry per (encoding, file)**, holding that file's
+ * current version only.
  *
- * @type {Map<string, Buffer>}
+ * The version (mtime + size) is stored *beside* the body rather than baked
+ * into the key, so a rebuild under a long-lived `npm run serve:dist`
+ * overwrites the entry instead of adding a second one next to it. Keying by
+ * version would be equally correct about staleness and quietly unbounded:
+ * every `astro build` would strand the previous copy of every changed file,
+ * for the life of the process. Bounded by the number of files actually
+ * requested, which for `dist/` is what a CDN would hold anyway.
+ *
+ * @type {Map<string, { version: string, body: Buffer }>}
  */
 const compressedCache = new Map();
 
+/**
+ * How many bodies the cache is holding. Exported only so
+ * `tests/audit-targets.test.ts` can grade the bound — "does not grow across
+ * rebuilds" is not observable from a response, and it was a real defect.
+ */
+export function compressedCacheSize() {
+  return compressedCache.size;
+}
+
 async function compressedBody(file, stats, encoding) {
-  const key = `${encoding}\0${file}\0${stats.mtimeMs}\0${stats.size}`;
+  const key = `${encoding}\0${file}`;
+  const version = `${stats.mtimeMs}\0${stats.size}`;
   const cached = compressedCache.get(key);
-  if (cached !== undefined) return cached;
+  if (cached !== undefined && cached.version === version) return cached.body;
 
   const body = await compress[encoding](
     await readFile(file),
     COMPRESS_OPTIONS[encoding]
   );
-  compressedCache.set(key, body);
+  compressedCache.set(key, { version, body });
   return body;
 }
 
@@ -309,10 +335,6 @@ async function sendFile(request, response, file, statusCode) {
 
   /** @type {Record<string, string>} */
   const headers = { "content-type": contentType, "cache-control": "no-store" };
-  // Correct even when this particular response went out uncompressed: the
-  // representation still varies by request header.
-  if (compressible) headers["vary"] = "accept-encoding";
-
   const sendIdentity = (size) => {
     if (size !== null) headers["content-length"] = String(size);
     response.writeHead(statusCode, headers);
@@ -327,10 +349,22 @@ async function sendFile(request, response, file, statusCode) {
     return;
   }
 
-  const encoding =
-    compressible && stats.size >= MIN_COMPRESS_BYTES
-      ? negotiateEncoding(request.headers["accept-encoding"])
-      : null;
+  // `Vary` describes whether the representation *can* differ by request
+  // header, so it is a fact about the file, not about this response: a
+  // compressible file over the size floor still varies even on the identity
+  // answer this particular client asked for. Below the floor it does not vary
+  // at all — every client gets the same bytes no matter what it accepts — and
+  // advertising otherwise would describe a negotiation that cannot happen.
+  //
+  // Production sends no `Vary` on anything (Vercel's edge owns its own cache
+  // keys), so there is no fidelity claim here either way and nothing
+  // Lighthouse scores. This is only about the header being true.
+  const negotiable = compressible && stats.size >= MIN_COMPRESS_BYTES;
+  if (negotiable) headers["vary"] = "accept-encoding";
+
+  const encoding = negotiable
+    ? negotiateEncoding(request.headers["accept-encoding"])
+    : null;
 
   if (encoding === null) {
     sendIdentity(stats.size);

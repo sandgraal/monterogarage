@@ -27,6 +27,7 @@ import {
 } from "../scripts/lib/audit-targets.mjs";
 import {
   MIN_COMPRESS_BYTES,
+  compressedCacheSize,
   isCompressibleType,
   negotiateEncoding,
   resolveRequest,
@@ -416,6 +417,23 @@ describe("serve-dist negotiateEncoding", () => {
   it("ignores case and stray whitespace", () => {
     expect(negotiateEncoding("  GZIP ;Q=1 ")).toBe("gzip");
   });
+
+  /*
+   * A duplicate list member is malformed input that RFC 9110 does not define,
+   * so the only question is which way to be wrong. Last-write-wins could turn
+   * a stated acceptance into a refusal, and on this server a refusal means
+   * serving the uncompressed 266 KB page the whole fix exists to stop
+   * grading. Highest-q keeps an acceptance an acceptance and makes the answer
+   * independent of header order.
+   */
+  it("keeps the highest q when a codec is listed twice, in either order", () => {
+    expect(negotiateEncoding("br;q=1, br;q=0")).toBe("br");
+    expect(negotiateEncoding("br;q=0, br;q=1")).toBe("br");
+    expect(negotiateEncoding("gzip;q=0, gzip;q=0.5, br;q=0")).toBe("gzip");
+    expect(negotiateEncoding("*;q=0, *;q=1")).toBe("br");
+    // A codec refused every time it appears is still refused.
+    expect(negotiateEncoding("br;q=0, br;q=0")).toBeNull();
+  });
 });
 
 describe("serve-dist compression over HTTP", () => {
@@ -578,6 +596,61 @@ describe("serve-dist compression over HTTP", () => {
     expect(woff.headers.get("content-encoding")).toBeNull();
     expect(woff.headers.get("vary")).toBeNull();
     expect(Buffer.from(await woff.arrayBuffer())).toEqual(font);
+  });
+
+  /*
+   * `Vary` is a claim that the representation can differ by request header.
+   * For a file under the size floor it cannot — every client gets the same
+   * bytes — so advertising it describes a negotiation that never happens.
+   */
+  it("only advertises Vary where the representation can actually differ", async () => {
+    const negotiable = await fetch(`${server.origin}/en/`, {
+      headers: { "accept-encoding": "identity" },
+    });
+    // Identity *this time*, but a different client would get brotli.
+    expect(negotiable.headers.get("content-encoding")).toBeNull();
+    expect(negotiable.headers.get("vary")).toBe("accept-encoding");
+
+    const notNegotiable = await fetch(`${server.origin}/tiny.html`, {
+      headers: { "accept-encoding": "gzip, deflate, br" },
+    });
+    expect(notNegotiable.headers.get("vary")).toBeNull();
+  });
+
+  /*
+   * The cache holds one body per (encoding, file), not one per file
+   * *version*: a long-lived `npm run serve:dist` across rebuilds must not
+   * accumulate a copy of every past build. Not observable from a response,
+   * so it is graded through `compressedCacheSize()`.
+   */
+  it("keeps one cache entry per file across rebuilds, and never a stale body", async () => {
+    const rebuilt = path.join(distDir, "rebuilt.html");
+    const first = `<!doctype html><html lang="en"><body>${"first ".repeat(400)}</body></html>`;
+    const second = `<!doctype html><html lang="en"><body>${"second ".repeat(400)}</body></html>`;
+
+    await writeFile(rebuilt, first);
+    const before = compressedCacheSize();
+    const one = await fetch(`${server.origin}/rebuilt.html`, {
+      headers: { "accept-encoding": "br" },
+    });
+    expect(await one.text()).toBe(first);
+    expect(compressedCacheSize()).toBe(before + 1);
+
+    // A second request for the unchanged file is a cache hit, not a new entry.
+    await fetch(`${server.origin}/rebuilt.html`, {
+      headers: { "accept-encoding": "br" },
+    });
+    expect(compressedCacheSize()).toBe(before + 1);
+
+    // Rebuild: same path, new bytes, new mtime.
+    await writeFile(rebuilt, second);
+    const two = await fetch(`${server.origin}/rebuilt.html`, {
+      headers: { "accept-encoding": "br" },
+    });
+    expect(await two.text()).toBe(second);
+    // Overwritten, not accumulated — this is the assertion that fails when
+    // the version is baked into the cache key.
+    expect(compressedCacheSize()).toBe(before + 1);
   });
 
   it("still serves the 404 page, compressed, with its 404 status", async () => {
