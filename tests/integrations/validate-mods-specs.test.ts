@@ -203,7 +203,7 @@ describe("a corpus whose figure ids resolve builds", () => {
  * ---------------------------------------------------------------------- */
 
 describe("the build refuses a figure id that resolves to nothing", () => {
-  it.fails("FAILS the build on a spec id nobody wrote", async () => {
+  it("FAILS the build on a spec id nobody wrote", async () => {
     const error = await runOver(
       corpusOf({ cites: ["test-ref-mod-nobody-wrote-this"] })
     );
@@ -215,18 +215,15 @@ describe("the build refuses a figure id that resolves to nothing", () => {
     expect(error?.message).toContain("test-ref-mod-nobody-wrote-this");
   });
 
-  it.fails(
-    "names the file of the entry carrying the bad id (SCF-04)",
-    async () => {
-      const error = await runOver(
-        corpusOf({ cites: ["test-ref-mod-nobody-wrote-this"] })
-      );
+  it("names the file of the entry carrying the bad id (SCF-04)", async () => {
+    const error = await runOver(
+      corpusOf({ cites: ["test-ref-mod-nobody-wrote-this"] })
+    );
 
-      expect(error?.message ?? "").toContain("mods/roof-rack.json");
-    }
-  );
+    expect(error?.message ?? "").toContain("mods/roof-rack.json");
+  });
 
-  it.fails("FAILS the build on a spec id naming a `parts` entry", async () => {
+  it("FAILS the build on a spec id naming a `parts` entry", async () => {
     /*
      * The mirror of T601's `reference-wrong-collection`, and its reasoning
      * carries over unchanged: an id can legitimately name a part *and* the
@@ -246,7 +243,7 @@ describe("the build refuses a figure id that resolves to nothing", () => {
  * ---------------------------------------------------------------------- */
 
 describe("the build refuses a figure id naming a kind with no figure", () => {
-  it.fails.each(NON_FIGURE_KINDS)(
+  it.each(NON_FIGURE_KINDS)(
     "FAILS the build on a spec id naming a `%s` entry",
     async (kind) => {
       const error = await runOver(
@@ -264,7 +261,7 @@ describe("the build refuses a figure id naming a kind with no figure", () => {
     }
   );
 
-  it.fails("names BOTH files on a wrong-kind citation (SCF-04)", async () => {
+  it("names BOTH files on a wrong-kind citation (SCF-04)", async () => {
     /*
      * The case that most needs the file index: the entry the author has to
      * look at is in a *different collection* from the entry the issue is
@@ -330,70 +327,61 @@ describe("the build checks EVERY cited id, not just the first", () => {
     ).resolves.toBeNull();
   });
 
-  it.fails(
-    "FAILS the build on an unresolvable id in SECOND position",
-    async () => {
-      const error = await runOver(
-        corpusOf({
-          cites: [TORQUE_SPEC.id, "test-ref-mod-nobody-wrote-this"],
-        })
-      );
+  it("FAILS the build on an unresolvable id in SECOND position", async () => {
+    const error = await runOver(
+      corpusOf({
+        cites: [TORQUE_SPEC.id, "test-ref-mod-nobody-wrote-this"],
+      })
+    );
 
-      expect(
-        error,
-        "the build resolved the first figure id and took the second on faith"
-      ).not.toBeNull();
-      expect(error?.message).toContain("test-ref-mod-nobody-wrote-this");
-    }
-  );
+    expect(
+      error,
+      "the build resolved the first figure id and took the second on faith"
+    ).not.toBeNull();
+    expect(error?.message).toContain("test-ref-mod-nobody-wrote-this");
+  });
 
-  it.fails(
-    "FAILS the build on an unresolvable id in the MIDDLE of the list",
-    async () => {
-      // The position no off-by-one reaches by accident: not first, not last.
-      const error = await runOver(
-        corpusOf({
-          cites: [
-            TORQUE_SPEC.id,
-            "test-ref-mod-nobody-wrote-this",
-            ROOF_LOAD_SPEC.id,
-          ],
-        })
-      );
+  it("FAILS the build on an unresolvable id in the MIDDLE of the list", async () => {
+    // The position no off-by-one reaches by accident: not first, not last.
+    const error = await runOver(
+      corpusOf({
+        cites: [
+          TORQUE_SPEC.id,
+          "test-ref-mod-nobody-wrote-this",
+          ROOF_LOAD_SPEC.id,
+        ],
+      })
+    );
 
-      expect(
-        error,
-        "an unresolvable id between two good ones was accepted"
-      ).not.toBeNull();
-      expect(error?.message).toContain("test-ref-mod-nobody-wrote-this");
-    }
-  );
+    expect(
+      error,
+      "an unresolvable id between two good ones was accepted"
+    ).not.toBeNull();
+    expect(error?.message).toContain("test-ref-mod-nobody-wrote-this");
+  });
 
-  it.fails(
-    "FAILS the build on a wrong-kind id that is not the first cited",
-    async () => {
-      /*
-       * The same position argument applied to the other rule. A resolver can
-       * plausibly check existence for every id and the *kind* only for the
-       * first — two loops where one was meant — and the single-id cases above
-       * cannot tell the difference.
-       */
-      const error = await runOver(
-        corpusOf({
-          nonFigureKinds: ["vin-code"],
-          cites: [TORQUE_SPEC.id, "test-ref-mod-vin-code"],
-        })
-      );
+  it("FAILS the build on a wrong-kind id that is not the first cited", async () => {
+    /*
+     * The same position argument applied to the other rule. A resolver can
+     * plausibly check existence for every id and the *kind* only for the
+     * first — two loops where one was meant — and the single-id cases above
+     * cannot tell the difference.
+     */
+    const error = await runOver(
+      corpusOf({
+        nonFigureKinds: ["vin-code"],
+        cites: [TORQUE_SPEC.id, "test-ref-mod-vin-code"],
+      })
+    );
 
-      expect(
-        error,
-        "a `vin-code` reference in second position was accepted as a figure"
-      ).not.toBeNull();
-      expect(error?.message).toContain("test-ref-mod-vin-code");
-    }
-  );
+    expect(
+      error,
+      "a `vin-code` reference in second position was accepted as a figure"
+    ).not.toBeNull();
+    expect(error?.message).toContain("test-ref-mod-vin-code");
+  });
 
-  it.fails("names BOTH bad ids when a list carries two", async () => {
+  it("names BOTH bad ids when a list carries two", async () => {
     // "One pass per fix" — an author who fixes the id the message named and
     // rebuilds into the same failure learns the check is untrustworthy.
     const message =

@@ -16,6 +16,25 @@
  *    the prerequisites to draw them would walk it forever.
  * 3. **Is each entry id unique?** Two entries claiming one id make every
  *    pointer to it ambiguous, exactly as in `src/lib/parts/index.ts`.
+ * 4. **Does each `specs[]` id name a `reference` entry, and is it a kind that
+ *    carries a figure?** (T604, on PRC-03's precedent.) "That row does not
+ *    exist" and "you cited a row with no number in it" are two different
+ *    mistakes that send an author to two different places, so they are two
+ *    codes — the division `src/lib/procedures/index.ts` already draws for the
+ *    identical pointer.
+ *
+ * ## Why the spec vocabulary is imported rather than re-declared
+ *
+ * {@link MOD_SPEC_KINDS} is `PROCEDURE_SPEC_KINDS`, aliased and not copied. The
+ * question both ask is the same question — *which `reference` kinds carry a
+ * figure* — and it has one answer, decided by REF-01's own filing rather than
+ * by either collection's taste. Two lists would be two vocabularies an author
+ * has to learn per collection and would drift the first time `reference` gained
+ * a kind; that is the "never re-mint" discipline T501 records for
+ * `sourceKind.*` and T502 was told to follow. `src/lib/procedures/index.ts` is
+ * dependency-free, so importing it keeps this module's build-hook chain a
+ * straight line. **If the two ever genuinely need to differ**, that is the
+ * moment to lift the list into a shared module — not a reason to fork it now.
  *
  * ## Why a lib and an integration, and not a `check:*` script
  *
@@ -46,6 +65,41 @@ import {
   modReferenceKey,
   type ModReferenceCollection,
 } from "./references.ts";
+import {
+  PROCEDURE_SPEC_KINDS,
+  readReferenceKinds,
+} from "../procedures/index.ts";
+
+/**
+ * `id → kind` for every readable `reference` entry — re-exported, not
+ * re-implemented, for the reason {@link MOD_SPEC_KINDS} records. Reading a
+ * collection's `kind` field is not a mods idea or a procedures idea; a second
+ * copy would be a second thing to keep correct.
+ */
+export { readReferenceKinds };
+
+/**
+ * The `reference` kinds a mod may cite as a figure — see the module docstring
+ * for why this is an alias and not a second list.
+ *
+ * All four are reachable from a real mod, which is why none of them is trimmed
+ * here: a roof rack states a **torque** and a load rating (a `dimension` — REF-01
+ * files length, mass and angle together, so a weight and a load rating are
+ * already storable), a long-range tank states a **capacity**, and a locker
+ * install changes the diff's **fluid** designation. Trimming the last two would
+ * leave an author with a figure, no legal way to cite it, and only one remaining
+ * move — writing the number into a sentence, which is the exact outcome this
+ * seam exists to prevent. A closed loop with no correct move in it is a schema
+ * bug (the reasoning `PROCEDURE_SPEC_KINDS` records for `dimension`).
+ *
+ * The four kinds this list does **not** admit — `fsm-section` and the three
+ * decoder kinds — carry no figure at all, so excluding them closes no loop on
+ * anybody: a manual section is a citation and belongs in `sources`, and a VIN
+ * or option code answers "what does this code mean", which no mod sets.
+ */
+export const MOD_SPEC_KINDS = PROCEDURE_SPEC_KINDS;
+
+const SPEC_KIND_SET: ReadonlySet<string> = new Set(MOD_SPEC_KINDS);
 
 /* -------------------------------------------------------------------------
  * What this module reads
@@ -75,6 +129,11 @@ export interface ModIdentity {
   readonly references: readonly ModReferenceIdentity[];
   /** The `requires` subset that points at another **mod** — the cycle edges. */
   readonly requiredModIds: readonly string[];
+  /**
+   * The `reference` entry ids this mod cites as figures (T604), in declaration
+   * order — the author chose which figure a reader meets first.
+   */
+  readonly specs: readonly string[];
 }
 
 /** The slice of any referenced entry the resolver needs: does this id exist? */
@@ -88,6 +147,10 @@ export const MOD_ISSUE_CODES = [
   "dangling-reference",
   "reference-wrong-collection",
   "requirement-cycle",
+  /** `specs[i]` names no `reference` entry (T604). */
+  "unknown-spec",
+  /** It names one, of a kind {@link MOD_SPEC_KINDS} does not admit. */
+  "wrong-spec-kind",
 ] as const;
 
 export type ModIssueCode = (typeof MOD_ISSUE_CODES)[number];
@@ -174,7 +237,17 @@ export function readMods(entries: readonly unknown[]): ModIdentity[] {
       });
     }
 
-    mods.push({ id, references, requiredModIds });
+    /*
+     * Read tolerantly, like every other list here: a non-string element is the
+     * schema's complaint to make (by field, with a message), and a second one
+     * from the build would send an author chasing two problems for one mistake.
+     */
+    const specsField = record["specs"];
+    const specs = Array.isArray(specsField)
+      ? specsField.filter((value): value is string => typeof value === "string")
+      : [];
+
+    mods.push({ id, references, requiredModIds, specs });
   }
 
   return mods;
@@ -300,6 +373,84 @@ function referenceIssues(
           `refs specs/001-foundation (MOD-02)`,
       });
     }
+  }
+
+  return issues;
+}
+
+/**
+ * T604's promise, as two distinct failures: every cited figure id names a
+ * `reference` entry, and that entry is a kind that actually carries a number.
+ *
+ * ## Every id, on every entry, every time
+ *
+ * Both loops are unconditional and neither of them breaks early. That is worth
+ * saying out loud because it is the one thing the graders could not prove: the
+ * T603 review found the resolver-shaped mutants a reviewer had to build by hand
+ * — `const [first] = specs`, a stray `return` where a `continue` belonged,
+ * `.find()` where `.filter()` belonged — and a corpus with one mods entry
+ * cannot tell a `for (const mod of mods)` from a `mods[0]`. So: the outer loop
+ * visits **every mod**, the inner `forEach` visits **every id**, and each
+ * problem is pushed rather than returned, because
+ * `src/integrations/validate-mods.ts`' own contract is one pass per fix — an
+ * author who fixes the id the message named and rebuilds into the same failure
+ * learns the check is untrustworthy.
+ *
+ * `relatedEntryIds` carries the cited id on a wrong-kind issue and not on an
+ * unknown one, and the asymmetry is deliberate: the build caller turns those
+ * ids into **file paths**, and on a wrong-kind citation the file the author has
+ * to open is in a different collection from the entry the issue is reported
+ * against. An id that resolves to nothing has no file to name.
+ */
+function specIssues(
+  mods: readonly ModIdentity[],
+  referenceKinds: ReadonlyMap<string, string>
+): ModIssue[] {
+  const issues: ModIssue[] = [];
+
+  for (const mod of mods) {
+    mod.specs.forEach((spec, index) => {
+      const kind = referenceKinds.get(spec);
+
+      if (kind === undefined) {
+        issues.push({
+          code: "unknown-spec",
+          entryId: mod.id,
+          field: `specs[${index}]`,
+          relatedEntryIds: [],
+          message:
+            `\`${mod.id}\` cites figure \`${spec}\`, and no \`reference\` ` +
+            `entry has that id. A figure comes from shared reference data ` +
+            `**by ID**, so the id is a typed reference the build resolves: ` +
+            `write the reference entry — with its own fitment, its own ` +
+            `sources and both prose locales — or take the citation out. A ` +
+            `number typed into the tradeoffs prose instead is the one thing ` +
+            `this field exists to prevent. ` +
+            `refs specs/001-foundation (MOD-01, PRC-03 precedent)`,
+        });
+        return;
+      }
+
+      if (SPEC_KIND_SET.has(kind)) return;
+
+      issues.push({
+        code: "wrong-spec-kind",
+        entryId: mod.id,
+        field: `specs[${index}]`,
+        relatedEntryIds: [spec],
+        message:
+          `\`${mod.id}\` cites \`${spec}\` as a figure, and that ` +
+          `\`reference\` entry is a \`${kind}\` — not one of ` +
+          `${MOD_SPEC_KINDS.map((each) => `\`${each}\``).join(" / ")}. ` +
+          `\`specs\` holds the rows that carry a **number** this mod states — ` +
+          `a fastener torque, a load rating, a capacity, a fluid spec. A ` +
+          `manual section is a citation and belongs in \`sources\`, and a VIN ` +
+          `or option code answers what a code means, which no mod sets. ` +
+          `Citing one renders an empty row, so it is an authoring mistake ` +
+          `with an answer rather than a silent blank. ` +
+          `refs specs/001-foundation (MOD-01, PRC-03 precedent)`,
+      });
+    });
   }
 
   return issues;
@@ -473,10 +624,19 @@ function requirementCycleIssues(mods: readonly ModIdentity[]): ModIssue[] {
  * {@link readReferencable}. A caller with nothing in hand passes an empty
  * list, and every reference is then reported as dangling — which is the
  * honest outcome, not a reason to skip the check.
+ *
+ * `referenceKinds` is `id → kind` for the `reference` collection, from
+ * {@link readReferenceKinds}. It defaults to empty for the same reason `known`
+ * does not special-case an empty corpus: a caller that has not loaded
+ * `reference` and a corpus with no reference entries are the same state, and
+ * neither is permission to wave a figure pointer through. An entry that cites
+ * no figure is unaffected either way, which is what keeps the default from
+ * quietly weakening a caller that forgot the argument.
  */
 export function findModIssues(
   mods: readonly ModIdentity[],
-  known: ReadonlyMap<string, ReadonlySet<string>>
+  known: ReadonlyMap<string, ReadonlySet<string>>,
+  referenceKinds: ReadonlyMap<string, string> = new Map()
 ): readonly ModIssue[] {
   const identity = duplicateEntryIdIssues(mods);
 
@@ -486,7 +646,11 @@ export function findModIssues(
   // a symptom.
   if (identity.length > 0) return identity;
 
-  return [...referenceIssues(mods, known), ...requirementCycleIssues(mods)];
+  return [
+    ...referenceIssues(mods, known),
+    ...specIssues(mods, referenceKinds),
+    ...requirementCycleIssues(mods),
+  ];
 }
 
 /** Thrown by {@link assertModsResolve}; carries the structured issues. */
@@ -506,9 +670,10 @@ export class ModsResolutionError extends Error {
 /** {@link findModIssues}, as the build's throw. */
 export function assertModsResolve(
   mods: readonly ModIdentity[],
-  known: ReadonlyMap<string, ReadonlySet<string>>
+  known: ReadonlyMap<string, ReadonlySet<string>>,
+  referenceKinds: ReadonlyMap<string, string> = new Map()
 ): void {
-  const issues = findModIssues(mods, known);
+  const issues = findModIssues(mods, known, referenceKinds);
   if (issues.length === 0) return;
   throw new ModsResolutionError(issues);
 }
