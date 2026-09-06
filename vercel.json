@@ -7,7 +7,7 @@
   "trailingSlash": true,
   "headers": [
     {
-      "source": "/(en|es)/(share|compartir)/:path*",
+      "source": "/(en|es)/(share|compartir)(/.*)?",
       "headers": [
         {
           "key": "Referrer-Policy",
