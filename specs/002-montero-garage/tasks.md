@@ -528,22 +528,55 @@ Vercel is an owner action inside T2-102 (the task prepares the exact records).
   need it); mutation-checked by removing the rule — the grader went red on
   exactly the garage and sign-in cases, both locales, and green again once
   restored.
-- [ ] **T2-304 [CONTENT+DESIGN]** Gitana Blanca seed — user page #1: owner
+- [x] **T2-304 [CONTENT+DESIGN]** Gitana Blanca seed — user page #1: owner
   interview (001 T303's content) entered as real records with receipts;
   conductor+owner refine the garage views against it before generalization.
   Depends: T2-302. *(MIG-04)*
+  <br>**Closed 2026-09-06, conductor+owner session, direct against
+  production (same write path as the original seeding).** Two migrations
+  that had merged to `main` since the seed (`20260903120000_record_media`,
+  `20260903120100_public_handles`) had never been pushed to the live
+  `monterogarage` project — `list_migrations` still showed
+  `20260831120000_vehicle_photos_storage` as the latest applied, so the
+  record-media and public-handle features could not actually be exercised
+  against Gitana Blanca's real data. Both applied now via `apply_migration`,
+  in order. A stray `fddd` test vehicle (gen1/1989, no records, no receipts,
+  no photos) was found sitting next to Gitana Blanca in the same account and
+  deleted. The real gap the "refine the views" clause was for: both seeded
+  records carried empty `problem_ids`/`part_ids`/`procedure_ids`, so the
+  current-state sheet's derived Service history and Open items panels
+  rendered empty — the flagship page had nothing for those views to show.
+  The owner confirmed which of the reference collection's gen3 problems the
+  2026-08-27 ROSOGA overhaul actually addressed (`gen3-brake-booster-
+  accumulator`, `gen3-front-lower-ball-joint`, `gen3-front-sway-bar-end-
+  links`, `gen3-strut-top-hat-corrosion`); the record now carries those four
+  `problem_ids`. The cooling fault ROSOGA also fixed is not yet in the
+  reference collection — left unlinked rather than mapped to the wrong
+  problem; a real content gap, not a mistake to paper over. `part_ids`/
+  `procedure_ids` stay empty because 001 T503/T504 (parts/procedures wave 1)
+  have not landed — `src/content/parts` and `src/content/procedures` are
+  both still empty, so there is nothing yet to link.
+  <br>**Correction (2026-09-06):** the "12th photo silently failed to reach
+  storage" claim below never happened — the owner confirmed there was no
+  12th photo and no failed upload. `vehicles.photo_paths` has held exactly
+  12 entries since the original seed, which is what "11 of 12 ... seeded"
+  should have read as complete rather than one short. Struck the false claim
+  in place rather than deleting it, so a future reader does not wonder why
+  the line vanished.
   <br>**Added mid-task (2026-09-02): the interview surfaced a real gap.**
   Gitana Blanca's seed data includes WhatsApp photos, videos, and voice notes
   documenting a shop's repair work — none of which are receipts in GAR-05′'s
   financial sense (vendor/date/amount), and video/audio have no attachment
   type at all today (the `vehicle-photos` bucket's `allowed_mime_types` is
   image-only per T2-301a). Owner-approved spec addition **GAR-06′** and new
-  tasks **T2-305a/T2-305** below cover it. 11 of 12 documentation photos and
+  tasks **T2-305a/T2-305** below cover it. All 12 documentation photos and
   the ROSOGA quote PDF (as a GAR-05′ receipt) were seeded directly against
   production via the conductor's Supabase connection, with the owner's
-  explicit sign-off on that write path; the 12th photo silently failed to
+  explicit sign-off on that write path. ~~The 12th photo silently failed to
   reach storage (not a data-loss risk — nothing references it) and is a
-  loose end if anyone wants to chase it. **A real bug found in the process
+  loose end if anyone wants to chase it.~~ **Struck 2026-09-06: no such
+  failure occurred; the owner confirmed all 12 landed the first time.**
+  **A real bug found in the process
   (ticketed below as T2-305):** uploading vehicle photos back-to-back fast enough
   triggers a lost-update race on `vehicles.photo_paths` — one upload's
   read-modify-write of the array can clobber another's, leaving a real
