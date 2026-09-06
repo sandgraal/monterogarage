@@ -1183,6 +1183,53 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   **parameterised by principal**, not written once for "the public". T2-404
   needs the same masking for a different audience, and a second copy of a
   privacy rule is a second place for it to drift.
+  <br>**Partly landed 2026-09-05, and deliberately left unchecked.** Four of
+  the five deliverables shipped; the fifth — the public *pages* themselves — is
+  blocked on a decision that is not an implementer's to make, so the box stays
+  open rather than being ticked on four fifths.
+  <br>*Shipped:* the principal-parameterised masking (`src/lib/garage/
+  visibility.ts` — `maskRecordForPrincipal`, `maskRecordsForPrincipal`,
+  `visibleReceipts`, `isEligibleForCommunityEvidence`, over an `owner | world |
+  grant` union, so T2-404 adds a principal and not a code path); SHR-02's handle
+  as a *namespace* (`src/lib/garage/handles.ts` plus
+  `20260903120100_public_handles.sql`: folded on write by a trigger, unique on
+  `lower(handle)`, reserved words in a check constraint, and `retired_handles`
+  so a renamed owner's old URL cannot be inherited by a stranger); the
+  per-vehicle and per-record/per-field toggles on `/en/garage/` + `/es/taller/`.
+  **50 of T2-401's markers activated** (`handles.test.ts`,
+  `public-pages.test.ts`, and `profiles.handle` promoted out of `pending` in
+  `contract.ts`): 687 → 735 passing, 161 → 111 expected-fail.
+  <br>*Blocked, and this is the finding:* **there is no anonymous read path in
+  this schema, and T2-402 may not add one.** SHR-01 names "the public
+  visibility columns of SHR-02" as one of the three enforcement modes, but
+  `rules.ts`' `policyIssues` rejects any policy naming `anon`/`public` or whose
+  `using` is not owner-scoped — correctly — so the columns cannot be expressed
+  as RLS. The only remaining permitted shape is a `security definer` function
+  granted to `anon`, and `share-instrument.test.ts`'s **unmarked** grader "no
+  routine outside the declared share readers is anon-executable" holds that set
+  *equal* to `SHARE_READER_FUNCTIONS`. Adding a fourth entry is widening a
+  security allow-list in a grader's contract, which is a test-writer's edit and
+  not an implementer's. Until that decision lands, a public page at
+  `/en/garage/<handle>/` could render chrome and never data — and a page that
+  renders "nothing here" when the truth is "no reader exists" is the
+  failure-is-not-a-zero mistake AGENTS.md names.
+  <br>*Recommended resolution, for whoever picks it up:* fold the public reader
+  into T2-404, which is already building exactly this machinery (definer RPC
+  granted to `anon`, tables keep `revoke all … from anon`). One reader — the
+  world is a principal with no token, and `visibility.ts` already models it —
+  costs one contract entry reviewed beside the migration, instead of two.
+  <br>*Also found (not patched):* `contract.ts`'s `RESERVED_HANDLES` lists
+  `gitana`, and `handles.test.ts`'s own positive control requires
+  `handleIssues("gitana")` to return no issues. Both cannot hold. The control is
+  the one that is right — Gitana Blanca is a *user's* truck (MIG-04), not the
+  site's identity — so `handles.ts` and the migration leave the handle
+  claimable and the grader's list is left for an independent session.
+  <br>*Judgment call recorded:* `profiles.handle` is declared **twice** — in the
+  original `create table` and again as `alter table … add column if not exists`.
+  A column added only by an `alter` is invisible to `createTableBody`, which is
+  what every contract shape grader reads, while an existing database will never
+  re-run the first migration. Both paths converge; every rule lives in the new
+  file, once.
 
 - [ ] **T2-404 [PLATFORM]** Typed share grants: the `shares` table, create and
   revoke RPCs (authenticated), the anon read RPCs, the Edge Function receipt

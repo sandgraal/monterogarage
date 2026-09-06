@@ -464,6 +464,50 @@ export interface UiStrings
   readonly garageUseForBrowsing: string;
   readonly garageUsedForBrowsing: string;
   readonly garageIdentityIncomplete: string;
+  /* Publishing — T2-402, SHR-02 / SHR-03 */
+  /**
+   * The handle panel. "Address" rather than "handle" or "username" in both
+   * locales: what the owner is choosing is the middle of a URL, and that is the
+   * only place they will ever see it. `usted` throughout (AGENTS.md).
+   */
+  readonly garageHandleHeading: string;
+  readonly garageHandleIntro: string;
+  readonly garageHandleLabel: string;
+  /** `{min}`/`{max}` are `HANDLE_LENGTH`, interpolated — never typed per locale. */
+  readonly garageHandleHintTemplate: string;
+  readonly garageHandleSave: string;
+  readonly garageHandleNone: string;
+  /** `{handle}` is the owner's own word, set as text and never composed into. */
+  readonly garageHandleCurrentTemplate: string;
+  readonly garageHandleIssueEmpty: string;
+  /** `{min}` is `HANDLE_LENGTH.min`. */
+  readonly garageHandleIssueShortTemplate: string;
+  /** `{max}` is `HANDLE_LENGTH.max`. */
+  readonly garageHandleIssueLongTemplate: string;
+  readonly garageHandleIssueCharacters: string;
+  readonly garageHandleIssueReserved: string;
+  /**
+   * What the database said no to, said without saying which rule.
+   *
+   * Uniqueness, another account's retired handle, and a rule this form does not
+   * know about are one sentence on purpose: "somebody already has it" and
+   * "somebody used to have it" are both true of an address the reader cannot
+   * take, and distinguishing them would turn the form into an oracle about
+   * other people's accounts.
+   */
+  readonly garageHandleUnavailable: string;
+  readonly garageVisibilityHeading: string;
+  readonly garageVisibilityIntro: string;
+  readonly garageVisibilityNeedsHandle: string;
+  readonly garageVisibilityShowcaseLabel: string;
+  readonly garageVisibilityShowcaseHint: string;
+  readonly garageVisibilityWorklogLabel: string;
+  readonly garageVisibilityWorklogHint: string;
+  readonly garageRecordVisibilityLegend: string;
+  readonly garageRecordPublicLabel: string;
+  readonly garageRecordCostPublicLabel: string;
+  readonly garageRecordVisibilityHint: string;
+  readonly garageRecordVisibilityNeedsRecord: string;
   /* Records and receipts — T2-302, GAR-02′ / GAR-05′ */
   /**
    * The line that frames every record on the page as the owner's own account
@@ -1135,6 +1179,39 @@ const en: UiStrings = {
   garageUsedForBrowsing: "The site is filtered to this truck.",
   garageIdentityIncomplete:
     "Name the market, the year and the engine to filter the site with this truck.",
+  garageHandleHeading: "Your public address",
+  garageHandleIntro:
+    "Choose the name your published pages live under. It is yours alone, and it stays yours even if you change it later — a link you have already given somebody never leads to a stranger's garage.",
+  garageHandleLabel: "Address",
+  garageHandleHintTemplate:
+    "Between {min} and {max} characters: lower-case letters, numbers, and hyphens between them.",
+  garageHandleSave: "Save this address",
+  garageHandleNone: "You have not chosen an address yet.",
+  garageHandleCurrentTemplate: "Your address is {handle}.",
+  garageHandleIssueEmpty: "Type an address.",
+  garageHandleIssueShortTemplate: "Too short — at least {min} characters.",
+  garageHandleIssueLongTemplate: "Too long — at most {max} characters.",
+  garageHandleIssueCharacters:
+    "Use lower-case letters, numbers, and hyphens between them — no spaces, dots or underscores, and never a hyphen at either end.",
+  garageHandleIssueReserved: "The site keeps that one for itself.",
+  garageHandleUnavailable: "That address is not available.",
+  garageVisibilityHeading: "Who can see this truck",
+  garageVisibilityIntro:
+    "Nothing here is public until you say so, one page at a time and one record at a time.",
+  garageVisibilityNeedsHandle:
+    "Choose your public address first — a page needs somewhere to live.",
+  garageVisibilityShowcaseLabel: "Open the showcase page",
+  garageVisibilityShowcaseHint: "The photos and the truck's own profile.",
+  garageVisibilityWorklogLabel: "Open the work-log page",
+  garageVisibilityWorklogHint:
+    "Only the records you open below, one by one — never the whole history at once.",
+  garageRecordVisibilityLegend: "On the public work-log",
+  garageRecordPublicLabel: "Show this record",
+  garageRecordCostPublicLabel: "Show what it cost",
+  garageRecordVisibilityHint:
+    "Two decisions, not one: a record you have opened still keeps its cost and its receipts private until you open them here.",
+  garageRecordVisibilityNeedsRecord:
+    "Save the record first — there is nothing to open yet.",
   garageRecordsTestimonyNote:
     "These are your own notes about your own truck, kept as you wrote them. The site does not check them and never presents them as reference facts.",
   garageRecordAdd: "Add a record",
@@ -1701,6 +1778,39 @@ const es: UiStrings = {
   garageUsedForBrowsing: "El sitio está filtrado para este carro.",
   garageIdentityIncomplete:
     "Indique el mercado, el año y el motor para filtrar el sitio con este carro.",
+  garageHandleHeading: "Su dirección pública",
+  garageHandleIntro:
+    "Escoja el nombre bajo el cual viven sus páginas publicadas. Es solo suyo, y sigue siéndolo aunque lo cambie después: un enlace que usted ya le pasó a alguien nunca lleva al taller de otra persona.",
+  garageHandleLabel: "Dirección",
+  garageHandleHintTemplate:
+    "Entre {min} y {max} caracteres: letras minúsculas, números y guiones entre ellos.",
+  garageHandleSave: "Guardar esta dirección",
+  garageHandleNone: "Todavía no ha escogido una dirección.",
+  garageHandleCurrentTemplate: "Su dirección es {handle}.",
+  garageHandleIssueEmpty: "Escriba una dirección.",
+  garageHandleIssueShortTemplate: "Muy corta: al menos {min} caracteres.",
+  garageHandleIssueLongTemplate: "Muy larga: máximo {max} caracteres.",
+  garageHandleIssueCharacters:
+    "Use letras minúsculas, números y guiones entre ellos; sin espacios, puntos ni rayas bajas, y nunca un guion al principio o al final.",
+  garageHandleIssueReserved: "El sitio reserva esa para sí mismo.",
+  garageHandleUnavailable: "Esa dirección no está disponible.",
+  garageVisibilityHeading: "Quién puede ver este carro",
+  garageVisibilityIntro:
+    "Aquí nada es público hasta que usted lo diga, una página a la vez y una ficha a la vez.",
+  garageVisibilityNeedsHandle:
+    "Escoja primero su dirección pública: una página necesita dónde vivir.",
+  garageVisibilityShowcaseLabel: "Abrir la página de exhibición",
+  garageVisibilityShowcaseHint: "Las fotos y el perfil del carro.",
+  garageVisibilityWorklogLabel: "Abrir la página de bitácora",
+  garageVisibilityWorklogHint:
+    "Solo las fichas que usted abra abajo, una por una; nunca todo el historial de un solo golpe.",
+  garageRecordVisibilityLegend: "En la bitácora pública",
+  garageRecordPublicLabel: "Mostrar esta ficha",
+  garageRecordCostPublicLabel: "Mostrar cuánto costó",
+  garageRecordVisibilityHint:
+    "Son dos decisiones, no una: una ficha abierta mantiene privados su costo y sus facturas hasta que usted los abra aquí.",
+  garageRecordVisibilityNeedsRecord:
+    "Guarde primero la ficha: todavía no hay nada que abrir.",
   garageRecordsTestimonyNote:
     "Estas son sus propias anotaciones sobre su propio carro, tal como usted las escribió. El sitio no las verifica ni las presenta nunca como datos de referencia.",
   garageRecordAdd: "Agregar una ficha",

@@ -50,9 +50,19 @@ alter default privileges in schema public revoke all on functions from public;
 -- read. `deleted_at` is where ACC-03's 30-day recovery window lives: "delete"
 -- marks, it does not drop, until the window closes.
 
+-- `handle` (SHR-02) is declared here and given its rules in
+-- `20260903120100_public_handles.sql`, which also adds it by `alter table` for
+-- databases that already ran this file. Both paths end identically; the reason
+-- the column is named in *this* statement as well is that a column added only
+-- by an `alter` is invisible to `createTableBody` in `tests/garage/sql.ts`, and
+-- the contract's shape graders read a `create table` body and nothing else.
+-- Nullable on purpose: a user who has never published anything needs no public
+-- identity, and forcing one at signup would make every account permanently
+-- addressable in a namespace SHR-01 says is private by default.
 create table public.profiles (
   id uuid primary key references auth.users on delete cascade,
   deleted_at timestamptz,
+  handle text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

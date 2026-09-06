@@ -74,6 +74,7 @@ import { SITE_NAME, TRUCK_NAME } from "../../site";
 import { SUPABASE_BROWSER_CONFIG } from "../../lib/supabase/config";
 import { MAX_DISPLAY_NAME_LENGTH } from "../../lib/garage/vehicle";
 import { MAX_PHOTO_BYTES, PHOTO_MIME_TYPES } from "../../lib/garage/photos";
+import { HANDLE_LENGTH } from "../../lib/garage/handles";
 import {
   MAX_RECEIPT_BYTES,
   RECEIPT_MIME_TYPES,
@@ -173,6 +174,27 @@ const mediaTooLarge = strings.garageMediaSizeRejectedTemplate.replace(
     unitDisplay: "short",
     maximumFractionDigits: 0,
   }).format(MAX_MEDIA_BYTES / 1024 / 1024)
+);
+
+/**
+ * The handle rules, as sentences (SHR-02).
+ *
+ * `HANDLE_LENGTH` is one constant read by the form, by
+ * `src/lib/garage/handles.ts` and by the migration's check constraint, so the
+ * bounds appear in a sentence here and are typed into a locale record nowhere
+ * (AGENTS.md — "if you find yourself writing the same figure twice, the schema
+ * is wrong").
+ */
+const handleHint = strings.garageHandleHintTemplate
+  .replace("{min}", number.format(HANDLE_LENGTH.min))
+  .replace("{max}", number.format(HANDLE_LENGTH.max));
+const handleTooShort = strings.garageHandleIssueShortTemplate.replace(
+  "{min}",
+  number.format(HANDLE_LENGTH.min)
+);
+const handleTooLong = strings.garageHandleIssueLongTemplate.replace(
+  "{max}",
+  number.format(HANDLE_LENGTH.max)
 );
 
 /** The four `record_kind` values with the reader's name for each. */
@@ -339,6 +361,15 @@ const hasReferences = Object.values(referenceCatalogue).some(
     data-string-estimate-time={strings.garagePlannedEstimateTimeLabel}
     data-string-estimate-cost={strings.garagePlannedEstimateCostLabel}
     data-string-estimate-coverage={strings.garagePlannedEstimateCoverageTemplate}
+    data-string-handle-none={strings.garageHandleNone}
+    data-string-handle-current={strings.garageHandleCurrentTemplate}
+    data-string-handle-empty={strings.garageHandleIssueEmpty}
+    data-string-handle-short={handleTooShort}
+    data-string-handle-long={handleTooLong}
+    data-string-handle-characters={strings.garageHandleIssueCharacters}
+    data-string-handle-reserved={strings.garageHandleIssueReserved}
+    data-string-handle-unavailable={strings.garageHandleUnavailable}
+    data-string-visibility-needs-handle={strings.garageVisibilityNeedsHandle}
     data-locale={LOCALE_BCP47[locale]}
   >
     <div class="garage__intro">
@@ -381,6 +412,60 @@ const hasReferences = Object.values(referenceCatalogue).some(
             {/* The list of vehicles                                       */}
             {/* ---------------------------------------------------------- */}
             <div class="garage__panel" data-garage-list-view>
+              {/* ------------------------------------------------------ */}
+              {/* The public address (T2-402, SHR-02)                     */}
+              {/*                                                        */}
+              {/* On the list screen and not on a vehicle, because the    */}
+              {/* handle belongs to the account: one address, however many */}
+              {/* trucks are published under it. Every rule it can break  */}
+              {/* is checked here for the reader's sake and enforced in   */}
+              {/* the database for everyone else's (SHR-01 — a check in   */}
+              {/* page code is not an enforcement mode).                  */}
+              {/* ------------------------------------------------------ */}
+              <section class="garage__handle">
+                <h2>{strings.garageHandleHeading}</h2>
+                <p class="garage__fineprint">{strings.garageHandleIntro}</p>
+                <p class="garage__note" data-garage-handle-current>
+                  {strings.garageHandleNone}
+                </p>
+
+                <p class="garage__field">
+                  <label class="garage__label" for="garage-handle">
+                    {strings.garageHandleLabel}
+                  </label>
+                  <input
+                    class="garage__input"
+                    id="garage-handle"
+                    type="text"
+                    autocomplete="off"
+                    autocapitalize="none"
+                    spellcheck="false"
+                    maxlength={HANDLE_LENGTH.max}
+                    aria-describedby="garage-handle-hint"
+                    data-garage-handle-input
+                  />
+                  <span class="garage__hint" id="garage-handle-hint">
+                    {handleHint}
+                  </span>
+                </p>
+
+                <div class="garage__actions">
+                  <button
+                    class="garage__button"
+                    type="button"
+                    data-garage-handle-save
+                    data-idle={strings.garageHandleSave}
+                  >
+                    {strings.garageHandleSave}
+                  </button>
+                </div>
+                <p
+                  class="garage__message"
+                  data-garage-handle-message
+                  role="alert"
+                />
+              </section>
+
               <div class="garage__panel-head">
                 <h2>{strings.garageVehiclesHeading}</h2>
                 <button class="garage__button" type="button" data-garage-add>
@@ -444,6 +529,64 @@ const hasReferences = Object.values(referenceCatalogue).some(
                 role="status"
                 aria-live="polite"
               />
+
+              {/* ------------------------------------------------------ */}
+              {/* Who can see this truck (T2-402, SHR-02)                 */}
+              {/*                                                        */}
+              {/* Two switches and not one: SHR-02 names the showcase and */}
+              {/* the work-log separately, and publishing a photo gallery */}
+              {/* is not publishing a maintenance history with dates,     */}
+              {/* odometer readings and a home town in the vendor names.  */}
+              {/* Checkboxes rather than a save button, because the state */}
+              {/* IS the decision — a toggle that needed confirming is a  */}
+              {/* toggle somebody leaves half-thrown.                     */}
+              {/* ------------------------------------------------------ */}
+              <div class="garage__visibility">
+                <h3>{strings.garageVisibilityHeading}</h3>
+                <p class="garage__fineprint">{strings.garageVisibilityIntro}</p>
+                <p class="garage__note" data-garage-visibility-gate hidden>
+                  {strings.garageVisibilityNeedsHandle}
+                </p>
+
+                <p class="garage__check">
+                  <input
+                    class="garage__checkbox"
+                    id="garage-showcase-public"
+                    type="checkbox"
+                    aria-describedby="garage-showcase-hint"
+                    data-garage-showcase-public
+                  />
+                  <label class="garage__label" for="garage-showcase-public">
+                    {strings.garageVisibilityShowcaseLabel}
+                  </label>
+                  <span class="garage__hint" id="garage-showcase-hint">
+                    {strings.garageVisibilityShowcaseHint}
+                  </span>
+                </p>
+
+                <p class="garage__check">
+                  <input
+                    class="garage__checkbox"
+                    id="garage-worklog-public"
+                    type="checkbox"
+                    aria-describedby="garage-worklog-hint"
+                    data-garage-worklog-public
+                  />
+                  <label class="garage__label" for="garage-worklog-public">
+                    {strings.garageVisibilityWorklogLabel}
+                  </label>
+                  <span class="garage__hint" id="garage-worklog-hint">
+                    {strings.garageVisibilityWorklogHint}
+                  </span>
+                </p>
+
+                <p
+                  class="garage__message"
+                  data-garage-visibility-message
+                  role="status"
+                  aria-live="polite"
+                />
+              </div>
 
               {/*
                * Whatever went wrong loading this vehicle's history.
@@ -1158,6 +1301,69 @@ const hasReferences = Object.values(referenceCatalogue).some(
               </fieldset>
 
               {/* ------------------------------------------------------ */}
+              {/* This record on the public work-log (T2-402, SHR-03)      */}
+              {/*                                                         */}
+              {/* Two independent switches, and the hint says so out loud: */}
+              {/* SHR-03 is exactly the claim that opening a record does   */}
+              {/* not open what it cost. They live on the record form and  */}
+              {/* not on the card, because publishing is a considered act  */}
+              {/* and the rail is a place people scroll quickly.           */}
+              {/* ------------------------------------------------------ */}
+              <fieldset class="garage__fieldset">
+                <legend class="garage__legend">
+                  {strings.garageRecordVisibilityLegend}
+                </legend>
+                <p class="garage__hint" id="garage-record-visibility-hint">
+                  {strings.garageRecordVisibilityHint}
+                </p>
+
+                <p
+                  class="garage__empty-note"
+                  data-garage-record-visibility-gate
+                >
+                  {strings.garageRecordVisibilityNeedsRecord}
+                </p>
+
+                <div data-garage-record-visibility hidden>
+                  <p class="garage__check">
+                    <input
+                      class="garage__checkbox"
+                      id="garage-record-public"
+                      type="checkbox"
+                      aria-describedby="garage-record-visibility-hint"
+                      data-garage-record-public
+                    />
+                    <label class="garage__label" for="garage-record-public">
+                      {strings.garageRecordPublicLabel}
+                    </label>
+                  </p>
+
+                  <p class="garage__check">
+                    <input
+                      class="garage__checkbox"
+                      id="garage-record-cost-public"
+                      type="checkbox"
+                      aria-describedby="garage-record-visibility-hint"
+                      data-garage-record-cost-public
+                    />
+                    <label
+                      class="garage__label"
+                      for="garage-record-cost-public"
+                    >
+                      {strings.garageRecordCostPublicLabel}
+                    </label>
+                  </p>
+
+                  <p
+                    class="garage__message"
+                    data-garage-record-visibility-message
+                    role="status"
+                    aria-live="polite"
+                  />
+                </div>
+              </fieldset>
+
+              {/* ------------------------------------------------------ */}
               {/* Receipts (GAR-05′)                                      */}
               {/* ------------------------------------------------------ */}
               <div class="garage__receipts">
@@ -1608,9 +1814,13 @@ const hasReferences = Object.values(referenceCatalogue).some(
     listRecordMedia,
     listRecords,
     listVehicles,
+    loadProfile,
     removeReceipt,
     removeRecordMedia,
     removeVehiclePhoto,
+    saveHandle,
+    setRecordVisibility,
+    setVehicleVisibility,
     signPhotoUrls,
     signReceiptUrls,
     signRecordMediaUrls,
@@ -1619,7 +1829,17 @@ const hasReferences = Object.values(referenceCatalogue).some(
     uploadReceipt,
     uploadRecordMedia,
     uploadVehiclePhoto,
+    type ProfileRow,
   } from "../../lib/supabase/garage";
+  import {
+    handleIssues,
+    normalizeHandle,
+    type HandleIssue,
+  } from "../../lib/garage/handles";
+  import type {
+    RecordPublication,
+    VehiclePublication,
+  } from "../../lib/garage/visibility";
   import {
     EMPTY_CATALOGUE,
     convertTimeField,
@@ -1891,6 +2111,26 @@ const hasReferences = Object.values(referenceCatalogue).some(
       mediaFile: query<HTMLInputElement>("[data-garage-media-file]"),
       mediaAttach: query<HTMLButtonElement>("[data-garage-media-attach]"),
       mediaMessage: query<HTMLElement>("[data-garage-media-message]"),
+      /* Publishing — T2-402, SHR-02 / SHR-03 */
+      handleCurrent: query<HTMLElement>("[data-garage-handle-current]"),
+      handleInput: query<HTMLInputElement>("[data-garage-handle-input]"),
+      handleSave: query<HTMLButtonElement>("[data-garage-handle-save]"),
+      handleMessage: query<HTMLElement>("[data-garage-handle-message]"),
+      visibilityGate: query<HTMLElement>("[data-garage-visibility-gate]"),
+      showcasePublic: query<HTMLInputElement>("[data-garage-showcase-public]"),
+      worklogPublic: query<HTMLInputElement>("[data-garage-worklog-public]"),
+      visibilityMessage: query<HTMLElement>("[data-garage-visibility-message]"),
+      recordVisibility: query<HTMLElement>("[data-garage-record-visibility]"),
+      recordVisibilityGate: query<HTMLElement>(
+        "[data-garage-record-visibility-gate]"
+      ),
+      recordPublic: query<HTMLInputElement>("[data-garage-record-public]"),
+      recordCostPublic: query<HTMLInputElement>(
+        "[data-garage-record-cost-public]"
+      ),
+      recordVisibilityMessage: query<HTMLElement>(
+        "[data-garage-record-visibility-message]"
+      ),
     };
 
     const payload = readSelectorPayload(document) as SelectorPayload | null;
@@ -1932,6 +2172,19 @@ const hasReferences = Object.values(referenceCatalogue).some(
     let editing: VehicleRow | null = null;
     let opened: VehicleRow | null = null;
     let unit: OdometerUnit = readOdometerUnit(window);
+    /*
+     * The account's own profile, or `null` for "not known" (T2-402, SHR-02).
+     *
+     * `null` is deliberately not "has no handle": a profile that failed to load
+     * and a profile with no handle chosen are different facts, and only one of
+     * them means "go ahead and publish". The publishing switches read this, so
+     * flattening the failure into "no handle" would tell an owner who already
+     * has an address that they need to choose one — and flattening it the other
+     * way would offer to publish a page that has nowhere to live.
+     */
+    let profile: ProfileRow | null = null;
+    /** Pending, loaded, or failed — three states, because they need three sentences. */
+    let profileStatus: "loading" | "loaded" | "failed" = "loading";
     /*
      * This vehicle's records, or `null` for "not known".
      *
@@ -2294,6 +2547,11 @@ const hasReferences = Object.values(referenceCatalogue).some(
           say(els.browseNote, text.stringIdentityIncomplete ?? "");
         }
       }
+      // SHR-02's two switches, from this row rather than from the last one
+      // opened — a checkbox carried over from another truck is a claim about
+      // this truck that nobody made.
+      say(els.visibilityMessage, "");
+      paintVisibility(row);
       show("detail");
       void paintPhotos(row).catch(() => unreachable(els.photoMessage));
       // Beside the rail, like every other way loading records can fail. The
@@ -3038,6 +3296,9 @@ const hasReferences = Object.values(referenceCatalogue).some(
       if (els.mediaEmpty) els.mediaEmpty.hidden = true;
       els.mediaList?.replaceChildren();
       if (els.mediaFile) els.mediaFile.value = "";
+      // SHR-03's two switches, from this record. `null` is a record that does
+      // not exist yet, and an unsaved record has nothing to publish.
+      paintRecordVisibility(row);
 
       applyRecordDraft(
         row === null
@@ -3372,6 +3633,214 @@ const hasReferences = Object.values(referenceCatalogue).some(
       await paintMedia(row);
     }
 
+    /* ---------------------------------------------------------- publishing */
+
+    /**
+     * The reader's sentence for every rule a candidate handle breaks.
+     *
+     * Every reason, joined, rather than the first one: `handleIssues` returns an
+     * array precisely so a form does not make somebody guess which of two
+     * problems to fix first (SHR-02).
+     */
+    function handleIssueMessage(issues: readonly HandleIssue[]): string {
+      const messages: Record<HandleIssue, string | undefined> = {
+        empty: text.stringHandleEmpty,
+        "too-short": text.stringHandleShort,
+        "too-long": text.stringHandleLong,
+        "bad-characters": text.stringHandleCharacters,
+        reserved: text.stringHandleReserved,
+      };
+      return issues
+        .map((issue) => messages[issue] ?? "")
+        .filter(Boolean)
+        .join(" ");
+    }
+
+    /** Draw the handle panel from `profile` and `profileStatus`. */
+    function paintHandle(): void {
+      if (profileStatus === "failed") {
+        // Not "you have no address": a request that did not arrive has not
+        // established anything about this account.
+        say(els.handleMessage, text.stringError ?? "");
+        return;
+      }
+      if (profileStatus !== "loaded") return;
+
+      const handle = profile?.handle ?? null;
+      say(
+        els.handleCurrent,
+        handle === null
+          ? (text.stringHandleNone ?? "")
+          : (text.stringHandleCurrent ?? "{handle}").replace("{handle}", handle)
+      );
+      // Never over the reader's own typing: this runs on every profile change,
+      // including one triggered while they are mid-word in the box.
+      if (els.handleInput && document.activeElement !== els.handleInput) {
+        els.handleInput.value = handle ?? "";
+      }
+      if (opened !== null) paintVisibility(opened);
+    }
+
+    /**
+     * Claim, or change, the account's public address.
+     *
+     * The rules are checked here so the reader gets a sentence instead of a
+     * round trip, and again in the database because that is where SHR-01 says
+     * the guarantee lives. A handle this form would have accepted can still be
+     * refused — it may be somebody else's, or somebody else's *former* one —
+     * and that refusal is one sentence on purpose: distinguishing "taken" from
+     * "retired" would turn the box into an oracle about other people's
+     * accounts.
+     */
+    async function submitHandle(): Promise<void> {
+      const input = els.handleInput;
+      if (!input) return;
+      const candidate = normalizeHandle(input.value);
+      const issues = handleIssues(candidate);
+      if (issues.length > 0) {
+        say(els.handleMessage, handleIssueMessage(issues));
+        return;
+      }
+
+      if (els.handleSave) els.handleSave.disabled = true;
+      say(els.handleMessage, text.stringSaving ?? "");
+      const outcome = await saveHandle(candidate);
+      if (els.handleSave) els.handleSave.disabled = false;
+
+      if (!outcome.ok) {
+        say(
+          els.handleMessage,
+          (outcome.reason === "rejected"
+            ? text.stringHandleUnavailable
+            : text.stringError) ?? ""
+        );
+        return;
+      }
+      profile = outcome.value;
+      profileStatus = "loaded";
+      paintHandle();
+      say(els.handleMessage, text.stringSaved ?? "");
+    }
+
+    /**
+     * The two per-vehicle switches, from the row and from the account.
+     *
+     * A page cannot publish under an address that does not exist, so the
+     * switches are inert until a handle is claimed — and the three reasons they
+     * might be inert are kept apart, because they need different words:
+     * the profile has not loaded (say nothing yet), it failed to load (say so),
+     * or it loaded and carries no handle (say what to do about it) — that last
+     * one through `visibilityGate`, not through the message line.
+     *
+     * The message line is therefore written on EVERY call, in both directions.
+     * Setting it only on `"failed"` left the sentence on screen after the
+     * status recovered: boot's `loadProfile` fails, the reader claims a handle
+     * anyway, `submitHandle` succeeds and sets `profileStatus = "loaded"`,
+     * `paintHandle` calls back in here — and the switches unlock underneath a
+     * line still saying the request did not arrive (T2-402 review, Copilot). A
+     * paint function that can only add is not a paint function; it is a log.
+     */
+    function paintVisibility(row: VehicleRow): void {
+      const claimed = profileStatus === "loaded" && profile?.handle != null;
+      if (els.visibilityGate) {
+        els.visibilityGate.hidden = !(profileStatus === "loaded" && !claimed);
+      }
+      say(
+        els.visibilityMessage,
+        profileStatus === "failed" ? (text.stringError ?? "") : ""
+      );
+      for (const [control, open] of [
+        [els.showcasePublic, row.is_showcase_public],
+        [els.worklogPublic, row.is_worklog_public],
+      ] as const) {
+        if (!control) continue;
+        control.checked = open;
+        control.disabled = !claimed;
+      }
+    }
+
+    /**
+     * Throw one of the two switches.
+     *
+     * On failure the control is painted back from the row the database still
+     * holds. A checkbox left showing a state the row does not have is a page
+     * telling an owner their truck is published when it is not — the worst
+     * available outcome, and the one an optimistic UI produces by default.
+     */
+    async function toggleVehicleVisibility(
+      row: VehicleRow,
+      patch: VehiclePublication,
+      control: HTMLInputElement
+    ): Promise<void> {
+      control.disabled = true;
+      say(els.visibilityMessage, text.stringSaving ?? "");
+      const outcome = await setVehicleVisibility(row.id, patch);
+      control.disabled = false;
+
+      if (!outcome.ok) {
+        paintVisibility(row);
+        say(els.visibilityMessage, text.stringError ?? "");
+        return;
+      }
+      replace(outcome.value);
+      paintVisibility(outcome.value);
+      say(els.visibilityMessage, text.stringSaved ?? "");
+    }
+
+    /**
+     * The two per-record switches, or the note that says there is nothing to
+     * open yet.
+     *
+     * A record has to exist before it can be published — the same shape the
+     * receipts block already uses, and for the same reason: a control that
+     * fails on click is less kind than a sentence saying to save first.
+     */
+    function paintRecordVisibility(row: RecordRow | null): void {
+      if (els.recordVisibilityGate)
+        els.recordVisibilityGate.hidden = row !== null;
+      if (els.recordVisibility) els.recordVisibility.hidden = row === null;
+      if (els.recordPublic) els.recordPublic.checked = row?.is_public ?? false;
+      if (els.recordCostPublic) {
+        els.recordCostPublic.checked = row?.is_cost_public ?? false;
+      }
+      say(els.recordVisibilityMessage, "");
+    }
+
+    /**
+     * Open or close one record, or its cost, on the public work-log.
+     *
+     * Whichever switch was thrown is sent **alone**. Sending both would make
+     * opening a record open its cost as a side effect, which is precisely the
+     * collapse SHR-03 forbids — and it is invisible in a schema grader, because
+     * both columns would still exist and both would still default to false.
+     */
+    async function toggleRecordVisibility(
+      patch: RecordPublication,
+      control: HTMLInputElement
+    ): Promise<void> {
+      const row = editingRecord;
+      if (row === null) return;
+
+      control.disabled = true;
+      say(els.recordVisibilityMessage, text.stringSaving ?? "");
+      const outcome = await setRecordVisibility(row.id, patch);
+      control.disabled = false;
+
+      if (!outcome.ok) {
+        paintRecordVisibility(row);
+        say(els.recordVisibilityMessage, text.stringError ?? "");
+        return;
+      }
+      editingRecord = outcome.value;
+      if (records !== null) {
+        records = records.map((entry) =>
+          entry.id === outcome.value.id ? outcome.value : entry
+        );
+      }
+      paintRecordVisibility(outcome.value);
+      say(els.recordVisibilityMessage, text.stringSaved ?? "");
+    }
+
     /* ------------------------------------------------------------ requests */
 
     function replace(row: VehicleRow): void {
@@ -3400,6 +3869,19 @@ const hasReferences = Object.values(referenceCatalogue).some(
       els.app.hidden = false;
       paintList();
       show("list");
+
+      /*
+       * The handle, after the garage rather than beside it (T2-402, SHR-02).
+       *
+       * Sequential and not `Promise.all`: the vehicles are what the reader came
+       * for, and a profile request that is slow — or that fails — must not hold
+       * the garage behind it or turn a working page into an error one. Its own
+       * outcome, its own message, its own part of the screen.
+       */
+      const mine = await loadProfile();
+      profileStatus = mine.ok ? "loaded" : "failed";
+      profile = mine.ok ? mine.value : null;
+      paintHandle();
     }
 
     async function dropPhoto(row: VehicleRow, path: string): Promise<void> {
@@ -3414,6 +3896,55 @@ const hasReferences = Object.values(referenceCatalogue).some(
     }
 
     /* ------------------------------------------------------------- events */
+
+    /* Publishing (T2-402, SHR-02 / SHR-03) */
+    els.handleSave?.addEventListener("click", () => {
+      void submitHandle().catch(() => unreachable(els.handleMessage));
+    });
+    els.handleInput?.addEventListener("keydown", (event) => {
+      // The panel is not a `<form>` — it sits inside the vehicle list, and a
+      // nested form is not legal markup — so Enter has to be wired by hand.
+      // Without it the key does nothing, which reads as a broken box.
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      void submitHandle().catch(() => unreachable(els.handleMessage));
+    });
+
+    els.showcasePublic?.addEventListener("change", () => {
+      const control = els.showcasePublic;
+      if (!control || opened === null) return;
+      void toggleVehicleVisibility(
+        opened,
+        { is_showcase_public: control.checked },
+        control
+      ).catch(() => unreachable(els.visibilityMessage));
+    });
+    els.worklogPublic?.addEventListener("change", () => {
+      const control = els.worklogPublic;
+      if (!control || opened === null) return;
+      void toggleVehicleVisibility(
+        opened,
+        { is_worklog_public: control.checked },
+        control
+      ).catch(() => unreachable(els.visibilityMessage));
+    });
+
+    els.recordPublic?.addEventListener("change", () => {
+      const control = els.recordPublic;
+      if (!control) return;
+      void toggleRecordVisibility(
+        { is_public: control.checked },
+        control
+      ).catch(() => unreachable(els.recordVisibilityMessage));
+    });
+    els.recordCostPublic?.addEventListener("change", () => {
+      const control = els.recordCostPublic;
+      if (!control) return;
+      void toggleRecordVisibility(
+        { is_cost_public: control.checked },
+        control
+      ).catch(() => unreachable(els.recordVisibilityMessage));
+    });
 
     els.add?.addEventListener("click", () => openForm(null));
     els.cancel?.addEventListener("click", () => {
@@ -4098,6 +4629,57 @@ const hasReferences = Object.values(referenceCatalogue).some(
     font-size: 0.9375rem;
     line-height: 1.6;
     color: var(--muted-strong);
+  }
+
+  /* ---------------------------------------------------------------------
+   * Publishing (T2-402, SHR-02 / SHR-03)
+   *
+   * Quiet blocks with a rule under them rather than another card. Turning a
+   * page on is a decision made once and then left alone, so it earns a
+   * heading and a divider — not the timeline's ink, which belongs to the
+   * thing a reader actually scrolls.
+   * ------------------------------------------------------------------ */
+
+  .garage__handle,
+  .garage__visibility {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-block-end: 1.5rem;
+    padding-block-end: 1.5rem;
+    border-block-end: 1px solid var(--line);
+  }
+
+  .garage__handle > h2,
+  .garage__visibility > h3 {
+    margin: 0;
+  }
+
+  /*
+   * A checkbox, its label, and the sentence saying what throwing it does.
+   *
+   * Grid rather than flex so the hint lands under the *label* and not under
+   * the box: a hint indented to the control reads as part of the control's
+   * own name, and these two hints are the difference between "open the page"
+   * and "open the whole history".
+   */
+  .garage__check {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: baseline;
+    gap: 0.25rem 0.5rem;
+    margin: 0;
+  }
+
+  .garage__checkbox {
+    inline-size: 1rem;
+    block-size: 1rem;
+    margin: 0;
+    accent-color: var(--rust);
+  }
+
+  .garage__check > .garage__hint {
+    grid-column: 2;
   }
 
   /* ---------------------------------------------------------------------

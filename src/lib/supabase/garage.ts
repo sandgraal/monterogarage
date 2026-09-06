@@ -64,6 +64,10 @@ import {
 } from "../garage/record-media.ts";
 import type { VehicleRow, VehicleWrite } from "../garage/vehicle.ts";
 import type { RecordRow, RecordWrite } from "../garage/record.ts";
+import type {
+  RecordPublication,
+  VehiclePublication,
+} from "../garage/visibility.ts";
 
 /**
  * The columns the page reads. Named rather than `select("*")`: a `*` would
@@ -89,6 +93,17 @@ const RECEIPT_COLUMNS =
  * `created_at` the migration keeps for its own sake.
  */
 const RECORD_MEDIA_COLUMNS = "id, record_id, storage_path, media_kind";
+
+/**
+ * The profile columns the page reads (SHR-02).
+ *
+ * `id` and `handle`, and deliberately not `deleted_at` or `retired_handles`.
+ * The recovery window is ACC-03's surface, not this one, and the retired list
+ * is bookkeeping the trigger owns — a page that could read it would be one
+ * refactor away from a page that writes it, and "which handles have I let go"
+ * is not a question this screen asks.
+ */
+const PROFILE_COLUMNS = "id, handle";
 
 /** How long a photo's signed URL lives. */
 export const PHOTO_URL_TTL_SECONDS = 60 * 10;
@@ -278,6 +293,129 @@ export async function currentUserIdIfAny(
 }
 
 /* -------------------------------------------------------------------------
+ * The profile, and the handle a published page lives under (SHR-02)
+ * ---------------------------------------------------------------------- */
+
+/** The signed-in account's own profile row, as this page reads it. */
+export interface ProfileRow {
+  readonly id: string;
+  /** `null` until the owner claims one. Folded lower-case by the database. */
+  readonly handle: string | null;
+}
+
+function asProfile(data: unknown): ProfileRow {
+  return data as ProfileRow;
+}
+
+/**
+ * The caller's own profile.
+ *
+ * `maybeSingle`, not `single`: a profile row is created by the
+ * `on_auth_user_created` trigger, and the one moment it can be absent is the
+ * beat between a brand-new account's first token and that trigger's commit.
+ * `single` turns that into an error indistinguishable from a failed request,
+ * and the page would then say "something went wrong" to somebody whose account
+ * is merely three milliseconds old.
+ */
+export async function loadProfile(): Promise<GarageResult<ProfileRow | null>> {
+  const open = await session();
+  if (!open.ok) return open;
+  const { data, error } = await open.value.client
+    .from("profiles")
+    .select(PROFILE_COLUMNS)
+    .eq("id", open.value.userId)
+    .maybeSingle();
+  if (error) return failed();
+  return { ok: true, value: data === null ? null : asProfile(data) };
+}
+
+/**
+ * The SQLSTATEs that mean *the database looked at this handle and said no*.
+ *
+ * An allow-list, not "has a code", and the difference is the whole point. The
+ * earlier test — `error.code ? "rejected" : "failed"` — read as "constraint
+ * violations carry a code, transport failures do not", which is true and not
+ * sufficient: **PostgREST's own errors carry codes too**, in its own `PGRST…`
+ * namespace rather than Postgres's five characters. The one that mattered is
+ * `PGRST116` ("JSON object requested, multiple (or no) rows returned"), which
+ * `.single()` produces when the update matched nothing — precisely the
+ * just-after-signup beat `loadProfile` exists to survive, and precisely the
+ * moment somebody would have been told "that address is not available" about a
+ * name nobody holds (T2-402 review, Copilot). `PGRST301` (expired JWT),
+ * `42501` (RLS/insufficient privilege) and `57014` (statement timeout) are the
+ * same mistake with different wording.
+ *
+ * So only these two, both of which the schema raises deliberately and both of
+ * which are statements about the string that was typed:
+ *
+ * - `23505` unique_violation — `profiles_handle_lower_uk`, and the
+ *   `normalize_profile_handle` trigger's `raise … using errcode = '23505'`,
+ *   which answers "held by somebody else" and "retired by somebody else" in
+ *   one byte-identical refusal (see `20260903120100_public_handles.sql`).
+ * - `23514` check_violation — `profiles_handle_ck`: length, character set, and
+ *   the reserved-word list.
+ *
+ * Anything else is `failed`, deliberately, and the asymmetry is the honest
+ * direction: "we could not reach the database" over a real refusal costs a
+ * retry, while "that address is taken" over a missing row sends somebody off
+ * inventing a new name for nothing (AGENTS.md — a failure is not a zero).
+ */
+const HANDLE_REFUSAL_SQLSTATES: ReadonlySet<string> = new Set([
+  "23505",
+  "23514",
+]);
+
+function refusesTheValue(error: { readonly code?: string | null }): boolean {
+  return HANDLE_REFUSAL_SQLSTATES.has(error.code ?? "");
+}
+
+/**
+ * Claim, change, or release the caller's handle (SHR-02).
+ *
+ * `null` releases it. Releasing is not deleting: the database retires the old
+ * value to this account so a link somebody already shared cannot start
+ * pointing at a stranger's garage.
+ *
+ * The value is sent as the caller typed it, folded only by
+ * `normalizeHandle` — the same fold the `on_profile_handle_write` trigger
+ * applies — so the row and the form agree about which string was stored. Every
+ * rule that can refuse it (format, length, the reserved list, uniqueness, and
+ * another account's retired handle) is enforced in the database; this returns
+ * `"rejected"` when one of them does — recognised by SQLSTATE, see
+ * `HANDLE_REFUSAL_SQLSTATES` — which is a different outcome from a request that
+ * never arrived, and from one that arrived and found no row.
+ *
+ * `rejected` versus `failed` matters because the two have different honest
+ * sentences: one is "that handle is not available", the other is "we could not
+ * reach the database", and telling a reader the first when the second happened
+ * would send them off inventing a new name for no reason (AGENTS.md — a
+ * failure is not a zero).
+ */
+export async function saveHandle(
+  handle: string | null
+): Promise<GarageResult<ProfileRow>> {
+  const open = await session();
+  if (!open.ok) return open;
+  const { data, error } = await open.value.client
+    .from("profiles")
+    .update({ handle })
+    .eq("id", open.value.userId)
+    .select(PROFILE_COLUMNS)
+    .maybeSingle();
+  if (error) {
+    return {
+      ok: false,
+      reason: refusesTheValue(error) ? "rejected" : "failed",
+    };
+  }
+  // `maybeSingle`, so no row is `data === null` with no error — the same beat
+  // `loadProfile` documents, and it is a failure to report rather than a
+  // statement about the handle. RLS hiding the row lands here too, identically.
+  if (!data) return failed();
+  return { ok: true, value: asProfile(data) };
+}
+
+/* -------------------------------------------------------------------------
  * Vehicles
  * ---------------------------------------------------------------------- */
 
@@ -323,6 +461,37 @@ export async function updateVehicle(
   const { data, error } = await open.value.client
     .from("vehicles")
     .update(write)
+    .eq("id", id)
+    .select(VEHICLE_COLUMNS)
+    .single();
+  if (error || !data) return failed();
+  return { ok: true, value: asRow(data) };
+}
+
+/**
+ * Publish or withdraw one of this vehicle's two public pages (SHR-02).
+ *
+ * A write of its own rather than a field on {@link updateVehicle}, because
+ * `VehicleWrite` deliberately carries no visibility: saving a corrected
+ * odometer must not be able to publish a truck. The two calls are also
+ * different *events* — one is editing a vehicle, the other is a decision about
+ * who may see it — and a page that logs or confirms them differently needs
+ * them to be two things.
+ *
+ * The way back matters as much as the way out. Publishing is the feature
+ * everybody builds and unpublishing is the one somebody needs at 2am, so both
+ * directions are this one call with a boolean, and there is no separate
+ * "withdraw" path that could be forgotten.
+ */
+export async function setVehicleVisibility(
+  id: string,
+  patch: VehiclePublication
+): Promise<GarageResult<VehicleRow>> {
+  const open = await session();
+  if (!open.ok) return open;
+  const { data, error } = await open.value.client
+    .from("vehicles")
+    .update(patch)
     .eq("id", id)
     .select(VEHICLE_COLUMNS)
     .single();
@@ -625,6 +794,37 @@ export async function updateRecord(
   const { data, error } = await open.value.client
     .from("records")
     .update(write)
+    .eq("id", id)
+    .select(RECORD_COLUMNS)
+    .single();
+  if (error || !data) return failed();
+  return { ok: true, value: asRecord(data) };
+}
+
+/**
+ * Open or close one record on the public work-log, and — separately — what it
+ * cost (SHR-02, SHR-03).
+ *
+ * Separate from {@link updateRecord} for the reason `RecordWrite`'s own note
+ * gives: "a create path that transmits visibility is a create path where a typo
+ * publishes what somebody paid". Editing the notes on a job and publishing that
+ * job are different intentions and are different requests.
+ *
+ * The two flags in {@link RecordPublication} are independent and this call
+ * never derives one from the other. A caller that sent `is_cost_public` along
+ * with every `is_public` would have collapsed SHR-03 into SHR-02 at the one
+ * layer where the collapse is invisible — both columns would still exist, both
+ * would still default to false, and every schema grader would still pass.
+ */
+export async function setRecordVisibility(
+  id: string,
+  patch: RecordPublication
+): Promise<GarageResult<RecordRow>> {
+  const open = await session();
+  if (!open.ok) return open;
+  const { data, error } = await open.value.client
+    .from("records")
+    .update(patch)
     .eq("id", id)
     .select(RECORD_COLUMNS)
     .single();

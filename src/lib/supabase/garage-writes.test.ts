@@ -32,11 +32,14 @@
  *    or `listReceipts` grader written against this fake would receive an object
  *    where the real client hands back a list — and would pass while the page
  *    broke.
- * 3. **`outcome("insert", name)` is the verb used for every table request**, so
- *    a failure can only be injected for inserts. `select`/`update`/`delete`
- *    failure paths are unreachable from here.
+ * 3. ~~**`outcome("insert", name)` is the verb used for every table request**,
+ *    so a failure can only be injected for inserts.~~ Closed by the T2-402
+ *    review fix below: the builder now remembers every verb in the chain and a
+ *    failure keyed to any of them fires, which is what lets `update:profiles`
+ *    be graded. `errors` alongside `failures` injects a *specific* error
+ *    object, because `saveHandle`'s whole job is discriminating between codes.
  *
- * Extending any of the three is a small change; assuming they already work is
+ * Extending the remaining two is a small change; assuming they already work is
  * the expensive mistake.
  *
  * refs specs/002-montero-garage (GAR-01′, GAR-06′, SHR-01, MIG-03)
@@ -55,16 +58,65 @@ interface Call {
 let calls: Call[] = [];
 /** Errors the fake should report, keyed by `<kind>:<target>`. */
 let failures = new Set<string>();
+/**
+ * Specific error payloads, same key.
+ *
+ * A transport failure and a constraint violation are the *same* `error !==
+ * null` to a fake that only knows "failed", and `saveHandle` has to tell them
+ * apart by `code` — so a grader for it needs to choose the object, not just
+ * ask for one.
+ */
+let errors = new Map<string, unknown>();
 
 function outcome(kind: Call["kind"], target: string): { error: unknown } {
-  return failures.has(`${kind}:${target}`)
-    ? { error: { message: `synthetic failure for ${kind}:${target}` } }
+  const key = `${kind}:${target}`;
+  if (errors.has(key)) return { error: errors.get(key) };
+  return failures.has(key)
+    ? { error: { message: `synthetic failure for ${key}` } }
     : { error: null };
+}
+
+/**
+ * The first injected failure among the verbs a chain actually used.
+ *
+ * `.insert(…).select(…).single()` records two verbs; keying the outcome off
+ * the last one would make `failures.add("insert:record_media")` silently stop
+ * working. Keying off any of them keeps every existing grader true and lets a
+ * new one name `update:profiles`.
+ */
+function chainOutcome(
+  verbs: Call["kind"][],
+  target: string
+): { error: unknown } {
+  for (const verb of verbs) {
+    const { error } = outcome(verb, target);
+    if (error !== null) return { error };
+  }
+  return { error: null };
 }
 
 const USER_ID = "22222222-2222-4222-8222-222222222222";
 const VEHICLE_ID = "11111111-1111-4111-8111-111111111111";
 const RECORD_ID = "33333333-3333-4333-8333-333333333333";
+const SAVED_HANDLE = "gitana-blanca";
+
+/**
+ * Tables the fake should answer with NO row and no error.
+ *
+ * `maybeSingle()` over zero rows is exactly that pair, which is the shape the
+ * beat between a new account's first token and the `on_auth_user_created`
+ * trigger produces. It is not an error and it is not a row, and code that
+ * assumes one or the other is the bug this models.
+ */
+let absent = new Set<string>();
+
+/** The row a successful chain hands back, per table. */
+function row(table: string): unknown {
+  if (absent.has(table)) return null;
+  return table === "profiles"
+    ? { id: USER_ID, handle: SAVED_HANDLE }
+    : { id: "row", record_id: RECORD_ID };
+}
 
 /**
  * A stand-in for `SupabaseClient`, recording rather than asserting.
@@ -75,34 +127,40 @@ const RECORD_ID = "33333333-3333-4333-8333-333333333333";
  */
 function fakeClient(): unknown {
   const table = (name: string) => {
+    const verbs: Call["kind"][] = [];
+    const record = (kind: Call["kind"], payload?: unknown) => {
+      verbs.push(kind);
+      calls.push({ kind, target: name, payload });
+    };
     const builder = {
       select: () => {
-        calls.push({ kind: "select", target: name });
+        record("select");
         return builder;
       },
       insert: (payload: unknown) => {
-        calls.push({ kind: "insert", target: name, payload });
+        record("insert", payload);
         return builder;
       },
       update: (payload: unknown) => {
-        calls.push({ kind: "update", target: name, payload });
+        record("update", payload);
         return builder;
       },
       delete: () => {
-        calls.push({ kind: "delete", target: name });
+        record("delete");
         return builder;
       },
       eq: () => builder,
       in: () => builder,
       order: () => builder,
       single: () => builder,
+      maybeSingle: () => builder,
       then: (
         resolve: (value: { data: unknown; error: unknown }) => unknown
       ) => {
-        const { error } = outcome("insert", name);
+        const { error } = chainOutcome(verbs, name);
         return Promise.resolve(
           resolve({
-            data: error === null ? { id: "row", record_id: RECORD_ID } : null,
+            data: error === null ? row(name) : null,
             error,
           })
         );
@@ -149,8 +207,12 @@ vi.mock("./auth.ts", () => ({
   getSupabaseClient: () => Promise.resolve(fakeClient()),
 }));
 
-const { removeVehiclePhoto, uploadRecordMedia, uploadVehiclePhoto } =
-  await import("./garage.ts");
+const {
+  removeVehiclePhoto,
+  saveHandle,
+  uploadRecordMedia,
+  uploadVehiclePhoto,
+} = await import("./garage.ts");
 
 const EXISTING_PHOTO = `${USER_ID}/${VEHICLE_ID}/already-here.jpg`;
 
@@ -176,6 +238,8 @@ function file(type: string, size = 1024): File {
 beforeEach(() => {
   calls = [];
   failures = new Set();
+  errors = new Map();
+  absent = new Set();
 });
 
 describe("vehicles.photo_paths is written atomically (T2-304's race)", () => {
@@ -336,5 +400,114 @@ describe("a media attachment is stored object-first (GAR-06′)", () => {
 
     expect(result).toEqual({ ok: false, reason: "rejected" });
     expect(calls).toEqual([]);
+  });
+});
+
+/**
+ * `saveHandle` says "not available" ONLY when the value was refused (SHR-02).
+ *
+ * The two outcomes carry two different sentences on the page —
+ * `garageHandleUnavailable` versus the generic error — so the whole value of
+ * the distinction is that it is right. The bug these grade (T2-402 review,
+ * Copilot) was `error.code ? "rejected" : "failed"`: true of Postgres
+ * constraint violations, and *also* true of every PostgREST-level error, which
+ * carries a `PGRST…` code of its own. The one that hurt is the missing profile
+ * row, which told somebody their brand-new account's first choice of address
+ * was taken.
+ */
+describe("saveHandle tells a refusal from a failure by SQLSTATE", () => {
+  /** What the caller sees, given what the database (or the network) said. */
+  const cases: ReadonlyArray<{
+    readonly what: string;
+    readonly error: unknown;
+    readonly reason: "rejected" | "failed";
+  }> = [
+    {
+      what: "unique_violation — held, or retired, by another account",
+      error: { code: "23505", message: "duplicate key value…" },
+      reason: "rejected",
+    },
+    {
+      what: "check_violation — length, characters, or the reserved list",
+      error: { code: "23514", message: "violates check constraint" },
+      reason: "rejected",
+    },
+    {
+      what: "PGRST116 — .single()/.maybeSingle() over no row at all",
+      error: {
+        code: "PGRST116",
+        message: "JSON object requested, multiple (or no) rows returned",
+      },
+      reason: "failed",
+    },
+    {
+      what: "PGRST301 — the token expired mid-form",
+      error: { code: "PGRST301", message: "JWT expired" },
+      reason: "failed",
+    },
+    {
+      what: "42501 — a policy refused the write",
+      error: { code: "42501", message: "permission denied" },
+      reason: "failed",
+    },
+    {
+      what: "57014 — the statement timed out",
+      error: { code: "57014", message: "canceling statement" },
+      reason: "failed",
+    },
+    {
+      what: "a fetch failure, which postgrest-js reports with code ''",
+      error: { code: "", message: "FetchError: Failed to fetch" },
+      reason: "failed",
+    },
+  ];
+
+  for (const { what, error, reason } of cases) {
+    it(`${what} → ${reason}`, async () => {
+      errors.set("update:profiles", error);
+
+      expect(await saveHandle("gitana-blanca")).toEqual({
+        ok: false,
+        reason,
+      });
+    });
+  }
+
+  it("MUTATION: a missing profile row is never reported as unavailable", async () => {
+    // The signup beat, in the shape `maybeSingle` actually produces: no row,
+    // no error. Against the old `.single()` + `error.code` test this arrived as
+    // PGRST116 and came back `rejected` — the page then told an account three
+    // milliseconds old that the name nobody holds was somebody else's.
+    absent.add("profiles");
+
+    expect(await saveHandle("gitana-blanca")).toEqual({
+      ok: false,
+      reason: "failed",
+    });
+  });
+
+  it("returns the stored row when the database took the handle", async () => {
+    const result = await saveHandle("gitana-blanca");
+
+    expect(result).toEqual({
+      ok: true,
+      value: { id: USER_ID, handle: SAVED_HANDLE },
+    });
+    expect(calls.map((call) => `${call.kind}:${call.target}`)).toEqual([
+      "update:profiles",
+      "select:profiles",
+    ]);
+  });
+
+  it("sends the value it was given, `null` included", async () => {
+    // Releasing is a write of `null`, not a delete and not `""` — the trigger
+    // folds the empty string to `null` precisely because the two must not be
+    // different states. (What row the write is *scoped* to is not checkable
+    // here: the fake's `.eq()` ignores its arguments — gap 1 above.)
+    await saveHandle(null);
+    const update = calls.find((call) => call.kind === "update");
+
+    expect(update?.target).toBe("profiles");
+    expect(update?.payload).toEqual({ handle: null });
   });
 });

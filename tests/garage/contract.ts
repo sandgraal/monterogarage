@@ -205,12 +205,15 @@ export const RECORD_MEDIA_TABLE: TableContract = {
  * The user-data tables. `profiles` exists because a user needs a row of their
  * own that is not `auth.users` (which no client may read).
  *
- * **SHR-02's public handle, taken up by T2-401.** T2-201 deferred it here by
- * name — "a stable public URL under their handle" implies a unique,
- * case-folded, reserved-word-screened identifier, and every one of those
- * properties is a grader of its own. `profiles.handle` is now declared
- * (pending T2-402) and the properties that make it safe are graded in
- * `handles.test.ts`; the constants they read are at the foot of this file.
+ * **SHR-02's public handle, taken up by T2-401 and shipped by T2-402.** T2-201
+ * deferred it here by name — "a stable public URL under their handle" implies a
+ * unique, case-folded, reserved-word-screened identifier, and every one of
+ * those properties is a grader of its own. `profiles.handle` is declared below
+ * and the properties that make it safe are graded in `handles.test.ts`; the
+ * constants they read are at the foot of this file. Its `pending: "T2-402"`
+ * marker was deleted by T2-402 in the commit that added
+ * `20260903120100_public_handles.sql`, which is the whole of the promotion
+ * `ColumnContract.pending` describes.
  *
  * **`shares` is declared here (pending T2-404), not exempted.** The
  * `ungradedTableIssues` sweep goes red for any table in `public` that is
@@ -250,7 +253,6 @@ export const USER_TABLES: readonly TableContract[] = [
         // shape.
         name: "handle",
         requirement: "SHR-02 (a stable public URL under their handle)",
-        pending: "T2-402",
       },
     ],
   },

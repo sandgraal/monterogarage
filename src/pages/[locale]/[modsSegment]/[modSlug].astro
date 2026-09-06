@@ -226,13 +226,51 @@ const safety = modSafety(data);
  * wave-1 list (dual battery → electrical/ABS; armour and roof storage →
  * body/suspension) is made of exactly that shape (T601 review, F1).
  *
- * The fallback to `data.system` covers the one case with no system behind it:
- * `safetyCritical: true` on an entry neither the system list nor the subject
- * detector catches (SRS, load ratings). That is what `parts` and `reference`
- * do for the same case, so this page is not inventing a fourth behaviour.
+ * The band for `data.system` covers the case with no system behind it:
+ * `safetyCritical: true` on a hazard neither the system list nor the subject
+ * detector catches (SRS/airbags, load ratings, towing/jacking). That is what
+ * `parts` and `reference` do for the same case, so this page is not inventing
+ * a fourth behaviour.
+ *
+ * **That band is ADDED, not substituted (T601a, finding F4).** It used to be
+ * an either/or — `safety.systems.length > 0 ? safety.systems : [data.system]`
+ * — which gated the flag's band on the promoted set being empty *at all*
+ * rather than on the flagged hazard being uncovered. An entry with BOTH an
+ * ordinary `affects` row hitting a real `SAFETY_CRITICAL_SYSTEMS` member AND
+ * the flag set for a no-system-id hazard rendered only the band for the
+ * former: a `body`-filed steel bumper flagged for an SRS/airbag-timing hazard
+ * plus a `suspension` weight row drew "Safety notice — Suspension" and the
+ * airbag hazard appeared nowhere on the page. The system-derived bands name
+ * real hazards from real rows and are correct, so the flag's band joins them.
+ *
+ * `data.safetyCritical === true` and not `safety.safetyCritical`, because the
+ * latter is also true for an entry promoted purely by an affected system —
+ * appending `data.system` there would put a band on a system that is not a
+ * reason for anything, which is the T601 F1 defect this file already closed.
+ *
+ * The `includes` guard is the honest limit of the rule: the schema records
+ * *that* an entry is safety-critical and nothing about *which* hazard the flag
+ * stands for, so the only mechanically-checkable reading of "the flagged
+ * reason is already covered" is "the entry's own `system` is already promoted"
+ * — exactly the case where this band would be a literal duplicate, and two
+ * regions sharing one `safety-notice-<system>` id is the `aria-labelledby`
+ * cross-resolution `SafetyNotice`'s derived id exists to prevent. Anything
+ * richer (knowing a `wheels-tires` row covers a load-rating flag) needs a
+ * hazard taxonomy this collection does not have, and minting one is an
+ * AGENTS.md "Boundaries" stop-and-ask. The cost of the limit is one
+ * arguably-redundant band; the cost of the old behaviour was a real SRS hazard
+ * with no band at all, so over-notifying is the chosen failure direction.
+ *
+ * Note the previous empty-set fallback is preserved exactly rather than
+ * special-cased: `modSafety` only reports `systems: []` with
+ * `safetyCritical: true` when the flag is what fired (an own `system` on the
+ * list would be in `systems`), so `flagBand` is true in precisely that case.
  */
-const safetySystems =
-  safety.systems.length > 0 ? safety.systems : [data.system];
+const flagBand =
+  data.safetyCritical === true && !safety.systems.includes(data.system);
+const safetySystems = flagBand
+  ? [...safety.systems, data.system]
+  : safety.systems;
 
 const showCaveat = needsConfidenceCaveat(data.confidence);
 const indexHref = localeHref(locale, collectionRoutePath("mods", locale));
