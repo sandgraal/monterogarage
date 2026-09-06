@@ -49,6 +49,15 @@
  * 6. **`fitment.drive`** (owner ruling, 2026-08-30): a closed two-value
  *    vocabulary, `DRIVE_TYPES` in `src/schemas/vehicles.ts`, resolved here as
  *    a facet exactly like `markets`.
+ * 7. **`"global"` in `fitment.markets` is absorbing** (owner ruling
+ *    2026-09-06, extended to the mixed case by T203a): a `markets` array that
+ *    *contains* `"global"` — `["global"]`, `["global", "us"]`, any mix — is no
+ *    market restriction at all, exactly as if the field were omitted, and the
+ *    real market ids beside it are inert. 103 shipped entries spell "applies
+ *    everywhere" that way rather than by omitting the field, and every one of
+ *    them read as "does not fit" the moment a reader picked a real market.
+ *    Implemented once, in `readFitment`, whose docstring carries the full
+ *    ruling and the list of what it deliberately does not reach.
  *
  * ## The two decisions T202 left to this task, and how they were decided
  *
@@ -746,10 +755,68 @@ interface FitmentQuery {
 }
 
 /**
+ * The `markets` id that is a *scope over all markets* rather than a market
+ * anybody owns a truck in — rule 7 below. Named rather than inlined so the one
+ * place the absorbing rule is implemented is greppable from
+ * `src/schemas/vehicle-vocabulary.ts`'s `MARKETS`, where the id is declared.
+ */
+const UNRESTRICTED_MARKET = "global" satisfies (typeof MARKETS)[number];
+
+/** The one fitment field rule 7 applies to. Deliberately not a table. */
+const ABSORBING_FACET_FIELD = "markets";
+
+/**
  * Reads a fitment object. Returns `null` when there is nothing resolvable —
  * no object, or no `gens`. `gens` is required by `fitmentSchema` ("at least
  * one generation: 'it's a Montero thing' is not a fitment"), so an entry
  * without it names no vehicles and matches none.
+ *
+ * ## Rule 7 — `"global"` in `fitment.markets` is absorbing (T203a/T203b)
+ *
+ * This is **the** seam the absorbing-`global` rule is implemented at, and it is
+ * implemented here exactly once rather than at each call site. `readFitment` is
+ * the only parser of a fitment in this module, so dropping the facet here makes
+ * every consumer of a `FitmentQuery` agree by construction:
+ *
+ * - `matchesVehicle` (and `entryAppliesTo` through it) skips the facet, so the
+ *   entry fits every market — FIT-04;
+ * - `provisionalMatchFacets` sees an unrestricted `markets`, so a global
+ *   fitment reads as a **full** match with nothing provisional. (`market` is
+ *   not in `OPTIONAL_SELECTION_FACETS` either way, but the two readings now
+ *   agree for the same reason rather than by coincidence — T204 review, F8);
+ * - `checkCombination` falls back to `?? MARKETS` and interrogates every market
+ *   scope, so a global fitment is `impossible-combination` only when *every*
+ *   market's list is closed against it. Fixing `matchesVehicle` alone would
+ *   have left this build gate reading `markets` literally and could fail a
+ *   build on a fitment that names a perfectly possible truck — FIT-02.
+ *
+ * What it deliberately does **not** reach:
+ *
+ * - `collectUnknownIds` reads the *raw* fitment, not this query, so
+ *   `["global", "narnia"]` still reports `unknown-id` at index 1 with the
+ *   author's own array index. `global` is not a licence to stop resolving the
+ *   ids beside it.
+ * - `classifyCombination` and `buildTaxonomy` index a combination entry by its
+ *   own `generation`/`market` fields, never through here, so combination
+ *   scoping stays literal: `combos-gen4-global` still answers only for
+ *   `gen4 × global` and a `gen4 × cr` selection is `unknown` (VEH-03 rule 3).
+ * - The *selection* side: a visitor who picks `global` has picked one scope,
+ *   and a `markets: ["us"]` fitment still misses them.
+ * - Every other facet. `trims: ["global"]` is an unknown trim id, not a
+ *   wildcard — hence a single named field rather than a value stripped from
+ *   every list.
+ *
+ * An **empty** `markets: []` is untouched by this and stays a restriction
+ * nothing satisfies (the line below), which is why the rule is written as
+ * "contains the id → drop the facet" and never as a filter over the values: a
+ * filter would turn `["global"]` into `[]` and hand it the opposite meaning.
+ *
+ * Ruling: owner, 2026-09-06 (`["global"]` resolves as an omitted `markets`),
+ * extended to the mixed case by T203a — any array *containing* `"global"`
+ * resolves as unrestricted and the real ids beside it are inert, because a
+ * union with the universal set is the universal set. The cost, stated on
+ * tasks.md's T203a line: "everywhere EXCEPT X" is no longer spellable as
+ * `["global", …]`; list the real markets and omit `"global"`.
  */
 function readFitment(fitment: unknown): FitmentQuery | null {
   const record = asRecord(fitment);
@@ -763,6 +830,16 @@ function readFitment(fitment: unknown): FitmentQuery | null {
     if (field === "gens") continue;
     if (record[field] === undefined) continue;
     const values = asStringList(record[field]);
+    // Rule 7 — a `markets` list naming `global` restricts nothing, so it is
+    // not recorded at all: absent is exactly the spelling every consumer
+    // already reads as "unrestricted".
+    if (
+      field === ABSORBING_FACET_FIELD &&
+      values !== null &&
+      values.includes(UNRESTRICTED_MARKET)
+    ) {
+      continue;
+    }
     // A present-but-unreadable facet is a schema failure, not a match: it is
     // read as a restriction nothing satisfies rather than silently dropped.
     facets.set(field, values ?? []);

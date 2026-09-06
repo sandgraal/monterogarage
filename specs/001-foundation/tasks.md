@@ -114,7 +114,7 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
     above, and no decision-dependent assertion spans both — so a future
     reversal of the absorbing reading touches only the mixed-specific block
     (review F2).
-- [ ] **T203b [PLATFORM]** Implements the T203a seam: `"global"` inside a
+- [x] **T203b [PLATFORM]** Implements the T203a seam: `"global"` inside a
   `markets` array resolves as no market restriction (**including when it
   appears alongside real market ids** — see the absorbing-`global` ruling on
   the T203a line above), everywhere
@@ -123,6 +123,49 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
   fitment should read as a **full** match, not a provisional one, since it
   is not silent about market, it explicitly claims all of them). Activates
   T203a graders. Depends: T203a merged. *(FIT-01, FIT-03, FIT-04)*
+  - **Shared, not forked — the fix is nine lines in `readFitment`.** The rule
+    is implemented at the single parser every `FitmentQuery` consumer goes
+    through (`src/lib/fitment/index.ts`, now module-docstring **rule 7**): a
+    `markets` list containing `"global"` is *not recorded as a facet at all*,
+    because "absent" is already the spelling every consumer reads as
+    unrestricted. One edit therefore makes `matchesVehicle`,
+    `entryAppliesTo`, `provisionalMatchFacets` and the FIT-02 build gate agree
+    by construction instead of by four parallel patches that can drift — which
+    is the same anti-drift argument `DIRECT_MATCH_FACETS`/`TAXONOMY_FACETS`
+    already make one screen higher. The T203a review's mutation testing is why
+    a `matchesVehicle`-only fix was rejected: `checkCombination` reads
+    `query.facets.get("markets") ?? MARKETS` on a separate path and would have
+    kept flagging a globally-scoped fitment `impossible-combination` off one
+    market's closed offering list. Through the shared seam it now falls back
+    to every market, so the gate fires only when *every* market's list is
+    closed (both directions graded).
+  - **Written as "contains the id → drop the facet", never as a filter over
+    the values.** A filter (`values.filter(v => v !== "global")`) turns
+    `["global"]` into `[]`, which `readFitment` reads as a restriction nothing
+    satisfies — the exact opposite meaning. The empty-list control in
+    `global-market.test.ts` is the grader that catches it, and `markets: []`
+    keeps matching nothing.
+  - **What deliberately stayed literal, and why it needed no code.** The
+    absorbing rule is scoped to one named field (`ABSORBING_FACET_FIELD`), so
+    `trims: ["global"]` is still an unknown trim id. `collectUnknownIds` reads
+    the *raw* fitment rather than the parsed query, so `["global", "narnia"]`
+    still reports `unknown-id` at the author's own index 1. `buildTaxonomy`
+    and `classifyCombination` key a combination entry by its own
+    `generation`/`market` fields and never touch `readFitment`, so
+    `combos-gen4-global` still answers only for `gen4 × global` and a
+    `gen4 × cr` selection stays `unknown` (VEH-03 rule 3). The *selection*
+    side is untouched. No content file, schema, or taxonomy entry was edited.
+  - **T204/F8 verified, not assumed.** `market` is not in
+    `OPTIONAL_SELECTION_FACETS`, so a global fitment already could not read as
+    provisional *structurally*; dropping the facet makes it true for the
+    second reason too, and both graders assert the match first so `[]` cannot
+    be read as "no match". The client-side painter
+    (`src/lib/vehicle-listing.ts`) hands the verbatim serialized fitment to the
+    same two functions, so server and browser cannot disagree. All 44
+    Playwright specs pass, including the six provisional-indicator ones.
+  - **The bug, measured:** running the activated corpus grader against `main`'s
+    engine reports **634 (entry, market) pairs** reading "does not fit" across
+    the 89 `markets: ["global"]` entries; 0 after the fix.
 
 ### Glossary & reference
 - [x] **T205 [PLATFORM]** Glossary schema + `check:glossary` real implementation (canonical-term conformance scan of ES prose) + public glossary page w/ system filter. Note: the T104 base schema requires `fitment`+`confidence` on every collection, glossary included; if glossary terms need that relaxed, it is a negotiated schema change (AGENTS.md stop-and-ask), not a drive-by fix. Same applies to T701 community entries. Depends: T106. *(GLO-01, GLO-02, GLO-04)*
