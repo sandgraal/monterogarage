@@ -165,17 +165,14 @@ describe("the market vocabulary these graders read", () => {
  * ---------------------------------------------------------------------- */
 
 describe('`markets: ["global"]` matches every real market (FIT-04)', () => {
-  it.fails.each(REAL_MARKETS)(
-    "a global-market fitment fits a %s truck",
-    (market) => {
-      expect(
-        matchesVehicle({ ...GLOBAL_ONLY }, inMarket(market), realTaxonomy),
-        `a \`markets: ["global"]\` fitment did not fit a ${market} truck`
-      ).toBe(true);
-    }
-  );
+  it.each(REAL_MARKETS)("a global-market fitment fits a %s truck", (market) => {
+    expect(
+      matchesVehicle({ ...GLOBAL_ONLY }, inMarket(market), realTaxonomy),
+      `a \`markets: ["global"]\` fitment did not fit a ${market} truck`
+    ).toBe(true);
+  });
 
-  it.fails.each(REAL_MARKETS)(
+  it.each(REAL_MARKETS)(
     "answers identically to omitting `markets` for %s",
     (market) => {
       const vehicle = inMarket(market);
@@ -260,7 +257,7 @@ if (MIXED_UNLISTED.length === 0 || MIXED_LISTED.length === 0) {
 }
 
 describe("`global` alongside a real market is still unrestricted", () => {
-  it.fails.each(MIXED_UNLISTED)(
+  it.each(MIXED_UNLISTED)(
     "$markets fits a $market truck it does not name",
     ({ markets, market }) => {
       expect(
@@ -287,7 +284,7 @@ describe("`global` alongside a real market is still unrestricted", () => {
     }
   );
 
-  it.fails("reads the same as omitting `markets`, in every real market", () => {
+  it("reads the same as omitting `markets`, in every real market", () => {
     for (const markets of MIXED_SPELLINGS) {
       for (const market of REAL_MARKETS) {
         const vehicle = inMarket(market);
@@ -412,14 +409,11 @@ describe("`markets` still restricts everything else (no over-broad fix)", () => 
 describe("entryAppliesTo carries the same rule", () => {
   const entry = makeFitmentEntry({ ...GLOBAL_ONLY }, "test-fitment-global");
 
-  it.fails.each(REAL_MARKETS)(
-    "a global entry applies to a %s truck",
-    (market) => {
-      expect(entryAppliesTo(entry, inMarket(market), realTaxonomy)).toBe(true);
-    }
-  );
+  it.each(REAL_MARKETS)("a global entry applies to a %s truck", (market) => {
+    expect(entryAppliesTo(entry, inMarket(market), realTaxonomy)).toBe(true);
+  });
 
-  it.fails("agrees with matchesVehicle on every real market", () => {
+  it("agrees with matchesVehicle on every real market", () => {
     for (const market of REAL_MARKETS) {
       const vehicle = inMarket(market);
       const viaEntry = entryAppliesTo(entry, vehicle, realTaxonomy);
@@ -450,34 +444,28 @@ describe("the provisional indicator does not fire on a global fitment", () => {
     expect(OPTIONAL_SELECTION_FACETS).toContain("transferCase");
   });
 
-  it.fails(
-    "a global-market fitment matches FULLY, with nothing provisional",
-    () => {
-      const fitment = { ...GLOBAL_ONLY };
-      expect(
-        matchesVehicle(fitment, GITANA, realTaxonomy),
-        "the global fitment did not match at all, so `[]` below means nothing"
-      ).toBe(true);
-      expect(provisionalMatchFacets(fitment, GITANA, realTaxonomy)).toEqual([]);
-    }
-  );
+  it("a global-market fitment matches FULLY, with nothing provisional", () => {
+    const fitment = { ...GLOBAL_ONLY };
+    expect(
+      matchesVehicle(fitment, GITANA, realTaxonomy),
+      "the global fitment did not match at all, so `[]` below means nothing"
+    ).toBe(true);
+    expect(provisionalMatchFacets(fitment, GITANA, realTaxonomy)).toEqual([]);
+  });
 
-  it.fails(
-    "reports only the genuinely unanswered facet beside a global market",
-    () => {
-      const fitment = {
-        gens: ["gen3"],
-        markets: ["global"],
-        transferCases: ["super-select-ii"],
-      };
-      expect(matchesVehicle(fitment, GITANA, realTaxonomy)).toBe(true);
-      // `market` is answered; `transferCase` is not. Only the second is why the
-      // match is provisional.
-      expect(provisionalMatchFacets(fitment, GITANA, realTaxonomy)).toEqual([
-        "transferCase",
-      ]);
-    }
-  );
+  it("reports only the genuinely unanswered facet beside a global market", () => {
+    const fitment = {
+      gens: ["gen3"],
+      markets: ["global"],
+      transferCases: ["super-select-ii"],
+    };
+    expect(matchesVehicle(fitment, GITANA, realTaxonomy)).toBe(true);
+    // `market` is answered; `transferCase` is not. Only the second is why the
+    // match is provisional.
+    expect(provisionalMatchFacets(fitment, GITANA, realTaxonomy)).toEqual([
+      "transferCase",
+    ]);
+  });
 
   it("control: a real-market fitment already matches fully today", () => {
     const fitment = { gens: ["gen3"], markets: ["us"] };
@@ -510,7 +498,7 @@ describe("1999 Gen 2.5 / Gen 3 overlap, with a global market", () => {
   };
   const gen25Omitted = { gens: ["gen2-5"], years: { from: 1997, to: 1999 } };
 
-  it.fails.each(REAL_MARKETS)(
+  it.each(REAL_MARKETS)(
     "a 1999 Gen 2.5 %s truck fits the global-market fitment",
     (market) => {
       expect(
@@ -547,7 +535,7 @@ describe("1999 Gen 2.5 / Gen 3 overlap, with a global market", () => {
     expect(matchesVehicle(gen25Global, vehicle, realTaxonomy)).toBe(false);
   });
 
-  it.fails("a global Gen 2 fitment still reaches a 1999 Gen 2.5 truck", () => {
+  it("a global Gen 2 fitment still reaches a 1999 Gen 2.5 truck", () => {
     // `parentGeneration` expands downwards; the market fix must not touch it.
     expect(
       matchesVehicle(
@@ -656,19 +644,16 @@ describe("validateEntryFitments treats a global market as unrestricted (FIT-02)"
     engines: [UNLISTED_ENGINE],
   };
 
-  it.fails(
-    "does not report `impossible-combination` on a global fitment that is possible elsewhere",
-    () => {
-      const issues = validateEntryFitments(
-        [makeFitmentEntry({ ...impossibleShape, markets: ["global"] })],
-        narrowTaxonomy
-      );
-      expect(
-        issues.map((issue) => issue.code),
-        "a global-market fitment was called impossible on the strength of one scope"
-      ).toEqual([]);
-    }
-  );
+  it("does not report `impossible-combination` on a global fitment that is possible elsewhere", () => {
+    const issues = validateEntryFitments(
+      [makeFitmentEntry({ ...impossibleShape, markets: ["global"] })],
+      narrowTaxonomy
+    );
+    expect(
+      issues.map((issue) => issue.code),
+      "a global-market fitment was called impossible on the strength of one scope"
+    ).toEqual([]);
+  });
 
   it("control: the same fitment with `markets` omitted reports nothing", () => {
     expect(
