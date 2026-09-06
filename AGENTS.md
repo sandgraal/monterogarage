@@ -256,9 +256,9 @@ Stop and ask before any of these:
   mode (a self-authored grader asserting the page's own defect as correct)
   on the exact surface (a filtered listing with a provisional-match
   indicator) where it already bit once. **Named owner and trigger, per the
-  reviewer's own condition for accepting the deferral: T504's `[TEST]` half
-  authors `procedures-index.render.test.ts`, and T504's `[CONTENT]` half does
-  not merge without it.** `tests/e2e/hidden-guard.spec.ts`'s two new rows for
+  reviewer's own condition for accepting the deferral: T504a `[TEST]` authors
+  `procedures-index.render.test.ts`, and T504 `[CONTENT]` does not merge without
+  it.** `tests/e2e/hidden-guard.spec.ts`'s two new rows for
   `/en/procedures/`/`/es/procedimientos/` are not a substitute — that sweep
   checks one invariant (`[hidden]` computes `display:none`), not that the
   page renders cards, resolves hrefs, filters, or shows the provisional
