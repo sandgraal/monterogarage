@@ -2577,6 +2577,9 @@ const hasReferences = Object.values(referenceCatalogue).some(
       if (covers.size === 0) return;
 
       const urls = await signPhotoUrls([...covers.values()]);
+      // Built once, not `rows.find(...)` per cover below — that would make
+      // this loop O(n²) across the whole garage instead of O(n).
+      const rowsById = new Map(rows.map((row) => [row.id, row] as const));
 
       for (const [vehicleId, path] of covers) {
         const item = items.get(vehicleId);
@@ -2587,17 +2590,22 @@ const hasReferences = Object.values(referenceCatalogue).some(
         // longer in the live list is exactly that case, and painting a
         // detached node is harmless but pointless.
         if (!item || !els.list.contains(item) || url === undefined) continue;
-        const row = rows.find((entry) => entry.id === vehicleId);
+        const row = rowsById.get(vehicleId);
         const image = item.querySelector<HTMLImageElement>("[data-row-thumb]");
         const empty = item.querySelector<HTMLElement>("[data-row-thumb-empty]");
-        if (image && row) {
-          image.src = url;
-          image.alt = (text.stringPhotoAlt ?? "").replace(
-            "{name}",
-            row.display_name
-          );
-          image.hidden = false;
-        }
+        // The same convention as every other row-template lookup in this
+        // file (see `paintList` above): if the row or the expected `<img>`
+        // is not there, skip this one rather than proceeding as though the
+        // thumbnail painted. That is also why the placeholder is only
+        // hidden inside this branch — hiding it unconditionally would leave
+        // a blank card (no placeholder, no image) on exactly this failure.
+        if (!image || !row) continue;
+        image.src = url;
+        image.alt = (text.stringPhotoAlt ?? "").replace(
+          "{name}",
+          row.display_name
+        );
+        image.hidden = false;
         if (empty) empty.hidden = true;
       }
     }
