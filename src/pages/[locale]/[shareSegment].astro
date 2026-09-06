@@ -1,0 +1,559 @@
+---
+/**
+ * The accountless share page (T2-404, SHR-05, SHR-07).
+ *
+ * > **SHR-07** THE holder of a grant SHALL NOT be required to have an account,
+ * > and the accountless path SHALL be read-only.
+ *
+ * ## The token is in the fragment, and the fragment never leaves the browser
+ *
+ * `https://monterogarage.com/es/compartir/#t=<token>` is sent to the origin as
+ * `…/es/compartir/`. The part after the `#` appears in no access log, in no
+ * `Referer`, and in no Supabase request URL — the client POSTs it in a body.
+ * A path segment or a query parameter would be the opposite in every respect,
+ * and a path token also cannot be prerendered, so it would force SSR (001
+ * SCF-01) for no benefit. `src/lib/garage/share-link.ts` is the one place that
+ * reads or writes it; `tests/garage/share-delivery.test.ts` sweeps `src/pages/`
+ * to make sure no route ever takes it any other way.
+ *
+ * ## The page renders nothing it was not given
+ *
+ * Every access decision is in the database (SHR-01 names three enforcement
+ * modes and "a check in page code" is not one of them). This page does not know
+ * whether the grant opens costs — it knows whether the row it received has a
+ * `cost_amount` key, which is the same question asked where the answer cannot
+ * be wrong. That is why SHR-06 says the fields are *omitted* rather than
+ * blanked: `cost_amount: null` would mean the job was free.
+ *
+ * ## One refusal, for every reason (SHR-08)
+ *
+ * Unknown, expired and revoked are one sentence, because they are one answer
+ * from the database and a page that split them again would rebuild the
+ * existence oracle in prose.
+ *
+ * ## `noindex`, and it is not a preference
+ *
+ * A page reachable by anybody holding a URL has no business in a search index
+ * (003 MEC-04), and a crawler that found one would hold it too. The meta tag is
+ * here, and `vercel.json` sends `X-Robots-Tag` and `Referrer-Policy:
+ * no-referrer` on the same route — the tag covers a crawler reading the HTML,
+ * the header covers one that only reads the response.
+ *
+ * refs specs/002-montero-garage (SHR-05, SHR-06, SHR-07, SHR-08), 003 (MEC-04)
+ */
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { isLocale, type Locale } from "../../i18n/routing";
+import { collectionRouteParams, collectionRoutePaths } from "../../i18n/routes";
+import { t } from "../../i18n/ui";
+import { SITE_NAME } from "../../site";
+import { SUPABASE_BROWSER_CONFIG } from "../../lib/supabase/config";
+
+export function getStaticPaths() {
+  return collectionRouteParams("share", "shareSegment");
+}
+
+const { locale: param } = Astro.params;
+if (!isLocale(param)) {
+  throw new Error(`Unknown locale segment: ${String(param)}`);
+}
+const locale: Locale = param;
+const strings = t(locale);
+const routes = collectionRoutePaths("share");
+const configured = SUPABASE_BROWSER_CONFIG !== null;
+---
+
+<BaseLayout
+  locale={locale}
+  routePathByLocale={routes}
+  title={`${strings.sharePageTitle} — ${SITE_NAME}`}
+  description={strings.sharePageIntro}
+>
+  <meta name="robots" content="noindex, nofollow" slot="head" />
+
+  <section
+    class="share"
+    data-share
+    data-string-loading={strings.sharePageLoading}
+    data-string-no-token={strings.sharePageNoToken}
+    data-string-refused={strings.sharePageRefused}
+    data-string-error={strings.sharePageError}
+    data-string-history-empty={strings.sharePageHistoryEmpty}
+    data-string-cost-none={strings.sharePageCostNone}
+    data-string-receipts-closed={strings.sharePageReceiptsClosed}
+    data-string-receipt-open={strings.sharePageReceiptOpen}
+    data-string-receipt-opening={strings.sharePageReceiptOpening}
+    data-string-receipt-failed={strings.sharePageReceiptFailed}
+    data-string-kind-work={strings.garageRecordKindWork}
+    data-string-kind-receipt={strings.garageRecordKindReceipt}
+    data-string-kind-note={strings.garageRecordKindNote}
+    data-string-kind-plan={strings.garageRecordKindPlan}
+  >
+    <div class="share__intro">
+      <h1>{strings.sharePageHeading}</h1>
+      <p>{strings.sharePageIntro}</p>
+    </div>
+
+    {
+      configured ? (
+        <div class="share__panel">
+          <p
+            class="share__message"
+            data-share-message
+            role="status"
+            aria-live="polite"
+          >
+            {strings.sharePageLoading}
+          </p>
+
+          <div class="share__body" data-share-body hidden>
+            {/*
+             * The vehicle's name is the heading of this panel, and it is the
+             * user's word, so it cannot be server-rendered. Shipping an empty
+             * `<h2>` for the script to fill is what a11y tooling calls
+             * "heading tag with no content" (WCAG2AA H42.2) — correctly: an
+             * empty heading is a landmark that announces nothing. So the
+             * element ships as a paragraph and becomes a heading at the
+             * moment it has something to head, the same convention
+             * `[garageSegment].astro`'s vehicle-detail panel uses for its
+             * own `data-garage-detail-name`.
+             */}
+            <p class="share__vehicle" data-share-vehicle />
+            <p class="share__fineprint" data-share-identity />
+
+            {/*
+             * AGENTS.md: user-entered garage records are the user's own
+             * testimony, rendered as such and never presented as
+             * site-verified reference facts. That is true of a record read
+             * through a grant exactly as it is on the owner's own screen, and
+             * the reader here is likelier than the owner to mistake one for
+             * the other — they arrived from a link, not from a garage.
+             */}
+            <p class="share__fineprint">{strings.garageRecordsTestimonyNote}</p>
+
+            <h2>{strings.sharePageHistoryHeading}</h2>
+            <ol class="share__timeline" data-share-records />
+
+            <h2>{strings.sharePageReceiptsHeading}</h2>
+            <p class="share__note" data-share-receipts-note hidden />
+            <ul class="share__receipts" data-share-receipts />
+          </div>
+
+          <noscript>
+            <p class="share__notice">{strings.sharePageScriptRequired}</p>
+          </noscript>
+        </div>
+      ) : (
+        <p class="share__notice">{strings.sharePageUnavailable}</p>
+      )
+    }
+  </section>
+</BaseLayout>
+
+<script>
+  import { shareTokenFromUrl } from "../../lib/garage/share-link";
+  import {
+    readSharedReceipts,
+    readSharedRecords,
+    readSharedVehicle,
+    signSharedReceipt,
+    type SharedReceipt,
+  } from "../../lib/supabase/shares";
+  import { SUPABASE_BROWSER_CONFIG } from "../../lib/supabase/config";
+  import {
+    formatCost,
+    formatDuration,
+    formatRecordDate,
+    recordHeadline,
+    type RecordRow,
+  } from "../../lib/garage/record";
+  import type { VisibleRecord } from "../../lib/garage/visibility";
+
+  /**
+   * DOM wiring only. Every decision worth testing is in the database or in
+   * `src/lib/supabase/shares.ts`, and every string comes from the markup the
+   * server already localized (I18N-08) — this script never composes prose.
+   */
+  function enhance(root: HTMLElement): void {
+    const found = {
+      message: root.querySelector<HTMLElement>("[data-share-message]"),
+      body: root.querySelector<HTMLElement>("[data-share-body]"),
+      vehicleName: root.querySelector<HTMLElement>("[data-share-vehicle]"),
+      identity: root.querySelector<HTMLElement>("[data-share-identity]"),
+      timeline: root.querySelector<HTMLElement>("[data-share-records]"),
+      receiptsNote: root.querySelector<HTMLElement>(
+        "[data-share-receipts-note]"
+      ),
+      receipts: root.querySelector<HTMLElement>("[data-share-receipts]"),
+    };
+    if (Object.values(found).some((element) => element === null)) return;
+
+    // Re-bound after the guard, so every element is a non-null `HTMLElement`
+    // inside the async handlers below without a non-null assertion:
+    // TypeScript's narrowing does not survive a closure boundary, and this is
+    // the same shape `[authSegment].astro` uses for its live region.
+    const status = found.message as HTMLElement;
+    const body = found.body as HTMLElement;
+    const vehicleName = found.vehicleName as HTMLElement;
+    const identity = found.identity as HTMLElement;
+    const timeline = found.timeline as HTMLElement;
+    const receiptsNote = found.receiptsNote as HTMLElement;
+    const receipts = found.receipts as HTMLElement;
+    const text = { ...root.dataset };
+    const locale = document.documentElement.lang || "en";
+
+    function say(value: string): void {
+      status.textContent = value;
+      status.hidden = value === "";
+    }
+
+    /** The record kind's own label, from the markup. Never composed here. */
+    function kindLabel(kind: string): string {
+      if (kind === "work") return text.stringKindWork ?? kind;
+      if (kind === "receipt") return text.stringKindReceipt ?? kind;
+      if (kind === "note") return text.stringKindNote ?? kind;
+      if (kind === "plan") return text.stringKindPlan ?? kind;
+      return kind;
+    }
+
+    /**
+     * One record, as a list item.
+     *
+     * The cost line is rendered **only when the key is present**, and whenever
+     * the key is present. Not "when it is non-null" — a `null` cost on a record
+     * the grant opened is a record whose money the reader *was* shown, and
+     * there is no figure in it. The absent key is the database saying "you were
+     * not shown this", and the two must not render alike (SHR-06;
+     * `src/lib/garage/visibility.ts` settles the reading of the null).
+     *
+     * ## The condition used to disagree with this paragraph (T2-404 review, F9)
+     *
+     * It read `Object.hasOwn(row, "cost_amount") && typeof row.cost_amount ===
+     * "number"`, which drops a `null` cost on the floor and renders it exactly
+     * as a withheld one — collapsing, in the branch, the distinction the
+     * database went to the trouble of expressing in the payload. So the key
+     * presence decides *whether* there is a cost line and the value decides
+     * *what it says*: a figure, or the words for nothing.
+     */
+    function renderRecord(row: VisibleRecord): HTMLLIElement {
+      const item = document.createElement("li");
+      item.className = "share__record";
+
+      const heading = document.createElement("p");
+      heading.className = "share__record-title";
+      heading.textContent = recordHeadline(
+        row as Pick<RecordRow, "title" | "kind">,
+        kindLabel(row.kind)
+      );
+      item.append(heading);
+
+      const meta = document.createElement("p");
+      meta.className = "share__record-meta";
+      const parts: string[] = [formatRecordDate(row.occurred_on, locale)];
+      if (row.odometer_km !== null && row.odometer_km !== undefined) {
+        parts.push(
+          new Intl.NumberFormat(locale, {
+            style: "unit",
+            unit: "kilometer",
+            unitDisplay: "short",
+            maximumFractionDigits: 0,
+          }).format(row.odometer_km)
+        );
+      }
+      if (row.time_minutes !== null && row.time_minutes !== undefined) {
+        parts.push(formatDuration(row.time_minutes, locale));
+      }
+      // The separator is punctuation, not prose: it carries no meaning a
+      // translator could change, which is why it is not a UI string.
+      meta.textContent = parts.join(" · ");
+      item.append(meta);
+
+      if (Object.hasOwn(row, "cost_amount")) {
+        const cost = document.createElement("p");
+        cost.className = "share__record-cost";
+        cost.textContent =
+          typeof row.cost_amount === "number" &&
+          typeof row.cost_currency === "string"
+            ? formatCost(row.cost_amount, row.cost_currency, locale)
+            : (text.stringCostNone ?? "");
+        item.append(cost);
+      }
+
+      const note = (row.body ?? "").trim();
+      if (note !== "") {
+        const prose = document.createElement("p");
+        prose.className = "share__record-body";
+        prose.textContent = note;
+        item.append(prose);
+      }
+      return item;
+    }
+
+    /** One receipt, with the button that asks the Edge signer for a URL. */
+    function renderReceipt(row: SharedReceipt, token: string): HTMLLIElement {
+      const item = document.createElement("li");
+      item.className = "share__receipt";
+
+      const label = document.createElement("span");
+      label.className = "share__receipt-label";
+      const bits: string[] = [];
+      if (row.vendor) bits.push(row.vendor);
+      if (row.issued_on) bits.push(formatRecordDate(row.issued_on, locale));
+      if (typeof row.amount === "number" && typeof row.currency === "string") {
+        bits.push(formatCost(row.amount, row.currency, locale));
+      }
+      label.textContent = bits.join(" · ");
+      item.append(label);
+
+      const open = document.createElement("button");
+      open.type = "button";
+      open.className = "share__button";
+      open.textContent = text.stringReceiptOpen ?? "";
+      open.addEventListener("click", () => {
+        open.disabled = true;
+        open.textContent = text.stringReceiptOpening ?? "";
+        void signSharedReceipt({
+          token,
+          receiptId: row.id,
+          supabaseUrl: SUPABASE_BROWSER_CONFIG?.url ?? "",
+          anonKey: SUPABASE_BROWSER_CONFIG?.anonKey ?? "",
+        })
+          .then((signed) => {
+            open.disabled = false;
+            open.textContent = text.stringReceiptOpen ?? "";
+            if (!signed.ok) {
+              say(text.stringReceiptFailed ?? "");
+              return;
+            }
+            // `noopener` because the signed URL is a bearer credential and the
+            // opened document has no business holding a reference back to a
+            // page that knows the token.
+            window.open(signed.value, "_blank", "noopener,noreferrer");
+          })
+          .catch(() => {
+            open.disabled = false;
+            open.textContent = text.stringReceiptOpen ?? "";
+            say(text.stringReceiptFailed ?? "");
+          });
+      });
+      item.append(open);
+      return item;
+    }
+
+    /**
+     * Read the link and paint the page.
+     *
+     * The order matters: the vehicle first, because it is the request that
+     * decides whether the link opens at all, and every refusal shares one
+     * sentence. A page that asked for records first and vehicle second would
+     * have two chances to say different things about the same refusal.
+     */
+    async function open(): Promise<void> {
+      const token = shareTokenFromUrl(window.location.href);
+      if (token === null) {
+        say(text.stringNoToken ?? "");
+        return;
+      }
+      say(text.stringLoading ?? "");
+
+      const vehicle = await readSharedVehicle(token);
+      if (!vehicle.ok) {
+        say(
+          vehicle.reason === "refused"
+            ? (text.stringRefused ?? "")
+            : (text.stringError ?? "")
+        );
+        return;
+      }
+      if (vehicle.value === null) {
+        say(text.stringRefused ?? "");
+        return;
+      }
+
+      vehicleName.textContent = vehicle.value.display_name;
+      // Becomes a heading only once it has something to head — see the
+      // comment on the markup above.
+      vehicleName.setAttribute("role", "heading");
+      vehicleName.setAttribute("aria-level", "2");
+      identity.textContent = [
+        vehicle.value.model_year === null
+          ? ""
+          : String(vehicle.value.model_year),
+        vehicle.value.generation_id,
+        vehicle.value.engine_id ?? "",
+      ]
+        .filter((part) => part !== "")
+        .join(" · ");
+
+      const history = await readSharedRecords(token);
+      if (!history.ok) {
+        // A failed history is not an empty history (AGENTS.md). The panel stays
+        // shut and the reader is told, rather than being shown a truck that
+        // looks like it has never been touched.
+        say(
+          history.reason === "refused"
+            ? (text.stringRefused ?? "")
+            : (text.stringError ?? "")
+        );
+        return;
+      }
+
+      timeline.replaceChildren(
+        ...history.value.map((row) => renderRecord(row))
+      );
+      if (history.value.length === 0) {
+        const empty = document.createElement("li");
+        empty.className = "share__note";
+        empty.textContent = text.stringHistoryEmpty ?? "";
+        timeline.append(empty);
+      }
+
+      // Receipts are a separate capability (SHR-06), so a refusal here is not a
+      // refusal of the link — it is this grant not opening the receipts, and it
+      // says so without ending the page.
+      const scans = await readSharedReceipts(token);
+      if (scans.ok) {
+        receiptsNote.hidden = scans.value.length > 0;
+        receiptsNote.textContent =
+          scans.value.length > 0 ? "" : (text.stringReceiptsClosed ?? "");
+        receipts.replaceChildren(
+          ...scans.value.map((row) => renderReceipt(row, token))
+        );
+      } else {
+        receiptsNote.hidden = false;
+        receiptsNote.textContent =
+          scans.reason === "refused"
+            ? (text.stringReceiptsClosed ?? "")
+            : (text.stringError ?? "");
+        receipts.replaceChildren();
+      }
+
+      body.hidden = false;
+      say("");
+    }
+
+    void open().catch(() => say(text.stringError ?? ""));
+  }
+
+  const root = document.querySelector<HTMLElement>("[data-share]");
+  if (root) enhance(root);
+</script>
+
+<style>
+  /*
+   * The same local palette every other page in this repo declares on its own
+   * root element (HANDOFF-DESIGN.md; `[authSegment].astro` is the nearest
+   * sibling). Scoped, not `is:global`: nothing here needs to reach markup this
+   * component did not render.
+   */
+  .share {
+    --paper: #f7f4ee;
+    --panel: #ffffff;
+    --ink: #2b2620;
+    --muted: #6e6559;
+    --line: #e4ddd1;
+
+    font-family: Archivo, "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-width: 42rem;
+  }
+
+  /*
+   * The `[hidden]` guard every interactive page on this site carries, for the
+   * reason `[authSegment].astro` and `[garageSegment].astro` both record at
+   * length: an author-origin `display: flex` beats the user-agent
+   * `[hidden] { display: none }` rule, so a panel that ships `hidden` renders
+   * anyway. On this page that would put an empty history under a heading for a
+   * link that opened nothing. `!important` is deliberate — matching
+   * specificity against a growing set of `display` declarations is the trap,
+   * not the defence. Graded by `tests/e2e/hidden-guard.spec.ts`.
+   */
+  .share [hidden] {
+    display: none !important;
+  }
+
+  .share__intro,
+  .share__panel,
+  .share__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .share__intro h1 {
+    margin: 0;
+    font-size: 1.875rem;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+  }
+
+  .share__intro p,
+  .share__body h2,
+  .share__vehicle {
+    margin: 0;
+  }
+
+  .share__notice,
+  .share__note,
+  .share__fineprint,
+  .share__message {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.9375rem;
+  }
+
+  .share__timeline,
+  .share__receipts {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .share__record,
+  .share__receipt {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 0.25rem;
+    padding: 0.75rem;
+  }
+
+  .share__receipt {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .share__record-title {
+    margin: 0;
+    font-weight: 700;
+  }
+
+  .share__record-meta,
+  .share__record-cost,
+  .share__record-body {
+    margin: 0.25rem 0 0;
+  }
+
+  .share__record-meta {
+    color: var(--muted);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.875rem;
+  }
+
+  .share__button {
+    font: inherit;
+    cursor: pointer;
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 0.25rem;
+    padding: 0.25rem 0.75rem;
+    color: inherit;
+  }
+</style>

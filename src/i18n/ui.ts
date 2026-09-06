@@ -528,6 +528,98 @@ export interface UiStrings
   readonly garageRecordCostPublicLabel: string;
   readonly garageRecordVisibilityHint: string;
   readonly garageRecordVisibilityNeedsRecord: string;
+  /* Typed share grants — T2-404, SHR-05…SHR-08 */
+  /**
+   * The owner's panel: issue a link, see what is out there, end one.
+   *
+   * "Link" rather than "grant" or "token" in both locales. What the owner
+   * makes is a web address they send to somebody; `grant` is the schema's word
+   * and `token` is the secret inside it, and neither is what the reader is
+   * holding in their hand.
+   */
+  readonly shareHeading: string;
+  readonly shareIntro: string;
+  readonly shareKindLabel: string;
+  /**
+   * The two presets of SHR-05, as labels only.
+   *
+   * The preset never decides anything — the two capability checkboxes below do
+   * — so these say who the link is *for*, not what it opens. A label that
+   * implied the capabilities would be the branch SHR-05 forbids, written in
+   * prose.
+   */
+  readonly shareKindMechanic: string;
+  readonly shareKindBuyer: string;
+  readonly shareCostsLabel: string;
+  readonly shareCostsHint: string;
+  readonly shareReceiptsLabel: string;
+  readonly shareReceiptsHint: string;
+  readonly shareExpiryLabel: string;
+  /** `{days}` comes from `SHARE_EXPIRY_DAY_CHOICES` — one list, both locales. */
+  readonly shareExpiryDaysTemplate: string;
+  readonly shareCreate: string;
+  /** The one-shot warning. The token is never recoverable after this panel. */
+  readonly shareCreatedHeading: string;
+  readonly shareCreatedBody: string;
+  readonly shareCopy: string;
+  readonly shareCopied: string;
+  readonly shareCopyFailed: string;
+  readonly shareDismiss: string;
+  readonly shareListHeading: string;
+  readonly shareListEmpty: string;
+  /** `{date}` is formatted by the browser in the reader's own locale. */
+  readonly shareExpiresTemplate: string;
+  readonly shareEndedTemplate: string;
+  readonly shareOpensNothing: string;
+  readonly shareOpensCosts: string;
+  readonly shareOpensReceipts: string;
+  readonly shareOpensBoth: string;
+  readonly shareRevoke: string;
+  readonly shareRevoking: string;
+  readonly shareError: string;
+  /* The accountless page a link opens — T2-404, SHR-07 */
+  readonly sharePageTitle: string;
+  readonly sharePageHeading: string;
+  readonly sharePageIntro: string;
+  readonly sharePageScriptRequired: string;
+  readonly sharePageUnavailable: string;
+  readonly sharePageLoading: string;
+  /** The address has no token in it at all — a truncated paste, usually. */
+  readonly sharePageNoToken: string;
+  /**
+   * The one refusal, for every reason.
+   *
+   * SHR-08: unknown, expired and revoked are indistinguishable, "same status,
+   * same body, same shape". The sentence a reader sees has to obey that too —
+   * "this link has expired" would be the existence oracle the database
+   * refused to be, rebuilt in prose. It says what to do instead: ask the owner.
+   */
+  readonly sharePageRefused: string;
+  readonly sharePageError: string;
+  readonly sharePageHistoryHeading: string;
+  readonly sharePageHistoryEmpty: string;
+  /**
+   * A record the grant opened costs on, whose cost the owner left empty.
+   *
+   * The distinction this string exists to keep open: a grant that does not open
+   * costs receives no `cost_amount` key at all and renders no cost line, while
+   * a grant that *does* open costs on a record carrying no figure renders this.
+   * One says "you were not shown this"; the other says "you were shown all of
+   * it, and there is no figure here" — a warranty job, a favour, a parts swap
+   * in the owner's own driveway. Rendering both as a missing line collapses
+   * them (SHR-06), which is what T2-404's review found.
+   *
+   * It says "not recorded" rather than "free" on purpose. `cost_amount` is
+   * nullable and the owner is never made to fill it, so the honest reading of
+   * the null is the absence of a figure, not a claim about somebody else's
+   * money.
+   */
+  readonly sharePageCostNone: string;
+  readonly sharePageReceiptsHeading: string;
+  readonly sharePageReceiptOpen: string;
+  readonly sharePageReceiptOpening: string;
+  readonly sharePageReceiptFailed: string;
+  readonly sharePageReceiptsClosed: string;
   /* Records and receipts — T2-302, GAR-02′ / GAR-05′ */
   /**
    * The line that frames every record on the page as the owner's own account
@@ -1250,6 +1342,64 @@ const en: UiStrings = {
     "Two decisions, not one: a record you have opened still keeps its cost and its receipts private until you open them here.",
   garageRecordVisibilityNeedsRecord:
     "Save the record first — there is nothing to open yet.",
+  shareHeading: "Share this truck with one person",
+  shareIntro:
+    "A private link that opens this truck's history for whoever you send it to, and for nobody else. It ends on its own, and you can end it sooner from the list below. This is not the same as publishing: nothing here puts the truck on the public site.",
+  shareKindLabel: "Who is this for",
+  shareKindMechanic: "A mechanic",
+  shareKindBuyer: "A buyer",
+  shareCostsLabel: "Show what each job cost",
+  shareCostsHint:
+    "Off by default. The history still shows what was done and when.",
+  shareReceiptsLabel: "Show the receipts",
+  shareReceiptsHint:
+    "A separate decision from the costs above: you can hand over the scans without the totals, or the totals without the scans.",
+  shareExpiryLabel: "Ends after",
+  shareExpiryDaysTemplate: "{days} days",
+  shareCreate: "Create the link",
+  shareCreatedHeading: "Copy this link now",
+  shareCreatedBody:
+    "It is shown once and cannot be shown again. If you lose it, end this one and create another. Anyone who holds the link can open it, so send it the way you would send a key.",
+  shareCopy: "Copy the link",
+  shareCopied: "Copied.",
+  shareCopyFailed: "Your browser would not copy it — select the link and copy.",
+  shareDismiss: "Done",
+  shareListHeading: "Links you have created",
+  shareListEmpty: "No links yet for this truck.",
+  shareExpiresTemplate: "Ends {date}",
+  shareEndedTemplate: "Ended {date}",
+  shareOpensNothing: "History only",
+  shareOpensCosts: "History and costs",
+  shareOpensReceipts: "History and receipts",
+  shareOpensBoth: "History, costs and receipts",
+  shareRevoke: "End this link",
+  shareRevoking: "Ending…",
+  shareError:
+    "That did not go through. Try again in a moment; no link was created or ended.",
+  sharePageTitle: "A truck shared with you",
+  sharePageHeading: "A truck shared with you",
+  sharePageIntro:
+    "The owner sent you this link. It shows what they chose to show, it ends on a date they set, and they can end it sooner.",
+  sharePageScriptRequired:
+    "This page needs JavaScript: the link is read in your browser and never sent to a server. Everything else on this site works without it.",
+  sharePageUnavailable:
+    "Shared links are not switched on yet on this deployment. The reference side of the site works without them.",
+  sharePageLoading: "Opening the link…",
+  sharePageNoToken:
+    "This address is missing the part that opens it. Links break when they are copied out of a message in pieces — ask the owner to send it again.",
+  sharePageRefused:
+    "This link does not open anything. Ask the owner for a new one.",
+  sharePageError:
+    "That did not go through. Reload in a moment; nothing about the truck has changed.",
+  sharePageHistoryHeading: "What has been done",
+  sharePageHistoryEmpty: "The owner has not recorded any work on this truck.",
+  sharePageCostNone: "No cost recorded for this job",
+  sharePageReceiptsHeading: "Receipts",
+  sharePageReceiptOpen: "Open the receipt",
+  sharePageReceiptOpening: "Opening…",
+  sharePageReceiptFailed:
+    "That receipt would not open. Try again in a moment; if it keeps failing, ask the owner.",
+  sharePageReceiptsClosed: "This link does not include the receipts.",
   garageRecordsTestimonyNote:
     "These are your own notes about your own truck, kept as you wrote them. The site does not check them and never presents them as reference facts.",
   garageRecordAdd: "Add a record",
@@ -1868,6 +2018,66 @@ const es: UiStrings = {
     "Son dos decisiones, no una: una ficha abierta mantiene privados su costo y sus facturas hasta que usted los abra aquí.",
   garageRecordVisibilityNeedsRecord:
     "Guarde primero la ficha: todavía no hay nada que abrir.",
+  shareHeading: "Comparta este carro con una persona",
+  shareIntro:
+    "Un enlace privado que abre el historial de este carro para quien usted se lo mande, y para nadie más. Se vence solo, y usted puede cerrarlo antes desde la lista de abajo. Esto no es publicar: nada de aquí pone el carro en la parte pública del sitio.",
+  shareKindLabel: "Para quién es",
+  shareKindMechanic: "Un mecánico",
+  shareKindBuyer: "Un comprador",
+  shareCostsLabel: "Mostrar cuánto costó cada trabajo",
+  shareCostsHint:
+    "Apagado de entrada. El historial igual muestra qué se hizo y cuándo.",
+  shareReceiptsLabel: "Mostrar las facturas",
+  shareReceiptsHint:
+    "Es una decisión aparte de los costos de arriba: usted puede entregar los escaneos sin los montos, o los montos sin los escaneos.",
+  shareExpiryLabel: "Se vence en",
+  shareExpiryDaysTemplate: "{days} días",
+  shareCreate: "Crear el enlace",
+  shareCreatedHeading: "Copie este enlace ahora",
+  shareCreatedBody:
+    "Se muestra una sola vez y no se puede volver a mostrar. Si lo pierde, cierre este y cree otro. Cualquiera que tenga el enlace lo puede abrir, así que mándelo como mandaría una llave.",
+  shareCopy: "Copiar el enlace",
+  shareCopied: "Copiado.",
+  shareCopyFailed:
+    "El navegador no lo quiso copiar: seleccione el enlace y cópielo.",
+  shareDismiss: "Listo",
+  shareListHeading: "Enlaces que usted ha creado",
+  shareListEmpty: "Todavía no hay enlaces para este carro.",
+  shareExpiresTemplate: "Se vence el {date}",
+  shareEndedTemplate: "Cerrado el {date}",
+  shareOpensNothing: "Solo el historial",
+  shareOpensCosts: "Historial y costos",
+  shareOpensReceipts: "Historial y facturas",
+  shareOpensBoth: "Historial, costos y facturas",
+  shareRevoke: "Cerrar este enlace",
+  shareRevoking: "Cerrando…",
+  shareError:
+    "No se pudo completar. Inténtelo de nuevo en un momento; no se creó ni se cerró ningún enlace.",
+  sharePageTitle: "Un carro compartido con usted",
+  sharePageHeading: "Un carro compartido con usted",
+  sharePageIntro:
+    "La persona dueña le mandó este enlace. Muestra lo que ella escogió mostrar, se vence en la fecha que ella puso, y ella lo puede cerrar antes.",
+  sharePageScriptRequired:
+    "Esta página necesita JavaScript: el enlace se lee en su navegador y nunca se manda a un servidor. Todo lo demás en este sitio funciona sin él.",
+  sharePageUnavailable:
+    "Los enlaces compartidos todavía no están activos en este despliegue. La parte de referencia del sitio funciona sin ellos.",
+  sharePageLoading: "Abriendo el enlace…",
+  sharePageNoToken:
+    "A esta dirección le falta la parte que la abre. Los enlaces se quiebran cuando se copian de un mensaje por pedazos: pídale a la persona dueña que se lo mande otra vez.",
+  sharePageRefused:
+    "Este enlace no abre nada. Pídale uno nuevo a la persona dueña.",
+  sharePageError:
+    "No se pudo completar. Recargue en un momento; nada del carro cambió.",
+  sharePageHistoryHeading: "Lo que se le ha hecho",
+  sharePageHistoryEmpty:
+    "La persona dueña no ha anotado ningún trabajo en este carro.",
+  sharePageCostNone: "Sin costo anotado para este trabajo",
+  sharePageReceiptsHeading: "Facturas",
+  sharePageReceiptOpen: "Abrir la factura",
+  sharePageReceiptOpening: "Abriendo…",
+  sharePageReceiptFailed:
+    "Esa factura no se pudo abrir. Inténtelo de nuevo en un momento; si sigue fallando, avísele a la persona dueña.",
+  sharePageReceiptsClosed: "Este enlace no incluye las facturas.",
   garageRecordsTestimonyNote:
     "Estas son sus propias anotaciones sobre su propio carro, tal como usted las escribió. El sitio no las verifica ni las presenta nunca como datos de referencia.",
   garageRecordAdd: "Agregar una ficha",

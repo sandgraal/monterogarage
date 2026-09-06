@@ -100,12 +100,27 @@ const CASCADE_HOPS = [
   // the three edits `RECORD_MEDIA_TABLE`'s docstring names. A media row that
   // outlived its record would still name a storage path nothing can reach.
   ["record_media", "record_id", "records"],
+  // Promoted by T2-404 in the commit that created the table. A grant that
+  // outlived its vehicle would be a live bearer credential pointing at nothing
+  // — and, worse, at a `vehicle_id` a future row could reuse.
+  ["shares", "vehicle_id", "vehicles"],
 ] as const;
 
-/** The hops a named task still has to ship. Marked, never dropped. */
-const PENDING_CASCADE_HOPS = [
-  ["shares", "vehicle_id", "vehicles", "T2-404"],
-] as const;
+/**
+ * The hops a named task still has to ship. Marked, never dropped.
+ *
+ * **Empty since T2-404**, which promoted the `shares` hop into `CASCADE_HOPS`
+ * in the commit that created the table. The array stays: the completeness
+ * guard below reads it, and the next table declared ahead of its migration
+ * refills it. Empty means "nothing is waiting", which is a different and
+ * better answer than "this idea was deleted".
+ */
+const PENDING_CASCADE_HOPS: readonly (readonly [
+  string,
+  string,
+  string,
+  string,
+])[] = [];
 
 describe("the ownership chain is declared to cascade", () => {
   it.fails.each(PENDING_CASCADE_HOPS)(
