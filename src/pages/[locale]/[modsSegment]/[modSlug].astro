@@ -233,11 +233,12 @@ const affects = data.affects.map((row) => ({
  * once in the repository and both locales render from that one copy.
  */
 /*
- * `?? []` because a mod that cites no figure omits the field entirely, and
- * this page reads what an author wrote rather than assuming the schema's
- * `.default([])` was applied on the way in — the same defensive read
- * `local.affectsNotes ?? {}` above makes for the same reason. "No figures"
- * renders as no section, never as a crash and never as an empty one.
+ * `?? []` for defense-in-depth: `modsShared.specs` has `.default([])`, so
+ * after content parsing `data.specs` should always be present (as `[]` when
+ * omitted in the source file). The nullish-coalescing is here as a guard
+ * against unexpected `null` or `undefined` values, the same defensive read
+ * `local.affectsNotes ?? {}` above makes. "No figures" renders as no section,
+ * never as a crash and never as an empty one.
  */
 const specs = specRows(
   data.specs ?? [],
