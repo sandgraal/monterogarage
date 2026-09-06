@@ -390,8 +390,11 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
     engine, an interference engine with the belt off, working under a truck) — seven
     of the eight in total. Only the air cleaner element change has none, because a
     hazard notice on a job with no hazard is a notice nobody reads.
-  - **Nineteen new `reference` rows carry every figure** (PRC-03): 11 `torque`,
-    8 `dimension`. Nothing numeric is typed into either locale's prose — the
+  - **Twenty-five new `reference` rows carry every figure** (PRC-03): 16 `torque`,
+    9 `dimension`. (Twenty-one at the end of review round 1 — 12 `torque`,
+    9 `dimension`, not the "nineteen / 11 / 8" this line claimed until round 2
+    counted the diff — plus the four differential plug torques round 2 added.)
+    Nothing numeric is typed into either locale's prose — the
     detector in `src/lib/procedures/figures.ts` was hit exactly zero times, and the
     three `check:glossary` / `check:es-register` hits this branch did take were all
     vocabulary, not figures (see the bilingual notes below).
@@ -408,10 +411,62 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
     belt interval at its own weaker tier, and this wave does not contradict it.
   - **Fitment note for reviewers.** Rows and jobs derived from the engine and
     ignition groups are scoped `engines: ["6g74-gdi"]`, because that is the only
-    6G7 the export manual documents; the lubrication, axle, transfer and brake
-    figures carry no engine facet, because the manual prints them for the whole
-    model range. Years follow the merged gen3 corpus' existing `1999–2002`
-    convention rather than the manual's own `2001–2003` cover.
+    6G7 the export manual documents; the axle, transfer and brake figures carry
+    no engine facet, because the manual prints them for the whole model range.
+    **`gen3-engine-oil-and-filter-change` joined the scoped set in review round 2**
+    (fact-check finding 5): it had no engine facet while linking a fill quantity
+    that is the GDI engine's alone, which read as though the figure covered the
+    diesels too. Its drain-plug torque row is genuinely range-wide and keeps its
+    unscoped fitment; only the job and the fluid row are engine-scoped. Years
+    follow the merged gen3 corpus' existing `1999–2002` convention rather than
+    the manual's own `2001–2003` cover.
+  - **Review round 2 (2026-09-06) — the differential plug torques, and why they
+    were missing.** Round 1 checked only the axle groups' *On-vehicle Service*
+    pages (§26-11, §27-8), which give no torque for the drain or filler plugs, and
+    `gen3-differential-oil-change` therefore told the reader in both locales that
+    no figure exists and to "go by feel". It does exist. Each axle group prints its
+    plug torques on the **Differential Carrier REASSEMBLY** illustration instead:
+    **§26-40** carries them as callouts against the front axle's drain plug (item
+    29) and filler plug (item 30), **§27-30** against the rear axle's drain plug
+    (item 32) and filler plug (item 33), and all four are different numbers. Four
+    new `torque` rows (`torque-gen3-{front,rear}-diff-{drain,filler}-plug`), all
+    read off the rendered PDF pages rather than its OCR layer, which garbles them.
+    `§00-2`'s "Indication of tightening torque" note is cited alongside, because it
+    is what licenses storing each as `value` + `min`/`max`: the central value is
+    the target and the tolerance is the checking range. The procedure now cites all
+    four by id and distinguishes front from rear in its steps, and gained a torque
+    wrench in `tools`.
+  - **Round 2's other fact-check fixes.** §12-6's filter table was described as
+    giving "a different fraction of a turn and a different torque for each" of
+    three filters; two rows share the turn fraction and two share the torque, so
+    only the combination varies — reworded in both locales and in the citation.
+    §16-41 refers the right-bank throttle body to **GROUP 13A** (Gasoline Direct
+    Injection, under FUEL, per §13A-1), not to the intake group, which is where
+    `gen3-spark-plug-replacement` was sending readers. The interference-engine
+    claim on `gen3-timing-belt-replacement` rests on **one** vendor page, not
+    "suppliers" plural, and that page's own fitment table is the North American
+    3.5/3.8 V6 while the entry is scoped to the JDM GDI 3.5 — both facts now
+    stated in the prose and in the source title. The eight archive-repaired rows
+    that cited only "second scanned part: groups 25 to 55" now name their sections
+    (§31-7 ×2, §37A-11/12/30, §26-25, §26-11, §27-4, §35A-6, §25-3), each
+    re-verified against the PDF in round 2, and their `accessed` date is corrected
+    from `2026-08-31` to the `2026-09-06` snapshot they actually carry.
+  - **Round 2's bilingual fixes, and one gate that could not be armed.** `dado`
+    had crept in four times as "socket" against the glossary's canonical `cubo`,
+    which this same branch uses correctly elsewhere; all four are now `cubo`. A
+    bare `depósito` survived in `gen3-brake-fluid-change`'s ES **safety block**
+    two sentences after the reader is told to depressurise the accumulator —
+    now `depósito del líquido de frenos`, and the article usage is unified across
+    both brake entries. **`dado`/`dados` are recorded on `all-tools-cubo` as
+    `falseFriend` aliases rather than scannable ones**, and that is a deliberate
+    limit, not an oversight: added as ordinary aliases they turn `check:glossary`
+    red on two *correct* sentences (`dimension-gen3-au-approach-angle`'s
+    `prose.es.summary` and `ui.ts`'s `vehicleProvisionalNote`) where `dado` is the
+    ordinary past participle of *dar*. That is exactly the condition
+    `glossaryAliasSchema` documents for the flag. The consequence is that this
+    class of regression is **not** caught mechanically — the term is indexed for
+    search and reported by name in every `check:glossary` run's
+    "deliberately not scanned" list, and catching it stays a review job.
   - **Fixtures for T504a** (its task line asks for real entries): the index page
     renders 8 cards across 4 systems (`engine` ×3, `drivetrain`, `transfer-case`,
     `brakes` ×2); **`gen3-transfer-case-oil-change` is the provisional-match case**

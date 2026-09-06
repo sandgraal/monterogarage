@@ -30,6 +30,9 @@
       "id": "square-drive-and-breaker-bar"
     },
     {
+      "id": "torque-wrench"
+    },
+    {
       "id": "hand-pump-or-squeeze-bottle"
     },
     {
@@ -44,7 +47,11 @@
     "fluid-gen3-front-differential-oil",
     "dimension-gen3-front-differential-oil-level",
     "fluid-gen3-rear-differential-oil",
-    "dimension-gen3-rear-differential-oil-level"
+    "dimension-gen3-rear-differential-oil-level",
+    "torque-gen3-front-diff-drain-plug",
+    "torque-gen3-front-diff-filler-plug",
+    "torque-gen3-rear-diff-drain-plug",
+    "torque-gen3-rear-diff-filler-plug"
   ],
   "steps": [
     {
@@ -54,20 +61,26 @@
       "id": "drain-and-read-the-old-oil"
     },
     {
-      "id": "clean-the-plug-and-refit-it"
+      "id": "clean-the-plug-and-refit-it",
+      "specs": [
+        "torque-gen3-front-diff-drain-plug",
+        "torque-gen3-rear-diff-drain-plug"
+      ]
     },
     {
       "id": "fill-the-front-differential",
       "specs": [
         "fluid-gen3-front-differential-oil",
-        "dimension-gen3-front-differential-oil-level"
+        "dimension-gen3-front-differential-oil-level",
+        "torque-gen3-front-diff-filler-plug"
       ]
     },
     {
       "id": "fill-the-rear-differential",
       "specs": [
         "fluid-gen3-rear-differential-oil",
-        "dimension-gen3-rear-differential-oil-level"
+        "dimension-gen3-rear-differential-oil-level",
+        "torque-gen3-rear-diff-filler-plug"
       ]
     },
     {
@@ -80,7 +93,7 @@
   "confidence": "fsm-confirmed",
   "sources": [
     {
-      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis, Pub. No. PWJE0001 (February 2000), second scanned part: groups 25 to 55 — group 26, Front Axle, §26-11, Front Axle Gear Oil Level Check (the drop below the filler plug hole, the specified gear oil and the quantity), and group 27, Rear Axle, §27-8, Gear Oil Level Check (its own, tighter drop figure and the same oil specification)",
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis, Pub. No. PWJE0001 (February 2000), second scanned part: groups 25 to 55 — group 26, Front Axle, §26-11, Front Axle Gear Oil Level Check (the drop below the filler plug hole, the specified gear oil and the quantity), and §26-40, Differential Carrier REASSEMBLY, whose exploded illustration carries the drain plug and filler plug tightening torques the level-check page omits; group 27, Rear Axle, §27-8, Gear Oil Level Check (its own, tighter drop figure and the same oil specification), §27-4, Lubricants (the rear quantity), and §27-30, Differential Carrier REASSEMBLY, which does the same for the rear axle's two plugs with its own pair of figures",
       "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
       "archiveUrl": "https://web.archive.org/web/20260906181459id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
       "accessed": "2026-09-06",
@@ -90,18 +103,19 @@
   "prose": {
     "en": {
       "title": "Differential oil change — front and rear",
-      "summary": "Two housings, the same job twice, and the one service that keeps a set of crown wheel and pinion gears alive after river crossings and wet season roads. The manual checks the level at the filler plug hole rather than by quantity alone, and it states a different drop below the hole for the front axle than for the rear — so the two are not checked against the same mark even though the work looks identical from underneath. The oil grade and the fill quantities below are the manual's; the time and the difficulty are our estimate.",
+      "summary": "Two housings, the same job twice, and the one service that keeps a set of crown wheel and pinion gears alive after river crossings and wet season roads. The manual checks the level at the filler plug hole rather than by quantity alone, and it states a different drop below the hole for the front axle than for the rear — so the two are not checked against the same mark even though the work looks identical from underneath. It does give a tightening torque for every one of these plugs, contrary to what you will be told — not on the level-check pages, which is where people look, but on each axle group's differential carrier reassembly illustration, and the front pair and the rear pair are not the same figures. The oil grade, the fill quantities and the plug torques below are the manual's; the time and the difficulty are our estimate.",
       "steps": {
         "loosen-the-filler-plug-first": "Crack the filler plug loose before you touch the drain plug — on both housings, every time. A drain plug that comes out easily and a filler plug that will not move leaves you with an empty differential and no way to fill it, and that is a tow, not an afternoon.",
         "drain-and-read-the-old-oil": "Drain into a pan and look at what comes out. Gear oil smells bad when it is healthy; what you are reading is the colour and the feel. Milky or coffee-coloured means water got in, which after a river crossing is a breather or a seal problem and not just an oil change. Glitter, or paste on the plug if yours is a magnetic one, means wear you should chase before it gets expensive.",
-        "clean-the-plug-and-refit-it": "Wipe the drain plug clean. If it has a magnet on it — many do, though the axle group does not say so — a fine grey fur on the magnet is normal and flakes or chips are not. Refit it with a fresh sealing washer if yours seals on one, and tighten it firmly and squarely. The axle group gives no torque for these plugs, so this is one of the few figures on this site we cannot hand you: go by feel, gently, and understand that the plug is the cheap half and the housing threads are the expensive half.",
-        "fill-the-front-differential": "Fill the front differential through the filler hole with the grade below until the level reaches the point the front axle group states. Fill slowly: gear oil takes its time to settle and it is easy to think it is full when it is only slow. The stated quantity gets you close; the hole tells you when to stop.",
-        "fill-the-rear-differential": "Fill the rear differential the same way, with its own quantity and its own level figure below. If your truck has the air-operated rear differential lock, leave its air line and switch alone while you work — you are changing oil, not servicing the lock.",
+        "clean-the-plug-and-refit-it": "Wipe the drain plug clean. If it has a magnet on it — many do, though the axle group does not say so — a fine grey fur on the magnet is normal and flakes or chips are not. Refit it with a fresh sealing washer if yours seals on one, and tighten it with a torque wrench. There is a figure for this, and it is worth knowing where it hides: the pages that tell you how to check the level give none, which is why so many people are told to go by feel, but each axle group prints its plug torques on its differential carrier reassembly illustration. The front axle's drain plug and the rear axle's are close without being equal, and both are below — set the wrench for the housing you are actually under rather than carrying one setting round the truck.",
+        "fill-the-front-differential": "Fill the front differential through the filler hole with the grade below until the level reaches the point the front axle group states. Fill slowly: gear oil takes its time to settle and it is easy to think it is full when it is only slow. The stated quantity gets you close; the hole tells you when to stop. Close the filler plug to the front axle's own filler figure below — the manual gives the filler plug a lower target and a wider band than the drain plug beside it, and this is the plug you want to be able to open next time.",
+        "fill-the-rear-differential": "Fill the rear differential the same way, with its own quantity and its own level figure below, and close its filler plug to the rear axle group's filler figure — the last of the plug torques listed on this page and the lowest of them. If your truck has the air-operated rear differential lock, leave its air line and switch alone while you work — you are changing oil, not servicing the lock.",
         "do-not-confuse-the-transfer-case": "The transfer case is bolted alongside the front differential and it does not take the same oil: the manual asks for a GL-5 hypoid oil in the axles and a GL-4 in the transfer case. Neighbouring housings, different oils. Read the label on the bottle before you pour, and do the two jobs one at a time rather than with four open containers under the truck.",
         "check-for-leaks-and-write-it-down": "Lower the truck, drive it a short distance, and look under it again for weeping plugs. Then write the date and the odometer reading down — differential oil has no dipstick and no warning lamp, and the only record that this was done is the one you keep."
       },
       "tools": {
         "square-drive-and-breaker-bar": "Whatever actually fits your plugs, and a breaker bar — these are usually stiff. Look at the plug heads before you buy a tool: some take a square drive straight into the plug, some a hex socket, and the axle group's illustrations do not settle it for every housing",
+        "torque-wrench": "Torque wrench, for closing the plugs. Every plug figure on this page falls inside the range of a mid-size click wrench",
         "hand-pump-or-squeeze-bottle": "Hand pump or squeeze bottle for filling: there is no way to pour into a filler hole on the side of a housing",
         "drain-pan": "Drain pan",
         "wire-brush-and-rags": "Wire brush and rags, to clean around the plugs before opening them"
@@ -115,18 +129,19 @@
     },
     "es": {
       "title": "Cambio de aceite de los diferenciales — delantero y trasero",
-      "summary": "Dos cajas, el mismo trabajo dos veces, y el servicio que mantiene vivos la corona y el piñón después de pasar quebradas y caminos de invierno. El manual revisa el nivel en el hueco del tapón de llenado y no solo por cantidad, y da una caída distinta bajo el hueco para el eje delantero que para el trasero: las dos cajas no se comparan contra la misma marca aunque desde abajo el trabajo se vea igual. El grado del aceite y las cantidades de abajo son del manual; el tiempo y la dificultad son estimación nuestra.",
+      "summary": "Dos cajas, el mismo trabajo dos veces, y el servicio que mantiene vivos la corona y el piñón después de pasar quebradas y caminos de invierno. El manual revisa el nivel en el hueco del tapón de llenado y no solo por cantidad, y da una caída distinta bajo el hueco para el eje delantero que para el trasero: las dos cajas no se comparan contra la misma marca aunque desde abajo el trabajo se vea igual. Y sí da par de apriete para todos estos tapones, aunque le digan lo contrario: no en las páginas de revisión de nivel, que es donde uno busca, sino en la ilustración de armado del portadiferencial de cada grupo de eje, y las cifras del eje delantero no son las del trasero. El grado del aceite, las cantidades y los pares de los tapones que van abajo son del manual; el tiempo y la dificultad son estimación nuestra.",
       "steps": {
         "loosen-the-filler-plug-first": "Afloje primero el tapón de llenado, antes de tocar el de drenaje, en las dos cajas y siempre. Un tapón de drenaje que sale fácil y un tapón de llenado que no se mueve lo dejan con el diferencial vacío y sin manera de llenarlo, y eso es una grúa, no una tarde de taller.",
         "drain-and-read-the-old-oil": "Drene en la bandeja y vea lo que sale. El aceite de engranajes huele feo aunque esté bueno; lo que usted está leyendo es el color y el tacto. Lechoso o color café quiere decir que entró agua, y después de pasar una quebrada eso es un respiradero o un retenedor, no un simple cambio de aceite. Brillos, o pasta pegada en el tapón si el suyo trae imán, es desgaste que conviene atender antes de que salga caro.",
-        "clean-the-plug-and-refit-it": "Limpie bien el tapón de drenaje. Si trae imán —muchos lo traen, aunque el grupo de ejes no lo diga—, una pelusa gris fina en el imán es normal y las escamas y las virutas no lo son. Vuelva a ponerlo con empaque nuevo si el suyo sella por empaque, y apriételo firme y derecho. El grupo de ejes no da par de apriete para estos tapones, así que esta es una de las pocas cifras que no le podemos dar en este sitio: vaya a pulso, con calma, y tenga claro que el tapón es la mitad barata y la rosca de la caja es la cara.",
-        "fill-the-front-differential": "Llene el diferencial delantero por el hueco de llenado con el grado de abajo, hasta que el nivel llegue al punto que indica el grupo de eje delantero. Sirva despacio: el aceite de engranajes tarda en acomodarse y es fácil creer que ya está lleno cuando solo va lento. La cantidad indicada lo deja cerca; el hueco le dice cuándo parar.",
-        "fill-the-rear-differential": "Llene el diferencial trasero igual, con su propia cantidad y su propia cifra de nivel, ambas abajo. Si su carro trae el bloqueo del diferencial trasero por aire, no toque su manguera ni su interruptor mientras trabaja: usted está cambiando aceite, no dándole servicio al bloqueo.",
+        "clean-the-plug-and-refit-it": "Limpie bien el tapón de drenaje. Si trae imán —muchos lo traen, aunque el grupo de ejes no lo diga—, una pelusa gris fina en el imán es normal y las escamas y las virutas no lo son. Vuelva a ponerlo con empaque nuevo si el suyo sella por empaque, y apriételo con llave de torque. Sí hay cifra, y conviene saber dónde se esconde: las páginas que explican cómo revisar el nivel no dan ninguna —de ahí sale eso de que hay que apretar a pulso—, pero cada grupo de eje imprime los pares de sus tapones en la ilustración de armado del portadiferencial. El tapón de drenaje del eje delantero y el del trasero quedan cerca sin ser iguales, y los dos van abajo: gradúe la llave para la caja bajo la que usted está y no ande un solo ajuste por todo el carro.",
+        "fill-the-front-differential": "Llene el diferencial delantero por el hueco de llenado con el grado de abajo, hasta que el nivel llegue al punto que indica el grupo de eje delantero. Sirva despacio: el aceite de engranajes tarda en acomodarse y es fácil creer que ya está lleno cuando solo va lento. La cantidad indicada lo deja cerca; el hueco le dice cuándo parar. Cierre el tapón de llenado al par de llenado del eje delantero que va abajo: el manual le da al tapón de llenado un valor más bajo y una banda más ancha que al de drenaje que tiene al lado, y este es el tapón que usted va a querer poder abrir la próxima vez.",
+        "fill-the-rear-differential": "Llene el diferencial trasero igual, con su propia cantidad y su propia cifra de nivel, ambas abajo, y cierre su tapón de llenado al par de llenado del grupo de eje trasero: el último de los pares de tapones que aparecen en esta página y el más bajo de todos. Si su carro trae el bloqueo del diferencial trasero por aire, no toque su manguera ni su interruptor mientras trabaja: usted está cambiando aceite, no dándole servicio al bloqueo.",
         "do-not-confuse-the-transfer-case": "La caja de transferencia va empernada al lado del diferencial delantero y no lleva el mismo aceite: el manual pide aceite hipoidal GL-5 en los ejes y GL-4 en la transferencia. Cajas vecinas, aceites distintos. Lea la etiqueta del envase antes de servir, y haga los dos trabajos uno a la vez y no con cuatro envases abiertos debajo del carro.",
         "check-for-leaks-and-write-it-down": "Baje el carro, dé una vuelta corta y vuelva a revisar por debajo si algún tapón está llorando. Después anote la fecha y el kilometraje: el aceite del diferencial no tiene varilla ni luz de advertencia, y el único registro de que esto se hizo es el que usted lleve."
       },
       "tools": {
         "square-drive-and-breaker-bar": "Lo que de verdad le calce a sus tapones, y barra de fuerza: casi siempre están duros. Véales la cabeza antes de comprar herramienta: unos se sueltan metiéndoles el cuadrante directo y otros con cubo hexagonal, y las ilustraciones del grupo de ejes no lo dejan claro para todas las cajas",
+        "torque-wrench": "Llave de torque, para cerrar los tapones. Todas las cifras de tapón de esta página caen dentro del rango de una llave de click mediana",
         "hand-pump-or-squeeze-bottle": "Bomba manual o botella de servir, para llenar: por un hueco en el costado de una caja no se sirve de otra forma",
         "drain-pan": "Bandeja de drenaje",
         "wire-brush-and-rags": "Cepillo de alambre y trapos, para limpiar alrededor de los tapones antes de abrirlos"

@@ -1,0 +1,39 @@
+{
+  "id": "torque-gen3-front-diff-filler-plug",
+  "fitment": {
+    "gens": ["gen3"],
+    "markets": ["global"],
+    "years": {
+      "from": 1999,
+      "to": 2002
+    }
+  },
+  "kind": "torque",
+  "system": "drivetrain",
+  "torque": {
+    "value": 50,
+    "min": 40,
+    "max": 60,
+    "unit": "nm"
+  },
+  "confidence": "fsm-confirmed",
+  "sources": [
+    {
+      "title": "Mitsubishi Motors — PAJERO Workshop Manual, chassis, Pub. No. PWJE0001 (February 2000), second scanned part: groups 25 to 55 — group 26, Front Axle, §26-40, Differential Carrier REASSEMBLY, whose exploded illustration carries this torque as a callout against the filler plug, item 30 in its own reassembly step list, and a higher one against the drain plug, item 29; and §00-2, How to Use This Manual, whose \"Indication of tightening torque\" note states that the central value is the target and the tolerance is the checking range",
+      "url": "https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "archiveUrl": "https://web.archive.org/web/20260906181459id_/https://jdmfsm.info/Auto/Japan/Mitsubishi/Pajero-Montero/Manuals/2001%20Pajero/2001-2003%20Pajero%20Service%20Manual/PWJE0001_P2_PAJERO_2001_CHASSIS.pdf",
+      "accessed": "2026-09-06",
+      "kind": "fsm"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Front differential filler plug tightening torque",
+      "summary": "The tightening torque for the front differential's filler plug — the plug you crack loose first and close last on an oil change. The manual does not treat it as the same fastener as the drain plug: on the same illustration it carries its own, lower target and a noticeably wider checking range around it. Like the drain plug's, the figure sits on the differential carrier's reassembly illustration rather than on the on-vehicle level-check page, which is why a reader who only opens the level-check page concludes there is no figure at all. The filler plug is also the one that ends a job badly when it seizes: it is worth the wrench, because a filler plug you cannot open is an axle you cannot fill. The manual this comes from is the export PAJERO book; the North American Montero has its own manual and a reader on that truck should confirm the figure there."
+    },
+    "es": {
+      "title": "Par de apriete del tapón de llenado del diferencial delantero",
+      "summary": "El par de apriete del tapón de llenado del diferencial delantero, el tapón que uno afloja de primero y cierra de último en un cambio de aceite. El manual no lo trata como el mismo tornillo que el de drenaje: en la misma ilustración le pone su propio valor, más bajo, y un rango de comprobación bastante más ancho. Igual que la del tapón de drenaje, esta cifra está en la ilustración de armado del portadiferencial y no en la página de revisión de nivel, y por eso quien solo abre la página de nivel concluye que no hay cifra del todo. El tapón de llenado es además el que arruina el trabajo cuando se pega: vale la pena la llave de torque, porque un tapón de llenado que no abre es un eje que no se puede llenar. El manual del que sale esto es el del PAJERO de exportación; el Montero de Norteamérica tiene su propio manual, y quien ande en ese carro debería confirmar la cifra ahí."
+    }
+  }
+}
