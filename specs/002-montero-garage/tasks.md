@@ -1244,7 +1244,7 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   showcase/work-log pages themselves (stable handle URLs, HANDOFF-DESIGN.md
   chrome, hreflang). Activates the T2-401a and T2-401 grant graders, and
   T2-402's public-pages graders. Depends: **T2-401a merged**, T2-401 merged,
-  T2-402 merged (handles/toggles/masking half — landed). *(SHR-05..09,
+  T2-402 (handles/toggles/masking portion merged; public page rendering now in T2-404). *(SHR-05..09,
   SHR-02..04)*
   <br>Kept out of T2-402 deliberately: this is a new trust boundary and it gets
   its own review rather than riding in behind the public pages.
