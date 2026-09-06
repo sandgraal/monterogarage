@@ -984,7 +984,7 @@ describe("the seam the page's wiring must live behind", () => {
    * The reason canary. Every `it.fails` below fails because this one does; if
    * this activates and they do not, the failure is theirs and not the seam's.
    */
-  it.fails("is implemented", async () => {
+  it("is implemented", async () => {
     const enhance = await seam();
     const html = await render("en");
     const dom = new JSDOM(html);
@@ -1001,7 +1001,7 @@ describe("the seam the page's wiring must live behind", () => {
    * that never calls it would otherwise pass every behavioural grader here
    * while the shipped page stayed inert.
    */
-  it.fails("the page delegates its wiring to the seam", () => {
+  it("the page delegates its wiring to the seam", () => {
     const template = readFileSync(
       new URL(
         "../../src/pages/[locale]/[proceduresSegment].astro",
@@ -1016,20 +1016,16 @@ describe("the seam the page's wiring must live behind", () => {
     expect(template).not.toContain("createVehicleListingView");
   });
 
-  it.fails(
-    "returns null for a root with no toolbar (the empty state)",
-    async () => {
-      const enhance = await seam();
-      await withCorpus([], async () => {
-        const dom = new JSDOM(await render("en"));
-        const win = dom.window as unknown as Window;
-        const root =
-          win.document.querySelector<HTMLElement>("[data-procedures]");
-        expect(root).not.toBeNull();
-        expect(enhance(root as HTMLElement, win)).toBeNull();
-      });
-    }
-  );
+  it("returns null for a root with no toolbar (the empty state)", async () => {
+    const enhance = await seam();
+    await withCorpus([], async () => {
+      const dom = new JSDOM(await render("en"));
+      const win = dom.window as unknown as Window;
+      const root = win.document.querySelector<HTMLElement>("[data-procedures]");
+      expect(root).not.toBeNull();
+      expect(enhance(root as HTMLElement, win)).toBeNull();
+    });
+  });
 
   /*
    * `apply()` and `destroy()` are the whole of `ProceduresIndexView`, and
@@ -1046,7 +1042,7 @@ describe("the seam the page's wiring must live behind", () => {
    * hidden) and asking the view to restore it. The mount-time paint cannot be
    * mistaken for this: the cards are hidden after that has already happened.
    */
-  it.fails("`apply()` repaints the list from the current state", async () => {
+  it("`apply()` repaints the list from the current state", async () => {
     const page = await mount("en");
     expect(
       page.view,
@@ -1081,34 +1077,31 @@ describe("the seam the page's wiring must live behind", () => {
    * promise that, and grading a promise the contract does not make is how a
    * grader starts dictating an implementation.
    */
-  it.fails(
-    "`destroy()` stops the view answering vehicle-selection changes",
-    async () => {
-      const page = await mount("en");
-      expect(page.view).not.toBeNull();
-      const view = page.view as ProceduresIndexView;
+  it("`destroy()` stops the view answering vehicle-selection changes", async () => {
+    const page = await mount("en");
+    expect(page.view).not.toBeNull();
+    const view = page.view as ProceduresIndexView;
 
-      // Live: a Gen 2 truck against a Gen 3 corpus dims every row.
-      await selectVehicle(page, selectionFor("6g74-sohc", "gen2", 1995));
-      const painted = REAL_ENTRIES.map((entry) => page.filtered(entry.id));
-      expect(
-        painted.every((row) => row !== null),
-        "the live view must paint before `destroy()` can be shown to stop it"
-      ).toBe(true);
-      expect(page.summaryHidden()).toBe(false);
+    // Live: a Gen 2 truck against a Gen 3 corpus dims every row.
+    await selectVehicle(page, selectionFor("6g74-sohc", "gen2", 1995));
+    const painted = REAL_ENTRIES.map((entry) => page.filtered(entry.id));
+    expect(
+      painted.every((row) => row !== null),
+      "the live view must paint before `destroy()` can be shown to stop it"
+    ).toBe(true);
+    expect(page.summaryHidden()).toBe(false);
 
-      // Torn down: the identical announcement — the one `clears every marker
-      // when the vehicle is cleared` proves a *live* view repaints for — must
-      // now change nothing on the page.
-      view.destroy();
-      await selectVehicle(page, null);
+    // Torn down: the identical announcement — the one `clears every marker
+    // when the vehicle is cleared` proves a *live* view repaints for — must
+    // now change nothing on the page.
+    view.destroy();
+    await selectVehicle(page, null);
 
-      expect(REAL_ENTRIES.map((entry) => page.filtered(entry.id))).toEqual(
-        painted
-      );
-      expect(page.summaryHidden()).toBe(false);
-    }
-  );
+    expect(REAL_ENTRIES.map((entry) => page.filtered(entry.id))).toEqual(
+      painted
+    );
+    expect(page.summaryHidden()).toBe(false);
+  });
 });
 
 /* -------------------------------------------------------------------------
@@ -1116,7 +1109,7 @@ describe("the seam the page's wiring must live behind", () => {
  * ---------------------------------------------------------------------- */
 
 describe("the system filter narrows the list", () => {
-  it.fails("shows every card before anything is clicked", async () => {
+  it("shows every card before anything is clicked", async () => {
     for (const locale of LOCALES) {
       const page = await mount(locale);
       expect(page.visible().sort()).toEqual(
@@ -1138,7 +1131,7 @@ describe("the system filter narrows the list", () => {
    * attribute would still narrow *something*, and a single-system spot check
    * would call that a pass.
    */
-  it.fails("narrows to exactly the cards of the system clicked", async () => {
+  it("narrows to exactly the cards of the system clicked", async () => {
     for (const locale of LOCALES) {
       const page = await mount(locale);
       for (const system of SYSTEMS_PRESENT) {
@@ -1152,7 +1145,7 @@ describe("the system filter narrows the list", () => {
     }
   });
 
-  it.fails("counts the narrowed list against the unchanged total", async () => {
+  it("counts the narrowed list against the unchanged total", async () => {
     const page = await mount("en");
     for (const system of SYSTEMS_PRESENT) {
       page.pill(system).click();
@@ -1167,20 +1160,17 @@ describe("the system filter narrows the list", () => {
     }
   });
 
-  it.fails(
-    "restores every card when `All systems` is clicked again",
-    async () => {
-      const page = await mount("en");
-      page.pill(SYSTEMS_PRESENT[0] as string).click();
-      expect(page.visible().length).toBeLessThan(REAL_ENTRIES.length);
-      page.pill("").click();
-      expect(page.visible().sort()).toEqual(
-        REAL_ENTRIES.map((entry) => entry.id).sort()
-      );
-    }
-  );
+  it("restores every card when `All systems` is clicked again", async () => {
+    const page = await mount("en");
+    page.pill(SYSTEMS_PRESENT[0] as string).click();
+    expect(page.visible().length).toBeLessThan(REAL_ENTRIES.length);
+    page.pill("").click();
+    expect(page.visible().sort()).toEqual(
+      REAL_ENTRIES.map((entry) => entry.id).sort()
+    );
+  });
 
-  it.fails("presses exactly one pill at a time", async () => {
+  it("presses exactly one pill at a time", async () => {
     const page = await mount("en");
     for (const system of [...SYSTEMS_PRESENT, ""]) {
       page.pill(system).click();
@@ -1199,36 +1189,33 @@ describe("the system filter narrows the list", () => {
    * reached by filtering a one-system corpus on a system it does not have,
    * which is the same code path a wave-2 pill combination will reach for real.
    */
-  it.fails(
-    "shows the no-results line when a filter empties the list",
-    async () => {
-      const oneSystem = REAL_ENTRIES.filter(
-        (entry) => systemOf(entry) === SYSTEMS_PRESENT[0]
+  it("shows the no-results line when a filter empties the list", async () => {
+    const oneSystem = REAL_ENTRIES.filter(
+      (entry) => systemOf(entry) === SYSTEMS_PRESENT[0]
+    );
+    const otherSystem = SYSTEMS_PRESENT.find(
+      (system) => system !== SYSTEMS_PRESENT[0]
+    );
+    expect(otherSystem).toBeDefined();
+
+    await withCorpus(oneSystem, async () => {
+      const page = await mount("en");
+      const none = page.doc.querySelector<HTMLElement>(
+        "[data-procedures-none]"
       );
-      const otherSystem = SYSTEMS_PRESENT.find(
-        (system) => system !== SYSTEMS_PRESENT[0]
-      );
-      expect(otherSystem).toBeDefined();
+      expect(none?.hidden).toBe(true);
 
-      await withCorpus(oneSystem, async () => {
-        const page = await mount("en");
-        const none = page.doc.querySelector<HTMLElement>(
-          "[data-procedures-none]"
-        );
-        expect(none?.hidden).toBe(true);
+      // The pill for the absent system is not rendered, so the state is
+      // driven the way a browser would: set the button's value and click it.
+      const button = page.pill("");
+      button.dataset["value"] = otherSystem as string;
+      button.click();
 
-        // The pill for the absent system is not rendered, so the state is
-        // driven the way a browser would: set the button's value and click it.
-        const button = page.pill("");
-        button.dataset["value"] = otherSystem as string;
-        button.click();
-
-        expect(page.visible()).toEqual([]);
-        expect(none?.hidden).toBe(false);
-        expect(none?.textContent).toBe(t("en").proceduresNoResults);
-      });
-    }
-  );
+      expect(page.visible()).toEqual([]);
+      expect(none?.hidden).toBe(false);
+      expect(none?.textContent).toBe(t("en").proceduresNoResults);
+    });
+  });
 });
 
 /* -------------------------------------------------------------------------
@@ -1236,7 +1223,7 @@ describe("the system filter narrows the list", () => {
  * ---------------------------------------------------------------------- */
 
 describe("T204's provisional-match indicator", () => {
-  it.fails("shows nothing at all until a vehicle is selected", async () => {
+  it("shows nothing at all until a vehicle is selected", async () => {
     const page = await mount("en");
     expect(page.summaryHidden()).toBe(true);
     for (const entry of REAL_ENTRIES) {
@@ -1252,80 +1239,71 @@ describe("T204's provisional-match indicator", () => {
    * case" test alone would pass just as well if the indicator were painted on
    * every card.
    */
-  it.fails(
-    "marks the provisional match and only the provisional match",
-    async () => {
-      for (const locale of LOCALES) {
-        const page = await mount(locale);
-        await selectVehicle(page, selectionFor("6g74-gdi"));
-
-        for (const entry of PROVISIONAL_ENTRIES) {
-          expect(
-            page.provisional(entry.id),
-            `${entry.id} restricts a facet outside FIT-03's quadruple and must ` +
-              `say so`
-          ).not.toBeNull();
-        }
-        for (const entry of FULL_MATCH_ENTRIES) {
-          expect(
-            page.provisional(entry.id),
-            `${entry.id} matches outright — calling that provisional tells a ` +
-              `reader the site is unsure when it is not`
-          ).toBeNull();
-        }
-      }
-    }
-  );
-
-  it.fails(
-    "names the unanswered facet, in the page's own language",
-    async () => {
-      for (const locale of LOCALES) {
-        const strings = t(locale);
-        const page = await mount(locale);
-        await selectVehicle(page, selectionFor("6g74-gdi"));
-
-        const body = page.provisional("gen3-transfer-case-oil-change") ?? "";
-        expect(body).toContain(strings.vehicleProvisionalLabel);
-        expect(body).toContain(
-          strings.vehicleProvisionalDetailTemplate.replace(
-            "{facets}",
-            fitmentFacetLabel(strings, "transferCase")
-          )
-        );
-        // Never the other locale's words on this locale's page (I18N-08).
-        const other = t(locale === "en" ? "es" : "en");
-        expect(body).not.toContain(other.vehicleProvisionalLabel);
-      }
-    }
-  );
-
-  it.fails(
-    "raises the standing note only while a provisional row is visible",
-    async () => {
-      const page = await mount("en");
+  it("marks the provisional match and only the provisional match", async () => {
+    for (const locale of LOCALES) {
+      const page = await mount(locale);
       await selectVehicle(page, selectionFor("6g74-gdi"));
-      expect(page.noteHidden()).toBe(false);
-      expect(
-        page.doc.querySelector("[data-vehicle-provisional-note]")?.textContent
-      ).toBe(t("en").vehicleProvisionalNote);
 
-      // Filtered to a system the provisional entry is not in, the note has
-      // nothing to warn about — a standing warning about a row the reader
-      // cannot see is a warning that trains readers to ignore warnings.
-      const withoutProvisional = SYSTEMS_PRESENT.find((system) =>
-        REAL_ENTRIES.every(
-          (entry) => systemOf(entry) !== system || !isProvisionalCapable(entry)
+      for (const entry of PROVISIONAL_ENTRIES) {
+        expect(
+          page.provisional(entry.id),
+          `${entry.id} restricts a facet outside FIT-03's quadruple and must ` +
+            `say so`
+        ).not.toBeNull();
+      }
+      for (const entry of FULL_MATCH_ENTRIES) {
+        expect(
+          page.provisional(entry.id),
+          `${entry.id} matches outright — calling that provisional tells a ` +
+            `reader the site is unsure when it is not`
+        ).toBeNull();
+      }
+    }
+  });
+
+  it("names the unanswered facet, in the page's own language", async () => {
+    for (const locale of LOCALES) {
+      const strings = t(locale);
+      const page = await mount(locale);
+      await selectVehicle(page, selectionFor("6g74-gdi"));
+
+      const body = page.provisional("gen3-transfer-case-oil-change") ?? "";
+      expect(body).toContain(strings.vehicleProvisionalLabel);
+      expect(body).toContain(
+        strings.vehicleProvisionalDetailTemplate.replace(
+          "{facets}",
+          fitmentFacetLabel(strings, "transferCase")
         )
       );
-      expect(withoutProvisional).toBeDefined();
-      page.pill(withoutProvisional as string).click();
-      expect(page.noteHidden()).toBe(true);
-
-      page.pill("").click();
-      expect(page.noteHidden()).toBe(false);
+      // Never the other locale's words on this locale's page (I18N-08).
+      const other = t(locale === "en" ? "es" : "en");
+      expect(body).not.toContain(other.vehicleProvisionalLabel);
     }
-  );
+  });
+
+  it("raises the standing note only while a provisional row is visible", async () => {
+    const page = await mount("en");
+    await selectVehicle(page, selectionFor("6g74-gdi"));
+    expect(page.noteHidden()).toBe(false);
+    expect(
+      page.doc.querySelector("[data-vehicle-provisional-note]")?.textContent
+    ).toBe(t("en").vehicleProvisionalNote);
+
+    // Filtered to a system the provisional entry is not in, the note has
+    // nothing to warn about — a standing warning about a row the reader
+    // cannot see is a warning that trains readers to ignore warnings.
+    const withoutProvisional = SYSTEMS_PRESENT.find((system) =>
+      REAL_ENTRIES.every(
+        (entry) => systemOf(entry) !== system || !isProvisionalCapable(entry)
+      )
+    );
+    expect(withoutProvisional).toBeDefined();
+    page.pill(withoutProvisional as string).click();
+    expect(page.noteHidden()).toBe(true);
+
+    page.pill("").click();
+    expect(page.noteHidden()).toBe(false);
+  });
 
   /**
    * "Does not fit" and "provisional" are different sentences about different
@@ -1333,7 +1311,7 @@ describe("T204's provisional-match indicator", () => {
    * does not match at all. A card that showed both would be telling a reader
    * the site is unsure about a job it has already ruled out.
    */
-  it.fails("never marks a row that does not fit as provisional", async () => {
+  it("never marks a row that does not fit as provisional", async () => {
     const page = await mount("en");
     await selectVehicle(page, selectionFor("6g74-sohc", "gen2", 1995));
 
@@ -1358,30 +1336,25 @@ describe("T204's provisional-match indicator", () => {
    * Paired with the test above so "dim it" and "qualify it" cannot be
    * satisfied by the same branch.
    */
-  it.fails(
-    "dims an engine mismatch rather than calling it provisional",
-    async () => {
-      const page = await mount("en");
-      await selectVehicle(page, selectionFor("6g74-sohc"));
+  it("dims an engine mismatch rather than calling it provisional", async () => {
+    const page = await mount("en");
+    await selectVehicle(page, selectionFor("6g74-sohc"));
 
-      const gdiOnly = REAL_ENTRIES.filter((entry) => {
-        const engines = fitmentOf(entry)["engines"];
-        return Array.isArray(engines) && !engines.includes("6g74-sohc");
-      });
-      expect(gdiOnly.length).toBeGreaterThan(0);
+    const gdiOnly = REAL_ENTRIES.filter((entry) => {
+      const engines = fitmentOf(entry)["engines"];
+      return Array.isArray(engines) && !engines.includes("6g74-sohc");
+    });
+    expect(gdiOnly.length).toBeGreaterThan(0);
 
-      for (const entry of gdiOnly) {
-        expect(page.filtered(entry.id)).toContain(
-          t("en").vehicleDoesNotFitLabel
-        );
-        expect(page.provisional(entry.id)).toBeNull();
-      }
-      // …and the transfer-case job still qualifies itself, on the same render.
-      expect(page.provisional("gen3-transfer-case-oil-change")).not.toBeNull();
+    for (const entry of gdiOnly) {
+      expect(page.filtered(entry.id)).toContain(t("en").vehicleDoesNotFitLabel);
+      expect(page.provisional(entry.id)).toBeNull();
     }
-  );
+    // …and the transfer-case job still qualifies itself, on the same render.
+    expect(page.provisional("gen3-transfer-case-oil-change")).not.toBeNull();
+  });
 
-  it.fails("clears every marker when the vehicle is cleared", async () => {
+  it("clears every marker when the vehicle is cleared", async () => {
     const page = await mount("en");
     await selectVehicle(page, selectionFor("6g74-sohc", "gen2", 1995));
     expect(page.filtered(REAL_ENTRIES[0]?.id as string)).not.toBeNull();
@@ -1399,25 +1372,20 @@ describe("T204's provisional-match indicator", () => {
    * The two counters on the page must agree about what "the list" is: the
    * pill count is `shown of total`, the fit count is `fitting of visible`.
    */
-  it.fails(
-    "counts fitting rows against the visible list, not the whole corpus",
-    async () => {
-      const page = await mount("en");
-      await selectVehicle(page, selectionFor("6g74-sohc"));
+  it("counts fitting rows against the visible list, not the whole corpus", async () => {
+    const page = await mount("en");
+    await selectVehicle(page, selectionFor("6g74-sohc"));
 
-      const brakes = SYSTEMS_PRESENT.includes("brakes" as GlossarySystem)
-        ? ("brakes" as GlossarySystem)
-        : (SYSTEMS_PRESENT[0] as GlossarySystem);
-      page.pill(brakes).click();
+    const brakes = SYSTEMS_PRESENT.includes("brakes" as GlossarySystem)
+      ? ("brakes" as GlossarySystem)
+      : (SYSTEMS_PRESENT[0] as GlossarySystem);
+    page.pill(brakes).click();
 
-      const visible = REAL_ENTRIES.filter(
-        (entry) => systemOf(entry) === brakes
-      );
-      expect(page.fitLine()).toBe(
-        t("en")
-          .vehicleFitCountTemplate.replace("{shown}", String(visible.length))
-          .replace("{total}", String(visible.length))
-      );
-    }
-  );
+    const visible = REAL_ENTRIES.filter((entry) => systemOf(entry) === brakes);
+    expect(page.fitLine()).toBe(
+      t("en")
+        .vehicleFitCountTemplate.replace("{shown}", String(visible.length))
+        .replace("{total}", String(visible.length))
+    );
+  });
 });
