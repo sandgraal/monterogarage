@@ -471,14 +471,32 @@ describe("the declaration graders above are reading a real contract", () => {
     expect(columns.length).toBeGreaterThanOrEqual(30);
   });
 
-  it("BOTH partitions are non-empty — neither sweep is vacuous", () => {
+  it("the SHIPPED column sweep is non-empty, and the partition is total", () => {
     // The guard on the partition T2-401 introduced. `it.each([])` registers no
     // graders at all and reports nothing, so a bug that put every row on one
     // side would silently delete half this file — the shipped half would look
     // complete and the `it.fails` half would simply not exist. Asserted rather
     // than assumed, because the failure is invisible in the reporter.
+    //
+    // ## The pending half emptied for real when T2-404 landed
+    //
+    // It held `profiles.handle` (T2-402) and every `shares` column (T2-404)
+    // until those two migrations shipped. The original form asserted *both*
+    // halves non-empty, which reads as a vacuity guard but is really a claim
+    // that some column is always unbuilt — and that claim stops being true
+    // exactly when the contract is finished, so honouring it would mean the
+    // contract can never be completed without a red suite. See the identical
+    // reasoning, applied at the same moment, in `harness-contract.test.ts`
+    // ("splits into a shipped half and a pending half") and
+    // `sharing-default.test.ts` ("the SHIPPED flag sweep is non-empty").
+    //
+    // The hazard is only ever about the half that carries the unmarked
+    // sweeps. That is `SHIPPED`, asserted non-empty here and enumerated
+    // column-by-column above; an empty `PENDING` registers no `it.fails`
+    // graders and there is, by definition, no unbuilt column they could have
+    // graded. The totality check is what stops a column falling out of both
+    // lists, which is the failure the original was reaching for.
     expect(SHIPPED.length).toBeGreaterThan(20);
-    expect(PENDING.length).toBeGreaterThan(0);
     expect(SHIPPED.length + PENDING.length).toBe(
       USER_TABLES.flatMap((table) => table.columns).length
     );

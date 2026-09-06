@@ -106,7 +106,18 @@ const configured = SUPABASE_BROWSER_CONFIG !== null;
           </p>
 
           <div class="share__body" data-share-body hidden>
-            <h2 class="share__vehicle" data-share-vehicle />
+            {/*
+             * The vehicle's name is the heading of this panel, and it is the
+             * user's word, so it cannot be server-rendered. Shipping an empty
+             * `<h2>` for the script to fill is what a11y tooling calls
+             * "heading tag with no content" (WCAG2AA H42.2) — correctly: an
+             * empty heading is a landmark that announces nothing. So the
+             * element ships as a paragraph and becomes a heading at the
+             * moment it has something to head, the same convention
+             * `[garageSegment].astro`'s vehicle-detail panel uses for its
+             * own `data-garage-detail-name`.
+             */}
+            <p class="share__vehicle" data-share-vehicle />
             <p class="share__fineprint" data-share-identity />
 
             {/*
@@ -359,6 +370,10 @@ const configured = SUPABASE_BROWSER_CONFIG !== null;
       }
 
       vehicleName.textContent = vehicle.value.display_name;
+      // Becomes a heading only once it has something to head — see the
+      // comment on the markup above.
+      vehicleName.setAttribute("role", "heading");
+      vehicleName.setAttribute("aria-level", "2");
       identity.textContent = [
         vehicle.value.model_year === null
           ? ""
