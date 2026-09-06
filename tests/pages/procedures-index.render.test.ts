@@ -493,13 +493,33 @@ describe("the corpus these graders rest on", () => {
    * grader that grades the wrong thing.
    */
   it("does not count an engine restriction as provisional", () => {
-    const engineRestricted = REAL_ENTRIES.filter(
-      (entry) => fitmentOf(entry)["engines"] !== undefined
-    );
-    expect(engineRestricted.length).toBeGreaterThan(0);
-    for (const entry of engineRestricted) {
-      if (isProvisionalCapable(entry)) continue;
-      expect(PROVISIONAL_ENTRIES).not.toContain(entry);
+    /*
+     * Selected from the raw fitment fields, not from `isProvisionalCapable`
+     * itself — filtering on the function under test and then asserting
+     * against its own output (`PROVISIONAL_ENTRIES` is
+     * `REAL_ENTRIES.filter(isProvisionalCapable)`) would be true by
+     * construction no matter what the function did. An entry that also
+     * restricts one of `UNANSWERABLE_FITMENT_FIELDS` is excluded here
+     * because it is legitimately provisional for that other reason; this
+     * assertion is only about the engine facet.
+     */
+    const engineOnlyRestricted = REAL_ENTRIES.filter((entry) => {
+      const fitment = fitmentOf(entry);
+      return (
+        fitment["engines"] !== undefined &&
+        !UNANSWERABLE_FITMENT_FIELDS.some(
+          (field) => fitment[field] !== undefined
+        )
+      );
+    });
+    expect(engineOnlyRestricted.length).toBeGreaterThan(0);
+    for (const entry of engineOnlyRestricted) {
+      expect(
+        PROVISIONAL_ENTRIES,
+        `\`${entry.id}\` restricts only \`engines\`, which is inside FIT-03's ` +
+          "gen/market/year/engine quadruple, so it must never be counted as " +
+          "a provisional match"
+      ).not.toContain(entry);
     }
   });
 });
