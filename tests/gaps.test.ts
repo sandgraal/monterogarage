@@ -438,6 +438,58 @@ describe("findUndefinedGlossaryTerms", () => {
     ).toBe(false);
   });
 
+  it("flags a standalone jargon acronym used as its own word", () => {
+    // Paired with the next test: this is the positive case for the
+    // word-boundary regex in findUndefinedGlossaryTerms — "PSI" appearing
+    // on its own (surrounded by non-word characters) must be flagged.
+    const entries = [
+      entry("problems", "src/content/problems/psi-standalone.json", {
+        id: "psi-standalone",
+        prose: {
+          en: {
+            title: "Front tire pressure",
+            summary: "Runs about 32 PSI cold.",
+          },
+          es: {
+            title: "Presión de la llanta delantera",
+            summary: "Anda en 32 PSI en frío.",
+          },
+        },
+      }),
+    ];
+
+    expect(
+      findUndefinedGlossaryTerms(entries).some((item) => item.entryId === "PSI")
+    ).toBe(true);
+  });
+
+  it("does not treat a jargon acronym as used when it is only a substring of a longer word", () => {
+    // "PSIG" (pounds per square inch gauge) is a real, distinct automotive
+    // unit that legitimately appears in fuel-pressure specs. It contains
+    // "PSI" as a literal substring, but that is not a use of the acronym
+    // "PSI" — the regex must require a word boundary after the term, not
+    // just match anywhere. Without `\b`, this would be a false positive.
+    const entries = [
+      entry("problems", "src/content/problems/psig-only.json", {
+        id: "psig-only",
+        prose: {
+          en: {
+            title: "Fuel pressure spec",
+            summary: "The regulator holds 58 PSIG at idle.",
+          },
+          es: {
+            title: "Especificación de presión de combustible",
+            summary: "El regulador mantiene 58 PSIG en ralentí.",
+          },
+        },
+      }),
+    ];
+
+    expect(
+      findUndefinedGlossaryTerms(entries).some((item) => item.entryId === "PSI")
+    ).toBe(false);
+  });
+
   it("KNOWN_JARGON_TERMS is a real, non-empty curated list", () => {
     expect(KNOWN_JARGON_TERMS.length).toBeGreaterThan(0);
     expect(KNOWN_JARGON_TERMS).toContain("EGR");
