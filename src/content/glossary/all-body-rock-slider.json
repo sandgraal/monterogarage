@@ -1,0 +1,62 @@
+{
+  "id": "all-body-rock-slider",
+  "fitment": {
+    "gens": ["gen1", "gen2", "gen2-5", "gen3", "gen4"]
+  },
+  "system": "body",
+  "aliases": [
+    {
+      "term": "slider",
+      "locale": "en",
+      "countries": ["US", "AU"]
+    },
+    {
+      "term": "sliders",
+      "locale": "en",
+      "countries": ["US", "AU"]
+    },
+    {
+      "term": "rock rail",
+      "locale": "en",
+      "countries": ["US"]
+    },
+    {
+      "term": "rock rails",
+      "locale": "en",
+      "countries": ["US"]
+    }
+  ],
+  "relatedTerms": [
+    "all-body-chasis",
+    "all-body-protector-de-carter",
+    "all-tools-gata",
+    "all-tools-soportes-de-seguridad"
+  ],
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen3 NP Steel Side Rails (product page since withdrawn; read from the Wayback Machine snapshot), which draws the line this term turns on: «please note that we do not consider these bona fide \"rock sliders\". In part because of the strength of the steel used, but more so because the Gen3's monocoque sheet metal body allows for too much deflection at the factory mounts when impacted with great force»",
+      "url": "https://lusooverland.com/VA-CGZ-M3-SR1",
+      "archiveUrl": "https://web.archive.org/web/20250908211754id_/https://lusooverland.com/VA-CGZ-M3-SR1",
+      "accessed": "2026-09-05",
+      "kind": "vendor"
+    },
+    {
+      "title": "ARB 4x4 Accessories — «ASK ARB – air bag compatibility», on what makes a bolt-on structure a rated lifting point rather than a bar that merely looks strong: «Most modern ARB bars are also equipped with Hi-Lift jack points and you may rest assured that these are fully engineered and tested for yours and your vehicle's safety»",
+      "url": "https://www.arb.com.au/ask-arb-air-bag-compatibility/",
+      "archiveUrl": "https://web.archive.org/web/20251111135721id_/https://www.arb.com.au/ask-arb-air-bag-compatibility/",
+      "accessed": "2026-09-05",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "rock slider",
+      "summary": "A side bar engineered to take the vehicle's whole weight on a rock and let it slide off, which means it is anchored to structure rather than to sheet metal. The word is doing real work: a Montero specialist declines to call its own full-length steel side rail a bona fide rock slider precisely because a monocoque body deflects too much at the factory mounts under a heavy hit. So a bar that bolts to the body is side protection, not a slider — and it is not a lifting point either, because a rated jack point is an engineered, tested feature and not a by-product of being made of steel. Ask what a bar mounts to before you trust it with the truck."
+    },
+    "es": {
+      "title": "rock slider",
+      "summary": "La barra lateral diseñada para aguantar todo el peso del vehículo sobre una piedra y dejarlo resbalar, lo que significa que va anclada a estructura y no a lámina. La palabra sí distingue algo real: una casa especializada en Montero se niega a llamar rock slider de verdad a su propia barra lateral de acero de largo completo, justamente porque una carrocería monocasco se deforma demasiado en los soportes de fábrica ante un golpe fuerte. Entonces una barra que se atornilla a la carrocería es protección lateral, no un slider; y tampoco es un punto de levante, porque un punto de apoyo certificado es una característica diseñada y probada, no algo que salga de que la pieza sea de acero. Pregunte a qué va anclada una barra antes de confiarle el carro."
+    }
+  }
+}

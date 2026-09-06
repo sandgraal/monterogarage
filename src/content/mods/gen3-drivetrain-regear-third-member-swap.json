@@ -1,0 +1,84 @@
+{
+  "id": "gen3-drivetrain-regear-third-member-swap",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    }
+  },
+  "system": "drivetrain",
+  "cost": {
+    "from": "significant",
+    "to": "major"
+  },
+  "difficulty": 5,
+  "requires": [],
+  "affects": [
+    {
+      "id": "both-ends-have-to-end-up-on-the-same-ratio",
+      "system": "drivetrain",
+      "impact": "needs-adjustment"
+    },
+    {
+      "id": "the-speedometer-moves-again",
+      "system": "interior",
+      "impact": "needs-adjustment",
+      "ref": {
+        "collection": "mods",
+        "id": "gen3-wheels-tires-33-inch-tires"
+      }
+    },
+    {
+      "id": "highway-revs-rise-for-good",
+      "system": "engine",
+      "impact": "degrades"
+    }
+  ],
+  "confidence": "anecdotal",
+  "sources": [
+    {
+      "title": "Montana Montero — «How to 4.9 Gear Swap (Regear) your Montero» (YouTube, 11 August 2021), whose description states: «The 2001 and 2002 XLS models of the 3rd gen montero are the ones with 4.9 gears. All other 2001-2006 Models come with 4.3», and that «some special models come with 4.9 LSDs»",
+      "url": "https://www.youtube.com/watch?v=wO8MyJvrDFE",
+      "archiveUrl": "https://web.archive.org/web/20240124030154id_/https://www.youtube.com/watch?v=wO8MyJvrDFE",
+      "accessed": "2026-09-05",
+      "kind": "video"
+    },
+    {
+      "title": "Downthunder Offroad Forum — «Pajero Diff Ratios», a per-generation list of factory differential ratios and transfer-case low-range reductions, giving Gen 3 as «3.5 SOHC V6 = 4.30 5sp man & 5sp auto», «3.8 SOHC V6 = 4.30 5sp auto», «2.8TDI = 4.90 5sp man», «3.2 DID = 3.917 5sp auto or 4.10 for 5sp man» and «Transfer Case = 1.90:1 for all»",
+      "url": "https://www.downthunder.com.au/forum/Mitsubishi/Pajero/Pajero-Diff-Ratios",
+      "archiveUrl": "https://web.archive.org/web/20251123234508id_/https://www.downthunder.com.au/forum/Mitsubishi/Pajero/Pajero-Diff-Ratios",
+      "accessed": "2026-09-05",
+      "kind": "forum"
+    },
+    {
+      "title": "Tacoma World tire size calculator — 265/70-R16 vs 285/75-R16: the «2.22 (56.5) 7.3%» diameter increase a 33 represents over the factory size, which is the amount of gearing a regear is trying to buy back",
+      "url": "https://www.tacomaworld.com/tirecalc?tires=265-70r16-285-75r16",
+      "archiveUrl": "https://web.archive.org/web/20250823085834id_/https://www.tacomaworld.com/tirecalc?tires=265-70r16-285-75r16",
+      "accessed": "2026-09-05",
+      "kind": "reference"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Regearing a Gen 3 is a third-member swap, not a gear set",
+      "summary": "The route to a different final drive that anyone has actually documented on this generation is not a new gear set: it is fitting the differentials from a truck that left the factory geared shorter, which is the job the video cited below walks through end to end. Read the rest of this entry knowing that its evidence is thin and that its two sources disagree. The video, writing about the US market, says the 2001-2002 XLS is the model that carries the shorter gearing and that everything else from 2001-2006 does not; the forum list, covering the Pajero/Montero range globally, gives the same SOHC V6 engines one ratio with no such carve-out. Both figures are quoted in the citations. Neither source states what actually distinguishes one truck from another, and neither addresses whether differentials from the early cars interchange with the later ones — which is the premise the whole donor-swap idea rests on. Verify against your own two trucks before any money moves.",
+      "tradeoffs": "This is expensive work and, in practice, close to irreversible, because you are buying and fitting two complete differentials rather than adjusting anything. Start with the part this entry cannot answer for you: confirm the ratio actually stamped on or tagged to the donor differentials and on your own, rather than inferring it from a model year, and confirm with the seller or a differential shop that the donor units physically interchange with yours across the years involved. Our sources disagree about which trucks carry what, and say nothing at all about interchange, so treat both as questions to close before purchase and not as facts this page has established. Both ends then have to end up on the same ratio. Donor parts are used parts with an unknown history, and a differential that arrives quiet can still be a bearing away from being loud. On the other side of the ledger, the shorter gearing raises engine speed at every road speed for the life of the truck: better pull and better low range, worse cruising revs and no fuel saving, and on a 33-inch tire it does not simply restore the factory feel — it goes past it, which some owners want and some regret. If the truck is not going to run tires much larger than 33 inches, weigh doing nothing: the gearing loss from a 33 is real but modest, and it is a smaller number than the cost of two third members. Driveline work of this size belongs with a qualified mechanic; a differential set up wrong is a roadside failure, not a rattle.",
+      "affectsNotes": {
+        "both-ends-have-to-end-up-on-the-same-ratio": "This one is our reasoning rather than a quotation, because neither cited source discusses front-and-rear pairing at all — they give ratios per engine and gearbox and stop there. The reasoning: a Gen 3 drives all four wheels through a centre differential, so front and rear must turn at compatible speeds, and leaving one axle on a different ratio from the other would load that centre differential continuously rather than only in a turn. That is why the job is always described and priced as a pair of third members. Have a differential shop confirm it for your specific drivetrain before you buy one end.",
+        "the-speedometer-moves-again": "A differential ratio change moves the speedometer in the opposite direction to a tire change, so if you are correcting for 33s the instrument error shrinks rather than grows. It is very unlikely to cancel exactly: check what the cluster reads afterwards against a known-good reference before you trust it, and read this together with the linked tire entry.",
+        "highway-revs-rise-for-good": "Shorter gearing means more engine revolutions for the same road speed, permanently and in every gear. That is the whole point off-road and the whole cost on the highway; it also means the engine spends its life in a different part of the rev range than the factory chose for it."
+      }
+    },
+    "es": {
+      "title": "Cambiar la relación en una Gen 3 es un cambio de diferenciales completos, no de corona y piñón",
+      "summary": "La ruta hacia otra relación final que alguien haya documentado de verdad en esta generación no es un juego nuevo de corona y piñón: es montar los diferenciales de un vehículo que salió de fábrica con la relación más corta, que es el trabajo que el video citado abajo recorre de principio a fin. Lea el resto de esta entrada sabiendo que su evidencia es débil y que sus dos fuentes se contradicen. El video, hablando del mercado estadounidense, dice que el acabado XLS de 2001-2002 es el que trae la relación más corta y que ningún otro modelo de 2001-2006 la trae; la lista de foro, que cubre la gama Pajero/Montero a nivel global, le da a esos mismos motores SOHC V6 una sola relación, sin esa excepción. Las dos cifras están citadas en las fuentes. Ninguna de las dos dice qué distingue realmente un vehículo de otro, y ninguna toca si los diferenciales de los carros tempranos son intercambiables con los tardíos, que es la premisa sobre la que descansa toda la idea del cambio con piezas donantes. Verifique contra sus dos vehículos concretos antes de mover plata.",
+      "tradeoffs": "Es un trabajo caro y, en la práctica, casi irreversible, porque usted está comprando y montando dos diferenciales completos en lugar de ajustar algo. Empiece por lo que esta entrada no le puede contestar: confirme la relación que viene estampada o en la placa de los diferenciales donantes y de los suyos, en vez de deducirla del año del modelo, y confirme con el vendedor o con un taller de diferenciales que las unidades donantes calcen físicamente con las suyas entre los años involucrados. Nuestras fuentes no coinciden sobre cuál vehículo trae qué, y no dicen absolutamente nada sobre intercambiabilidad, así que tome ambas cosas como preguntas por cerrar antes de comprar y no como hechos que esta página haya establecido. Después, los dos ejes tienen que quedar con la misma relación. Las piezas donantes son usadas y con historia desconocida: un diferencial que llega silencioso todavía puede estar a un rodamiento de sonar. Del otro lado de la cuenta, la relación más corta sube las revoluciones del motor a cualquier velocidad para el resto de la vida del carro: mejor jalón y mejor rango bajo, peores revoluciones en carretera y ningún ahorro de combustible; y sobre una llanta de 33 no devuelve exactamente la sensación de fábrica, se pasa de ella, lo que a unos les gusta y a otros les pesa. Si el vehículo no va a montar llantas mucho mayores de 33 pulgadas, considere seriamente no hacer nada: la pérdida de relación por una 33 es real pero moderada, y es un número más pequeño que el costo de dos diferenciales. Un trabajo de tren motriz de este tamaño es de mecánico calificado; un diferencial mal calibrado es una varada en carretera, no un ruidito.",
+      "affectsNotes": {
+        "both-ends-have-to-end-up-on-the-same-ratio": "Esta es nuestra propia deducción y no una cita, porque ninguna de las fuentes citadas habla de emparejar adelante y atrás: dan relaciones por motor y por caja y ahí paran. El razonamiento: una Gen 3 mueve las cuatro ruedas a través de un diferencial central, así que adelante y atrás tienen que girar a velocidades compatibles, y dejar un eje con una relación distinta a la del otro cargaría ese diferencial central de forma continua y no solo en las curvas. Por eso el trabajo siempre se describe —y se cotiza— como un par de diferenciales. Que un taller de diferenciales se lo confirme para su tren motriz concreto antes de que usted compre un solo eje.",
+        "the-speedometer-moves-again": "Un cambio de relación mueve el velocímetro en sentido contrario a un cambio de llanta, así que si usted está corrigiendo por las 33, el error del tablero se reduce en vez de crecer. Es muy poco probable que se cancele exacto: verifique después qué marca el tablero contra una referencia confiable antes de fiarse, y lea esto junto con la entrada de llantas enlazada.",
+        "highway-revs-rise-for-good": "Una relación más corta significa más vueltas de motor para la misma velocidad, de forma permanente y en todas las marchas. Ese es todo el punto fuera de carretera y todo el costo en carretera; además implica que el motor pasa su vida en una zona de revoluciones distinta a la que la fábrica escogió."
+      }
+    }
+  }
+}

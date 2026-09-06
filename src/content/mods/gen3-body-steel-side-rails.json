@@ -1,0 +1,67 @@
+{
+  "id": "gen3-body-steel-side-rails",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    }
+  },
+  "system": "body",
+  "safetyCritical": true,
+  "cost": {
+    "from": "moderate",
+    "to": "significant"
+  },
+  "difficulty": 3,
+  "requires": [],
+  "affects": [
+    {
+      "id": "the-factory-mounts-deflect-on-a-unibody",
+      "system": "body",
+      "impact": "degrades"
+    },
+    {
+      "id": "the-2001-2002-cladding-fouls-a-full-length-rail",
+      "system": "body",
+      "impact": "needs-adjustment"
+    }
+  ],
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen3 NP Steel Side Rails (product page since withdrawn; read from the Wayback Machine snapshot): «These steel side rails much stronger and more aggressive looking than the original plastic side steps. Though please note that we do not consider these bona fide \"rock sliders\". In part because of the strength of the steel used, but more so because the Gen3's monocoque sheet metal body allows for too much deflection at the factory mounts when impacted with great force.» Also states full-length coverage at 67.25\", bolt-on fitting with no permanent modifications, and that they are «too long to fit the 2001-2002 NM Gen3 because the plastic cladding by the wheel arches comes down too low on that model»",
+      "url": "https://lusooverland.com/VA-CGZ-M3-SR1",
+      "archiveUrl": "https://web.archive.org/web/20250908211754id_/https://lusooverland.com/VA-CGZ-M3-SR1",
+      "accessed": "2026-09-05",
+      "kind": "vendor"
+    },
+    {
+      "title": "ARB 4x4 Accessories — «ASK ARB – air bag compatibility»: on what it takes for a bolt-on structure to be a rated lifting point, «Most modern ARB bars are also equipped with Hi-Lift jack points and you may rest assured that these are fully engineered and tested for yours and your vehicle's safety»",
+      "url": "https://www.arb.com.au/ask-arb-air-bag-compatibility/",
+      "archiveUrl": "https://web.archive.org/web/20251111135721id_/https://www.arb.com.au/ask-arb-air-bag-compatibility/",
+      "accessed": "2026-09-05",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Steel side rails are not rock sliders, and not a jacking point",
+      "summary": "This is the entry where the Gen 3's body structure decides the answer. The Montero specialist that sells a full-length steel rail for this truck says in its own product copy that it does not consider the part a bona fide rock slider — partly because of the steel, but mainly because the Gen 3's monocoque sheet-metal body lets the factory mounting points deflect too much under a heavy impact. That is a statement about the truck, not about that particular rail, and it applies to anything that hangs off the same mounts. What a rail like this genuinely gives you is protection from parking-lot damage, brush and small strikes, plus a step; what it does not give you is a structure you can rest the vehicle's weight on.",
+      "tradeoffs": "Buy this for what it is and the value is easy: it is bolt-on, the supplier states it needs no permanent modification, and it is far stronger than the plastic step it replaces. Buy it as a rock slider and the money is worse than wasted, because you will trust it in the one situation it was disclaimed for. Do not use it as a lifting point. A rated jacking point is an engineered feature — the second citation is a manufacturer describing exactly that engineering on its own bars — and nothing in the first citation claims it for this part; a rail that folds while the vehicle is on a jack is how people get hurt. Fitment is not universal within the generation either: the supplier states the full-length rail is too long for the 2001-2002 body because the wheel-arch cladding hangs lower, and that it fits only if that cladding is trimmed, which is the permanent modification the rest of the install avoids. Add the weight to your spring calculation, remember that anything bolted along the sill gives mud somewhere new to sit against painted steel, and if you genuinely need rocker protection that will take the truck's weight, that is a fabrication conversation with a qualified shop about mounting to structure rather than a catalogue purchase. Jacking and lifting are safety-critical: use the vehicle's own lifting points and proper jack stands.",
+      "affectsNotes": {
+        "the-factory-mounts-deflect-on-a-unibody": "The supplier's own words are that the Gen 3's monocoque sheet-metal body allows too much deflection at the factory mounts when impacted with great force, which is why it declines to call the part a rock slider. Treat any bolt-on rail on this truck as impact protection for the bodywork, not as a structure that can carry the vehicle.",
+        "the-2001-2002-cladding-fouls-a-full-length-rail": "The supplier states the full-length rail does not fit the 2001-2002 body because the plastic cladding by the wheel arches comes down too low, and that it will fit if that cladding is trimmed. Trimming is irreversible and it is the only part of this installation that is — decide about it before the rails arrive, not with the truck on stands."
+      }
+    },
+    "es": {
+      "title": "Las barras laterales de acero no son rock sliders, y no son punto para levantar el carro",
+      "summary": "Esta es la entrada donde la estructura de la carrocería de la Gen 3 decide la respuesta. La casa especializada en Montero que vende una barra lateral de acero de largo completo para este vehículo dice, en su propio texto de producto, que no considera la pieza un rock slider de verdad: en parte por el acero, pero sobre todo porque la carrocería monocasco de lámina de la Gen 3 permite demasiada deformación en los soportes de fábrica ante un golpe fuerte. Eso es una afirmación sobre el vehículo, no sobre esa barra en particular, y aplica a cualquier cosa que cuelgue de esos mismos soportes. Lo que una barra así sí le da es protección contra golpes de parqueo, monte y raspones menores, además de un escalón; lo que no le da es una estructura sobre la que usted pueda dejar caer el peso del carro.",
+      "tradeoffs": "Cómprela por lo que es y el valor es claro: se atornilla, la casa indica que no requiere modificaciones permanentes, y es muchísimo más resistente que el escalón plástico de fábrica que reemplaza. Cómprela creyendo que es un rock slider y la plata está peor que perdida, porque va a confiar en ella justo en la situación para la que se la desaconsejaron. No la use como punto de levante. Un punto de levante certificado es una característica diseñada —la segunda fuente es un fabricante describiendo exactamente ese diseño en sus propios bumpers— y nada en la primera fuente lo reclama para esta pieza; una barra que se dobla con el carro sobre la gata es como la gente sale lastimada. La compatibilidad tampoco es pareja dentro de la generación: la casa indica que la barra de largo completo queda muy larga para la carrocería 2001-2002 porque el plástico de los guardabarros baja demasiado, y que calza solo si se recorta ese plástico, que es justo la modificación permanente que el resto del montaje evita. Sume el peso a su cálculo de resortes, recuerde que todo lo que se atornilla a lo largo del estribo le da al barro un lugar nuevo donde asentarse contra lámina pintada, y si de verdad necesita una protección para los estribos capaz de sostener el peso del vehículo, esa es una conversación de fabricación con un taller calificado sobre anclaje a estructura, no una compra de catálogo. Levantar el vehículo es asunto crítico de seguridad: use los puntos de apoyo del propio carro y soportes de seguridad adecuados.",
+      "affectsNotes": {
+        "the-factory-mounts-deflect-on-a-unibody": "Las palabras de la propia casa son que la carrocería monocasco de lámina de la Gen 3 permite demasiada deformación en los soportes de fábrica ante un golpe fuerte, y por eso se niega a llamar rock slider a la pieza. Tome cualquier barra lateral atornillada en este vehículo como protección de la carrocería contra golpes, no como una estructura capaz de cargar el carro.",
+        "the-2001-2002-cladding-fouls-a-full-length-rail": "La casa indica que la barra de largo completo no calza en la carrocería 2001-2002 porque el plástico de los guardabarros baja demasiado, y que sí calza si se recorta ese plástico. Recortarlo no tiene vuelta atrás y es lo único de este montaje que no la tiene: decídalo antes de que lleguen las barras, no con el carro ya sobre los soportes."
+      }
+    }
+  }
+}
