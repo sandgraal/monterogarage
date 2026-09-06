@@ -22,7 +22,7 @@
  * *mod* states (a fastener torque, a roof-load limit, a length) rather than
  * the ones a service job states.
  *
- * ## The two figures, and why they are what they are
+ * ## The three figures, and why they are what they are
  *
  * - `test-ref-mod-torque` — `100 N·m`, a `torque` reference. An integer with a
  *   unit whose symbol is identical in both languages, so "EN and ES render the
