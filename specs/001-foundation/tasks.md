@@ -510,8 +510,8 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
   mode on the exact surface it happened on once already. Depends: T502
   merged. Fixtures need real entries: author alongside T504 (coordinate with
   T504's author rather than inventing procedure fixtures from nothing). *(PRC-01, SCF-06)*
-  - **Shipped (2026-09-06), 43 graders in `tests/pages/procedures-index.render.test.ts`:
-    26 active, 17 `it.fails`.** The corpus is T504's real eight entries, read off
+  - **Shipped (2026-09-06), 45 graders in `tests/pages/procedures-index.render.test.ts`:
+    26 active, 19 `it.fails`.** The corpus is T504's real eight entries, read off
     disk and parsed through the *registered* collection schema, so the page is
     handed what a real build hands it; expectations are derived from the corpus
     (one card per entry on disk, a pill per system present, "provisional" =
@@ -524,7 +524,7 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
     `getStaticPaths` builds**, in both directions, not against a URL shape. A
     "starts with `/en/`" assertion cannot tell a working URL from the plausible
     404 that T501 shipped on two pages at once.
-  - **The 17 markers all need one seam: `src/lib/procedures/index-view.ts`'
+  - **The 19 markers all need one seam: `src/lib/procedures/index-view.ts`'
     `enhanceProceduresIndex(root, win)`** — committed here as a stub that throws
     `not implemented: T504a`. Astro compiles a page `<script>` into a client
     module that resolves *empty* under Vitest's SSR transform (measured, not
@@ -537,13 +537,49 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
     activated grader.
   - **Both proofs were run, not argued.** Activation: a scratch
     `enhanceProceduresIndex` plus the two-line template delegation flipped all
-    17 markers (43/43 green with `.fails` stripped), then reverted. Mutation:
-    23 deliberate defects across the filter rule, the fitment painter, the
-    template and the summary component — inverted pill match, provisional never
-    set, provisional on every fitting row, bare-route href, ES slug in the EN
-    href, `data-system` dropped, `data-fitment` pinned to 0, safety chip on every
-    card, fit count over the whole corpus, EN prose in both locales, and more —
-    were each caught, by specific graders, with no survivors.
+    19 markers (45/45 green with `.fails` stripped), then reverted. Mutation:
+    25 deliberate defects across the filter rule, the fitment painter, the
+    template, the summary component and the view handle — inverted pill match,
+    provisional never set, provisional on every fitting row, bare-route href, ES
+    slug in the EN href, `data-system` dropped, `data-fitment` pinned to 0,
+    safety chip on every card, fit count over the whole corpus, EN prose in both
+    locales, and more — were each caught, by specific graders, with no
+    survivors.
+  - **Review round 1 (2026-09-06), F3 and F5 fixed; rebased onto T504's reviewed
+    content (45/45 unchanged).** F3: `ProceduresIndexView` was graded only
+    `null`-vs-non-`null`, so `return { apply() {}, destroy() {} }` satisfied the
+    whole file — measured, that mutation left 43 of 45 green. Two graders now
+    exercise the handle itself: `apply()` must restore a list the test hid
+    behind its back, and `destroy()` must stop the view answering the document's
+    vehicle-change announcement (with the live paint first, as the positive
+    control, so a view that paints nothing cannot pass the torn-down half). The
+    destroy grader deliberately does **not** assert the pills stop working —
+    `destroy()` promises unsubscription and nothing wider. F5: the
+    `CSS.escape` note claimed JSDOM exposes `CSS` on its own window; it does not
+    (`new JSDOM("<p></p>").window.CSS === undefined` on jsdom 28), and the
+    comment now says so.
+  - **Conductor ratification (2026-09-06): this branch ships
+    `src/lib/procedures/index-view.ts` — a signature-only stub throwing
+    `not implemented: T504a` — from a `[TEST]` commit, the first time this
+    repo's `[TEST]` convention has shipped anything under `src/`.** Reviewed and
+    flagged for exactly this reason (independent code-reviewer, 2026-09-06):
+    every prior `[TEST]` commit on `main` touched only `tests/` and this file.
+    Ratified as acceptable, narrowly, because the reviewer independently
+    confirmed the necessity rather than took it on the test-writer's word:
+    `astro` compiles this page's inline `<script>` to a module Vitest cannot
+    execute (`Object.keys(mod) === []` under import), so grading "the page
+    delegates its wiring to the seam" requires a seam to exist for the grader to
+    call — there is no way to write this render-grader against `tests/` alone.
+    Three precedents already split page wiring out to a `src/` module for the
+    same reason (`rememberLocaleFromClick`, `matchesProceduresFilter`,
+    `createVehicleListingView`); this stub is that pattern's contract half
+    landing before its implementation half, not new ground. The stub commits to
+    a **signature only** (`enhanceProceduresIndex(root, win) →
+    ProceduresIndexView | null`, throwing `not implemented: T504a`) — it must
+    not grow real logic. **Not a general license**: a future `[TEST]` task
+    reaching for this precedent to ship anything beyond a throwing stub, or
+    reaching for it without the same "Vitest cannot execute this surface at all"
+    necessity, is re-opening a decision, not applying this one.
 - [x] **T504 [CONTENT]** Procedures wave 1: maintenance set (oil, filters, timing belt 6G74, diffs/tcase fluid, brakes, plugs) — bilingual, cited, safety-flagged where due. Depends: T502. Does not merge without T504a's grader landing alongside it — see AGENTS.md's `[TEST]`-debt ledger, T502 entry. *(PRC-01, PRC-02, PRC-03)*
   - **Shipped (2026-09-06).** Eight procedures, all `fsm-confirmed`, all sourced
     from the PAJERO workshop manual (PWJE0001): `gen3-engine-oil-and-filter-change`,

@@ -877,13 +877,15 @@ async function mount(locale: Locale): Promise<Mounted> {
 
   /*
    * `getElementById`, not a `#id` selector: entry ids are kebab-case today but
-   * a selector would need `CSS.escape`, which is a browser global JSDOM
-   * exposes on its own `window` and Node does not have at all — the first
-   * draft of this helper reached for the ambient `CSS` and every provisional
-   * grader failed with a `ReferenceError` that `it.fails` reported as an
-   * expected failure. That is precisely the "failed for the wrong reason"
-   * trap, and it was caught by the activation simulation rather than by
-   * reading the code.
+   * a selector would need `CSS.escape`, and *nothing in this test environment
+   * has it*. JSDOM does not implement `CSS` at all — `new JSDOM("<p></p>")
+   * .window.CSS` is `undefined` on the version this repo pins (28.x, measured
+   * 2026-09-06), so the per-window escape hatch other browser globals get does
+   * not exist here — and Node has no ambient `CSS` either. The first draft of
+   * this helper reached for the ambient `CSS` and every provisional grader
+   * failed with a `ReferenceError` that `it.fails` reported as an expected
+   * failure. That is precisely the "failed for the wrong reason" trap, and it
+   * was caught by the activation simulation rather than by reading the code.
    */
   const rowIn = (entryId: string, selector: string): string | null => {
     const el = doc
@@ -1006,6 +1008,85 @@ describe("the seam the page's wiring must live behind", () => {
         expect(root).not.toBeNull();
         expect(enhance(root as HTMLElement, win)).toBeNull();
       });
+    }
+  );
+
+  /*
+   * `apply()` and `destroy()` are the whole of `ProceduresIndexView`, and
+   * every other grader in this file only ever asks whether the handle came
+   * back `null`. `return { apply() {}, destroy() {} }` would satisfy all of
+   * them. The two graders below are what make the handle mean something: each
+   * puts the page in a state only the named method can get it out of (or into),
+   * so a no-op body fails and a real one passes.
+   */
+
+  /**
+   * `apply()` — "re-run the pill filter and repaint". Driven by putting the
+   * DOM in a state the filter *disagrees* with (no pill pressed, every card
+   * hidden) and asking the view to restore it. The mount-time paint cannot be
+   * mistaken for this: the cards are hidden after that has already happened.
+   */
+  it.fails("`apply()` repaints the list from the current state", async () => {
+    const page = await mount("en");
+    expect(
+      page.view,
+      "a rendered page with a toolbar must return a view to exercise"
+    ).not.toBeNull();
+    const view = page.view as ProceduresIndexView;
+
+    expect(page.visible().length).toBe(REAL_ENTRIES.length);
+    for (const card of page.cards) card.hidden = true;
+    expect(page.visible()).toEqual([]);
+
+    view.apply();
+
+    expect(page.visible().sort()).toEqual(
+      REAL_ENTRIES.map((entry) => entry.id).sort()
+    );
+    expect(page.countLine()).toBe(
+      t("en")
+        .proceduresCountTemplate.replace("{shown}", String(REAL_ENTRIES.length))
+        .replace("{total}", String(REAL_ENTRIES.length))
+    );
+  });
+
+  /**
+   * `destroy()` — "unsubscribe from vehicle-selection changes", and nothing
+   * wider: FIT-03's selector lives in the site chrome and announces through
+   * the document, so the only thing a destroyed view can be observed to have
+   * stopped doing is answering that announcement. The live half runs first and
+   * is the positive control — without it, a view that painted nothing at all
+   * would pass the "nothing moved after `destroy()`" half for the wrong
+   * reason. Nothing here asserts the pills stop working: `destroy()` does not
+   * promise that, and grading a promise the contract does not make is how a
+   * grader starts dictating an implementation.
+   */
+  it.fails(
+    "`destroy()` stops the view answering vehicle-selection changes",
+    async () => {
+      const page = await mount("en");
+      expect(page.view).not.toBeNull();
+      const view = page.view as ProceduresIndexView;
+
+      // Live: a Gen 2 truck against a Gen 3 corpus dims every row.
+      await selectVehicle(page, selectionFor("6g74-sohc", "gen2", 1995));
+      const painted = REAL_ENTRIES.map((entry) => page.filtered(entry.id));
+      expect(
+        painted.every((row) => row !== null),
+        "the live view must paint before `destroy()` can be shown to stop it"
+      ).toBe(true);
+      expect(page.summaryHidden()).toBe(false);
+
+      // Torn down: the identical announcement — the one `clears every marker
+      // when the vehicle is cleared` proves a *live* view repaints for — must
+      // now change nothing on the page.
+      view.destroy();
+      await selectVehicle(page, null);
+
+      expect(REAL_ENTRIES.map((entry) => page.filtered(entry.id))).toEqual(
+        painted
+      );
+      expect(page.summaryHidden()).toBe(false);
     }
   );
 });
