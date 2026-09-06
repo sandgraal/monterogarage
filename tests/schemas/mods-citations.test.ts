@@ -230,7 +230,7 @@ describe("a figure a mod states carries a source (REF-02, T603)", () => {
     ).toEqual([]);
   });
 
-  it.fails("adds no second copy of the number to the mod itself", () => {
+  it("adds no second copy of the number to the mod itself", () => {
     /*
      * The end-state assertion, and the one that tells a by-id field from a
      * typed-number field: after citing a 100 kg roof load and a 100 N·m
@@ -333,7 +333,7 @@ describe("the shipped wave-1 entries have a typed path available (T603)", () => 
     }
   });
 
-  it.fails("accepts each of them with the figure cited by id instead", () => {
+  it("accepts each of them with the figure cited by id instead", () => {
     const withFigures = shippedMods().filter(
       (entry) => titleFigure(entry.data) !== null
     );

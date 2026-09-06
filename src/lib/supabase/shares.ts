@@ -15,7 +15,7 @@
  * The same boundary `./garage.ts` states, and it matters more here. Every
  * decision — is this token live, has it expired, was it revoked, does the
  * grant open costs, does it open receipts, which vehicle does it reach — is
- * made inside `20260906120001_share_grants.sql`, because SHR-01 names exactly
+ * made inside `20260906120100_share_grants.sql`, because SHR-01 names exactly
  * three enforcement modes and "a check in page code" is not one of them. What
  * this module does is *ask correctly*: it POSTs the token (never a query
  * string, which would put a bearer credential into every access log between
@@ -116,12 +116,16 @@ export interface IssuedGrant {
 /**
  * One receipt as a grant holder sees it.
  *
- * `amount` and `currency` are **optional, not nullable**, for the same reason
- * `VisibleRecord`'s cost keys are: `share_read_receipts` omits the pair
- * entirely from a grant that does not open costs, and a required nullable field
- * would have made "this receipt was for nothing" and "you were not shown the
- * total" the same value. Which rows arrive is `includes_receipts`; whether the
- * money rides along is `includes_costs`, and they are two questions (SHR-06).
+ * `amount` and `currency` are **optional AND nullable, and the two mean
+ * different things.** *Omitted* is `includes_costs`: `share_read_receipts`
+ * leaves the pair off the object entirely for a grant that does not open
+ * costs, the same as `VisibleRecord`'s cost keys, so "you were not shown the
+ * total" never has to be spelled `null`. *Present but `null`* is a fact about
+ * this one receipt: the grant does open costs, and the owner never recorded a
+ * total for it — `receipts.amount`/`receipts.currency` are nullable columns,
+ * and this reader rides along with whatever they hold rather than inventing a
+ * number. Which rows arrive is `includes_receipts`; whether the money rides
+ * along is `includes_costs`, and they are two questions (SHR-06).
  */
 export interface SharedReceipt {
   readonly id: string;
@@ -381,6 +385,17 @@ export function readSharedReceipts(
  * storage-wide read primitive wearing a share-link costume.
  *
  * POST, for the same reason every other call here is a POST.
+ *
+ * ## A 500 is not a 403 (T2-404 review, F10)
+ *
+ * `sign-receipt` answers every refusal — unknown token, expired, revoked,
+ * `includes_receipts = false`, a receipt on another vehicle — with 403, and
+ * answers its own outage or a misconfigured deploy with 500 (`readAsHolder`
+ * above draws the identical line one RPC over). A first draft here read
+ * `!response.ok` as one condition and mapped both to `refused()`, which told a
+ * holder "this link is no longer valid" for a Supabase outage the signer had
+ * already gone out of its way to report honestly. Only 403 is a refusal;
+ * every other non-2xx is `failed()`.
  */
 export async function signSharedReceipt(input: {
   readonly token: string;
@@ -405,7 +420,7 @@ export async function signSharedReceipt(input: {
   } catch {
     return failed();
   }
-  if (!response.ok) return refused();
+  if (!response.ok) return response.status === 403 ? refused() : failed();
 
   let payload: { url?: unknown };
   try {

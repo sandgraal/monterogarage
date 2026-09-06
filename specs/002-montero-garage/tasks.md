@@ -1332,7 +1332,7 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   2026-09-05 amendment folded in did not, because they are blocked on a grader
   the amendment did not see. Same shape as T2-402's own partial landing, and
   for a related reason.
-  <br>*Shipped:* `20260906120001_share_grants.sql` — the `shares` table (forced
+  <br>*Shipped:* `20260906120100_share_grants.sql` — the `shares` table (forced
   RLS, owner-scoped through `vehicle_id`, `revoke`-then-`grant` ACL, cascade),
   `create_share_grant` / `revoke_share_grant` (authenticated, definer,
   `search_path = ''`), and the three anon readers `share_read_vehicle` /
@@ -1379,16 +1379,20 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   `search`/`buscar`, which T702 added to both TypeScript lists and not to the
   SQL — so the form has been refusing a handle the database accepts since
   T702.
-  <br>**Fixed 2026-09-06 (post-merge):** `20260906120000_share_grants.sql`
-  shared its timestamp prefix with T2-306's already-merged
-  `20260906120000_vehicle_cover_photo.sql` — both authored the same minute,
-  neither noticed at review — which made `supabase db reset` fail with
-  `duplicate key value violates unique constraint "schema_migrations_pkey"`
-  and took down Tier-B (live-stack) locally and in CI. Renamed to
-  `20260906120001_share_grants.sql` (share-grants was authored the later of
-  the two per `git log --follow`), with the three prose references to the old
-  filename (`src/lib/supabase/shares.ts`, `tests/garage/contract.ts`, this
-  file) updated to match.
+  <br>**Fixed 2026-09-06 (post-merge, two branches converged on it
+  independently):** `20260906120000_share_grants.sql` shared its timestamp
+  prefix with T2-306's already-merged `20260906120000_vehicle_cover_photo.sql`
+  — both authored the same minute, neither noticed at review — which made
+  `supabase db reset` fail with `duplicate key value violates unique
+  constraint "schema_migrations_pkey"` and took down Tier-B (live-stack)
+  locally and in CI. This branch (`fix/002-t2-405-migration-timestamp-
+  collision`) renamed it to `20260906120001_share_grants.sql`; `fix/002-t2-
+  404-copilot-followups` (#125) renamed it to `20260906120100_share_grants.sql`
+  as part of the same Copilot-follow-up pass and merged to `main` first
+  (`8c9baeb`). `#125`'s timestamp is what shipped — this branch's own rename
+  is superseded and its migration file, plus the three prose references to the
+  old filename (`src/lib/supabase/shares.ts`, `tests/garage/contract.ts`, this
+  file), were resolved to match `main`'s on merge rather than re-diverging.
 
 - [ ] **T2-403 [PLATFORM]** Community evidence surfacing: opt-in per-record
   first-hand evidence on problem pages (001 GAR-04 re-cut). Depends: T2-402,

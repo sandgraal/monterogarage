@@ -981,6 +981,32 @@ export interface UiStrings
   /** MOD-01's "honest tradeoffs prose in both locales". */
   readonly modsTradeoffsHeading: string;
   /**
+   * The figures a mod states, cited from `reference` by id (T604, on PRC-03's
+   * precedent).
+   *
+   * A separate key from `proceduresSpecsHeading` and worded differently on
+   * purpose: a procedure *sets* a figure (you torque the bolt to it), and a mod
+   * *states* one (this is what the rack is rated for). One string reused across
+   * the two would make one of the two pages say the wrong thing about its own
+   * numbers.
+   *
+   * These three keys are the reason the label is here at all rather than typed
+   * into the page. An English literal on `/es/…` is the T601-F1 defect class on
+   * this exact page file — right data, wrong language over it — and a
+   * *translated* literal is barely better: it puts the site's vocabulary
+   * somewhere `check:glossary` and the locale gate never look.
+   */
+  readonly modsSpecsHeading: string;
+  readonly modsSpecsIntro: string;
+  /**
+   * Beside a cited figure whose `reference` entry has not been written yet.
+   * The build refuses that corpus (`validate-mods`), so this is
+   * defense-in-depth — it exists so "we could not find this number" never
+   * renders as a shorter list of figures than the entry declares, let alone as
+   * the confident absence of one (AGENTS.md, "a failure is not a zero").
+   */
+  readonly modsSpecUnresolvedLabel: string;
+  /**
    * The chip on an index card counting an entry's declared consequences.
    * `{count}` is `affects.length`, a figure computed at render time.
    */
@@ -1604,6 +1630,11 @@ const en: UiStrings = {
   modsAffectsImpactLabel: "Consequence",
   modsAffectsNoteLabel: "What happens",
   modsTradeoffsHeading: "The honest tradeoffs",
+  modsSpecsHeading: "Figures this mod states",
+  modsSpecsIntro:
+    "Each number below lives in its own reference entry, with its own " +
+    "sources. This page shows it; it does not restate it.",
+  modsSpecUnresolvedLabel: "Look this figure up before you use it",
   modsAffectsCountTemplate: "{count} affected",
   proceduresHeading: "Procedures",
   proceduresIntro:
@@ -2282,6 +2313,11 @@ const es: UiStrings = {
   modsAffectsImpactLabel: "Consecuencia",
   modsAffectsNoteLabel: "Qué pasa",
   modsTradeoffsHeading: "Los contras, sin adornos",
+  modsSpecsHeading: "Cifras que indica esta modificación",
+  modsSpecsIntro:
+    "Cada cifra de abajo vive en su propia entrada de referencia, con sus " +
+    "propias fuentes. Esta página se la muestra; no la vuelve a escribir.",
+  modsSpecUnresolvedLabel: "Busque esta cifra antes de usarla",
   modsAffectsCountTemplate: "{count} afectados",
   proceduresHeading: "Procedimientos",
   proceduresIntro:

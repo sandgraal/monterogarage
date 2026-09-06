@@ -80,6 +80,32 @@ const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const SIGNER_DIR = join(REPO_ROOT, RECEIPT_SIGNER_DIR);
 
 /**
+ * The per-test timeout for the two live describe blocks below, in
+ * milliseconds.
+ *
+ * Every live call the harness makes — `request()` in `harness.ts`, and this
+ * file's own `askSigner()` — already carries its own `AbortSignal.timeout(10_000)`.
+ * That ceiling is a deliberate per-request budget, not a default anybody
+ * forgot to lower. Vitest's *test*-level timeout defaults to 5000ms, which is
+ * shorter than even one of those per-request budgets — so a test chaining
+ * several of them (a fixture is a vehicle insert, a record insert, a receipt
+ * insert and a storage upload before the signer is even asked) can be killed
+ * by the test framework before the network call it is waiting on ever gets to
+ * time out on its own terms.
+ *
+ * Observed for real: a Tier-B CI run where the pulled `edge-runtime` container
+ * exited mid-suite (SIGBUS, confirmed by a clean rerun of the same commit)
+ * left Kong retrying DNS for a couple of seconds before answering 503 — long
+ * enough, stacked on top of a test's other live calls, to blow past 5000ms and
+ * report "Test timed out in 5000ms" instead of the clean, fast refusal the
+ * signer's own logic would have produced. `20_000` is comfortably above the
+ * realistic sum of several sequential 10-second-ceilinged calls without
+ * hiding a genuinely hung request forever — the tier-b job itself is bounded
+ * at `timeout-minutes: 20` for the same reason.
+ */
+const LIVE_TEST_TIMEOUT_MS = 20_000;
+
+/**
  * Every source file of the signer, or the seam error naming what is missing.
  *
  * Concatenated rather than read as one `index.ts`, because a signer split into
@@ -246,75 +272,87 @@ describe("the signer signs; it does not decide", () => {
 describe.skipIf(!live.available)(
   liveTitle("the storage layer still refuses a stranger", live),
   () => {
-    it("owner B cannot sign owner A's receipt — the floor everything rests on", async () => {
-      // Unmarked, and true today: T2-202's storage policies already prove it,
-      // and `storage-privacy.test.ts` grades the whole cross-user matrix. It is
-      // restated here because the signer is about to become a *second* door to
-      // the same bytes, and the value of this grader is that it says what the
-      // first door does — so a regression in the signer cannot be mistaken for
-      // a regression in storage.
-      const scenario = await provisionScenario(stackOf(live));
-      try {
-        const path = testReceiptPath(scenario.ownerA.userId ?? "", "1");
-        await createOwnedFixture(scenario, scenario.ownerA, path);
+    it(
+      "owner B cannot sign owner A's receipt — the floor everything rests on",
+      async () => {
+        // Unmarked, and true today: T2-202's storage policies already prove it,
+        // and `storage-privacy.test.ts` grades the whole cross-user matrix. It is
+        // restated here because the signer is about to become a *second* door to
+        // the same bytes, and the value of this grader is that it says what the
+        // first door does — so a regression in the signer cannot be mistaken for
+        // a regression in storage.
+        const scenario = await provisionScenario(stackOf(live));
+        try {
+          const path = testReceiptPath(scenario.ownerA.userId ?? "", "1");
+          await createOwnedFixture(scenario, scenario.ownerA, path);
 
-        const stolen = await signObject(scenario, scenario.ownerB, path);
+          const stolen = await signObject(scenario, scenario.ownerB, path);
 
-        expect(stolen.ok).toBe(false);
-      } finally {
-        await teardownScenario(scenario);
-      }
-    });
+          expect(stolen.ok).toBe(false);
+        } finally {
+          await teardownScenario(scenario);
+        }
+      },
+      LIVE_TEST_TIMEOUT_MS
+    );
 
-    it("POSITIVE CONTROL: the owner CAN sign their own", async () => {
-      const scenario = await provisionScenario(stackOf(live));
-      try {
-        const path = testReceiptPath(scenario.ownerA.userId ?? "", "1");
-        // The bytes have to be there: the storage API refuses to sign a path
-        // with no object behind it, so a fixture that only created the database
-        // row would make this control fail for a reason that has nothing to do
-        // with ownership.
-        await uploadObject(scenario, scenario.ownerA, path);
-        await createOwnedFixture(scenario, scenario.ownerA, path);
+    it(
+      "POSITIVE CONTROL: the owner CAN sign their own",
+      async () => {
+        const scenario = await provisionScenario(stackOf(live));
+        try {
+          const path = testReceiptPath(scenario.ownerA.userId ?? "", "1");
+          // The bytes have to be there: the storage API refuses to sign a path
+          // with no object behind it, so a fixture that only created the database
+          // row would make this control fail for a reason that has nothing to do
+          // with ownership.
+          await uploadObject(scenario, scenario.ownerA, path);
+          await createOwnedFixture(scenario, scenario.ownerA, path);
 
-        const signed = await signObject(scenario, scenario.ownerA, path);
+          const signed = await signObject(scenario, scenario.ownerA, path);
 
-        expect(signed.ok).toBe(true);
-      } finally {
-        await teardownScenario(scenario);
-      }
-    });
+          expect(signed.ok).toBe(true);
+        } finally {
+          await teardownScenario(scenario);
+        }
+      },
+      LIVE_TEST_TIMEOUT_MS
+    );
 
-    it("a signed URL cannot be asked for a longer life than the ceiling", async () => {
-      // Unmarked, and it is about the *storage API*, not the signer: whatever
-      // the Edge Function does, the underlying endpoint accepts any
-      // `expiresIn` a caller sends. So the ceiling can never be enforced by the
-      // storage layer, which is exactly why it has to be enforced in the signer
-      // — and why the Tier A literal check above is not belt-and-braces but the
-      // only enforcement there is.
-      //
-      // Recorded as an observation rather than a requirement: this asserts what
-      // the platform does, so that the next reader does not assume a limit that
-      // is not there.
-      const scenario = await provisionScenario(stackOf(live));
-      try {
-        const path = testReceiptPath(scenario.ownerA.userId ?? "", "1");
-        await uploadObject(scenario, scenario.ownerA, path);
-        await createOwnedFixture(scenario, scenario.ownerA, path);
+    it(
+      "a signed URL cannot be asked for a longer life than the ceiling",
+      async () => {
+        // Unmarked, and it is about the *storage API*, not the signer: whatever
+        // the Edge Function does, the underlying endpoint accepts any
+        // `expiresIn` a caller sends. So the ceiling can never be enforced by the
+        // storage layer, which is exactly why it has to be enforced in the signer
+        // — and why the Tier A literal check above is not belt-and-braces but the
+        // only enforcement there is.
+        //
+        // Recorded as an observation rather than a requirement: this asserts what
+        // the platform does, so that the next reader does not assume a limit that
+        // is not there.
+        const scenario = await provisionScenario(stackOf(live));
+        try {
+          const path = testReceiptPath(scenario.ownerA.userId ?? "", "1");
+          await uploadObject(scenario, scenario.ownerA, path);
+          await createOwnedFixture(scenario, scenario.ownerA, path);
 
-        const long = await signObject(
-          scenario,
-          scenario.ownerA,
-          path,
-          RECEIPTS_BUCKET,
-          60 * 60 * 24 * 365
-        );
+          const long = await signObject(
+            scenario,
+            scenario.ownerA,
+            path,
+            RECEIPTS_BUCKET,
+            60 * 60 * 24 * 365
+          );
 
-        expect(long.ok).toBe(true);
-      } finally {
-        await teardownScenario(scenario);
-      }
-    });
+          expect(long.ok).toBe(true);
+        } finally {
+          await teardownScenario(scenario);
+        }
+      },
+      LIVE_TEST_TIMEOUT_MS
+    );
   }
 );
 
@@ -394,153 +432,185 @@ describe.skipIf(!live.available)(
       return createOwnedFixture(scenario, owner, path);
     }
 
-    it("signs a receipt on the granted vehicle", async () => {
-      const scenario = await provisionScenario(stackOf(live));
-      try {
-        const owned = await uploadedFixture(scenario, scenario.ownerA, "1");
-        const grant = await grantOn(scenario, owned.vehicleId, false, true);
+    it(
+      "signs a receipt on the granted vehicle",
+      async () => {
+        const scenario = await provisionScenario(stackOf(live));
+        try {
+          const owned = await uploadedFixture(scenario, scenario.ownerA, "1");
+          const grant = await grantOn(scenario, owned.vehicleId, false, true);
 
-        const signed = await askSigner(scenario, {
-          token: grant.token,
-          receipt_id: owned.receiptId,
-        });
+          const signed = await askSigner(scenario, {
+            token: grant.token,
+            receipt_id: owned.receiptId,
+          });
 
-        expect(signed.ok).toBe(true);
-      } finally {
-        await teardownScenario(scenario);
-      }
-    });
+          expect(signed.ok).toBe(true);
+        } finally {
+          await teardownScenario(scenario);
+        }
+      },
+      LIVE_TEST_TIMEOUT_MS
+    );
 
-    it("REFUSES a receipt on another vehicle of the SAME owner", async () => {
-      // The cell that gets built wrong. A resolver that goes token → owner →
-      // receipts returns exactly the right answer for an owner with one truck,
-      // which is the only case anybody hand-tests — and hands over the second
-      // truck's invoices the day the owner buys one.
-      const scenario = await provisionScenario(stackOf(live));
-      try {
-        const granted = await uploadedFixture(scenario, scenario.ownerA, "1");
-        const other = await uploadedFixture(scenario, scenario.ownerA, "2");
-        const grant = await grantOn(scenario, granted.vehicleId, false, true);
+    it(
+      "REFUSES a receipt on another vehicle of the SAME owner",
+      async () => {
+        // The cell that gets built wrong. A resolver that goes token → owner →
+        // receipts returns exactly the right answer for an owner with one truck,
+        // which is the only case anybody hand-tests — and hands over the second
+        // truck's invoices the day the owner buys one.
+        const scenario = await provisionScenario(stackOf(live));
+        try {
+          const granted = await uploadedFixture(scenario, scenario.ownerA, "1");
+          const other = await uploadedFixture(scenario, scenario.ownerA, "2");
+          const grant = await grantOn(scenario, granted.vehicleId, false, true);
 
-        const signed = await askSigner(scenario, {
-          token: grant.token,
-          receipt_id: other.receiptId,
-        });
+          const signed = await askSigner(scenario, {
+            token: grant.token,
+            receipt_id: other.receiptId,
+          });
 
-        expect(signed.ok).toBe(false);
-      } finally {
-        await teardownScenario(scenario);
-      }
-    });
+          expect(signed.ok).toBe(false);
+        } finally {
+          await teardownScenario(scenario);
+        }
+      },
+      LIVE_TEST_TIMEOUT_MS
+    );
 
-    it("REFUSES a receipt on another owner's vehicle", async () => {
-      const scenario = await provisionScenario(stackOf(live));
-      try {
-        const mine = await uploadedFixture(scenario, scenario.ownerA, "1");
-        const theirs = await uploadedFixture(scenario, scenario.ownerB, "1");
-        const grant = await grantOn(scenario, mine.vehicleId, false, true);
+    it(
+      "REFUSES a receipt on another owner's vehicle",
+      async () => {
+        const scenario = await provisionScenario(stackOf(live));
+        try {
+          const mine = await uploadedFixture(scenario, scenario.ownerA, "1");
+          const theirs = await uploadedFixture(scenario, scenario.ownerB, "1");
+          const grant = await grantOn(scenario, mine.vehicleId, false, true);
 
-        const signed = await askSigner(scenario, {
-          token: grant.token,
-          receipt_id: theirs.receiptId,
-        });
+          const signed = await askSigner(scenario, {
+            token: grant.token,
+            receipt_id: theirs.receiptId,
+          });
 
-        expect(signed.ok).toBe(false);
-      } finally {
-        await teardownScenario(scenario);
-      }
-    });
+          expect(signed.ok).toBe(false);
+        } finally {
+          await teardownScenario(scenario);
+        }
+      },
+      LIVE_TEST_TIMEOUT_MS
+    );
 
-    it("REFUSES once the grant is revoked, on the next request", async () => {
-      // SHR-08's "takes effect on the next request", applied to issuance. A
-      // signature already minted cannot be recalled — that is what the TTL
-      // ceiling is for — but no *new* one may be issued after revocation.
-      const scenario = await provisionScenario(stackOf(live));
-      try {
-        const owned = await uploadedFixture(scenario, scenario.ownerA, "1");
-        const grant = await grantOn(scenario, owned.vehicleId, false, true);
+    it(
+      "REFUSES once the grant is revoked, on the next request",
+      async () => {
+        // SHR-08's "takes effect on the next request", applied to issuance. A
+        // signature already minted cannot be recalled — that is what the TTL
+        // ceiling is for — but no *new* one may be issued after revocation.
+        const scenario = await provisionScenario(stackOf(live));
+        try {
+          const owned = await uploadedFixture(scenario, scenario.ownerA, "1");
+          const grant = await grantOn(scenario, owned.vehicleId, false, true);
 
-        const before = await askSigner(scenario, {
-          token: grant.token,
-          receipt_id: owned.receiptId,
-        });
-        expect(before.ok).toBe(true);
+          const before = await askSigner(scenario, {
+            token: grant.token,
+            receipt_id: owned.receiptId,
+          });
+          expect(before.ok).toBe(true);
 
-        const cut = await revokeGrant(scenario, scenario.ownerA, grant.shareId);
-        expect(cut.ok).toBe(true);
+          const cut = await revokeGrant(
+            scenario,
+            scenario.ownerA,
+            grant.shareId
+          );
+          expect(cut.ok).toBe(true);
 
-        const after = await askSigner(scenario, {
-          token: grant.token,
-          receipt_id: owned.receiptId,
-        });
-        expect(after.ok).toBe(false);
-      } finally {
-        await teardownScenario(scenario);
-      }
-    });
+          const after = await askSigner(scenario, {
+            token: grant.token,
+            receipt_id: owned.receiptId,
+          });
+          expect(after.ok).toBe(false);
+        } finally {
+          await teardownScenario(scenario);
+        }
+      },
+      LIVE_TEST_TIMEOUT_MS
+    );
 
-    it("REFUSES when includes_receipts is false, EVEN IF includes_costs is true", async () => {
-      // SHR-06's independence, in the direction that is easy to get wrong: a
-      // signer that reads "this grant opens costs" as "this grant opens the
-      // financial stuff" hands over the scans as well.
-      const scenario = await provisionScenario(stackOf(live));
-      try {
-        const owned = await uploadedFixture(scenario, scenario.ownerA, "1");
-        const grant = await grantOn(scenario, owned.vehicleId, true, false);
+    it(
+      "REFUSES when includes_receipts is false, EVEN IF includes_costs is true",
+      async () => {
+        // SHR-06's independence, in the direction that is easy to get wrong: a
+        // signer that reads "this grant opens costs" as "this grant opens the
+        // financial stuff" hands over the scans as well.
+        const scenario = await provisionScenario(stackOf(live));
+        try {
+          const owned = await uploadedFixture(scenario, scenario.ownerA, "1");
+          const grant = await grantOn(scenario, owned.vehicleId, true, false);
 
-        const signed = await askSigner(scenario, {
-          token: grant.token,
-          receipt_id: owned.receiptId,
-        });
+          const signed = await askSigner(scenario, {
+            token: grant.token,
+            receipt_id: owned.receiptId,
+          });
 
-        expect(signed.ok).toBe(false);
-      } finally {
-        await teardownScenario(scenario);
-      }
-    });
+          expect(signed.ok).toBe(false);
+        } finally {
+          await teardownScenario(scenario);
+        }
+      },
+      LIVE_TEST_TIMEOUT_MS
+    );
 
-    it("SIGNS when includes_receipts is true and includes_costs is FALSE", async () => {
-      // The mirror image, and the positive control for the cell above.
-      // Without it, "receipts refused" is satisfied by a signer that refuses
-      // everything.
-      const scenario = await provisionScenario(stackOf(live));
-      try {
-        const owned = await uploadedFixture(scenario, scenario.ownerA, "1");
-        const grant = await grantOn(scenario, owned.vehicleId, false, true);
+    it(
+      "SIGNS when includes_receipts is true and includes_costs is FALSE",
+      async () => {
+        // The mirror image, and the positive control for the cell above.
+        // Without it, "receipts refused" is satisfied by a signer that refuses
+        // everything.
+        const scenario = await provisionScenario(stackOf(live));
+        try {
+          const owned = await uploadedFixture(scenario, scenario.ownerA, "1");
+          const grant = await grantOn(scenario, owned.vehicleId, false, true);
 
-        const signed = await askSigner(scenario, {
-          token: grant.token,
-          receipt_id: owned.receiptId,
-        });
+          const signed = await askSigner(scenario, {
+            token: grant.token,
+            receipt_id: owned.receiptId,
+          });
 
-        expect(signed.ok).toBe(true);
-      } finally {
-        await teardownScenario(scenario);
-      }
-    });
+          expect(signed.ok).toBe(true);
+        } finally {
+          await teardownScenario(scenario);
+        }
+      },
+      LIVE_TEST_TIMEOUT_MS
+    );
 
-    it("ignores a caller-supplied path entirely", async () => {
-      // The behavioural half of the Tier A rule. Sending a path IS the attack;
-      // the correct answer is that it changes nothing — the signer signs what
-      // Postgres resolved for `receipt_id`, or it refuses.
-      const scenario = await provisionScenario(stackOf(live));
-      try {
-        const mine = await uploadedFixture(scenario, scenario.ownerA, "1");
-        const theirs = await uploadedFixture(scenario, scenario.ownerB, "1");
-        const grant = await grantOn(scenario, mine.vehicleId, false, true);
+    it(
+      "ignores a caller-supplied path entirely",
+      async () => {
+        // The behavioural half of the Tier A rule. Sending a path IS the attack;
+        // the correct answer is that it changes nothing — the signer signs what
+        // Postgres resolved for `receipt_id`, or it refuses.
+        const scenario = await provisionScenario(stackOf(live));
+        try {
+          const mine = await uploadedFixture(scenario, scenario.ownerA, "1");
+          const theirs = await uploadedFixture(scenario, scenario.ownerB, "1");
+          const grant = await grantOn(scenario, mine.vehicleId, false, true);
 
-        const signed = await askSigner(scenario, {
-          token: grant.token,
-          receipt_id: mine.receiptId,
-          path: theirs.storagePath,
-          storage_path: theirs.storagePath,
-        });
+          const signed = await askSigner(scenario, {
+            token: grant.token,
+            receipt_id: mine.receiptId,
+            path: theirs.storagePath,
+            storage_path: theirs.storagePath,
+          });
 
-        expect(signed.ok).toBe(true);
-        expect(signed.text).not.toContain(theirs.storagePath);
-      } finally {
-        await teardownScenario(scenario);
-      }
-    });
+          expect(signed.ok).toBe(true);
+          expect(signed.text).not.toContain(theirs.storagePath);
+        } finally {
+          await teardownScenario(scenario);
+        }
+      },
+      LIVE_TEST_TIMEOUT_MS
+    );
   }
 );
