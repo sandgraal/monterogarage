@@ -375,8 +375,8 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
   against until this task's sibling ships, and having T502's implementer
   author it for his own freshly-written page would repeat T601-F2's failure
   mode on the exact surface it happened on once already. Depends: T502
-  merged, T504 (fixtures need real entries — coordinate with T504's author
-  rather than inventing procedure fixtures from nothing). *(PRC-01, SCF-06)*
+  merged. Fixtures need real entries: author alongside T504 (coordinate with
+  T504's author rather than inventing procedure fixtures from nothing). *(PRC-01, SCF-06)*
 - [ ] **T504 [CONTENT]** Procedures wave 1: maintenance set (oil, filters, timing belt 6G74, diffs/tcase fluid, brakes, plugs) — bilingual, cited, safety-flagged where due. Depends: T502. Does not merge without T504a's grader landing alongside it — see AGENTS.md's `[TEST]`-debt ledger, T502 entry. *(PRC-01, PRC-02, PRC-03)*
 
 ## Phase 6 — Modifications
