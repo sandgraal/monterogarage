@@ -29,6 +29,7 @@ import {
   findUndefinedGlossaryTerms,
   findZeroCoverageCombinations,
   mapLinkWarningsToGapItems,
+  readLinkAuditWarnings,
 } from "../scripts/gaps.mjs";
 
 interface Entry {
@@ -494,6 +495,87 @@ describe("findUndefinedGlossaryTerms", () => {
     expect(KNOWN_JARGON_TERMS.length).toBeGreaterThan(0);
     expect(KNOWN_JARGON_TERMS).toContain("EGR");
   });
+
+  it("counts every occurrence of a term repeated within a single string leaf, not just whether it appears", () => {
+    // Regression for the `RegExp.test()`-derived count bug: a boolean "does
+    // this leaf contain the term" can only ever add 1 per leaf, which
+    // undercounts when the same term appears more than once in one string.
+    // "EGR" appears three times in this single summary string.
+    const entries = [
+      entry("problems", "src/content/problems/egr-repeat.json", {
+        id: "egr-repeat",
+        prose: {
+          en: {
+            title: "EGR",
+            summary:
+              "The EGR valve sticks, the EGR passages coke up, and the " +
+              "EGR cooler eventually clogs too.",
+          },
+          es: {
+            title: "EGR",
+            summary: "La válvula EGR se pega.",
+          },
+        },
+      }),
+    ];
+
+    const egr = findUndefinedGlossaryTerms(entries).find(
+      (item) => item.entryId === "EGR"
+    );
+
+    expect(egr).toBeDefined();
+    // title.en (1) + summary.en (3) + title.es (1) + summary.es (1) = 6.
+    expect(egr?.message).toContain("6 time(s)");
+  });
+
+  it("escapes regex metacharacters in a jargon term before building its matcher", () => {
+    // No current KNOWN_JARGON_TERMS entry has a regex metacharacter. This
+    // temporarily adds one with a `.` (real production risk the review
+    // flagged: interpolating a term straight into `new RegExp` treats `.` as
+    // "any character") to prove it is escaped rather than interpreted, and
+    // restores the list afterward so no other test observes the mutation.
+    KNOWN_JARGON_TERMS.push("A.B");
+    try {
+      const entries = [
+        entry("problems", "src/content/problems/weird-term.json", {
+          id: "weird-term",
+          prose: {
+            en: { title: "Uses A.B literally", summary: "A.B appears here." },
+            es: {
+              title: "Usa A.B literalmente",
+              summary: "A.B aparece aquí.",
+            },
+          },
+        }),
+        entry("problems", "src/content/problems/would-false-match.json", {
+          id: "would-false-match",
+          prose: {
+            // If "." were treated as "any character" instead of a literal
+            // dot, this "AxB" would wrongly match `\bA.B\b` too. It must not
+            // count towards A.B's occurrences.
+            en: {
+              title: "AxB is unrelated",
+              summary: "Nothing to do with it.",
+            },
+            es: { title: "AxB no tiene relación", summary: "Nada que ver." },
+          },
+        }),
+      ];
+
+      expect(() => findUndefinedGlossaryTerms(entries)).not.toThrow();
+
+      const item = findUndefinedGlossaryTerms(entries).find(
+        (i) => i.entryId === "A.B"
+      );
+      expect(item).toBeDefined();
+      // Only the literal "A.B" file counts (2 leaves: title.en, title.es,
+      // summary.en, summary.es of the first entry = 4); "AxB" never matches.
+      expect(item?.message).toContain("4 time(s)");
+      expect(item?.message).toContain("1 file(s)");
+    } finally {
+      KNOWN_JARGON_TERMS.pop();
+    }
+  });
 });
 
 /* -------------------------------------------------------------------------
@@ -699,6 +781,88 @@ describe("mapLinkWarningsToGapItems", () => {
         message: "src/content/reference/y.json: dead original, live archive",
       },
     ]);
+  });
+});
+
+describe("readLinkAuditWarnings", () => {
+  // Regression coverage for the silent-fallback bug: a missing, unreadable,
+  // malformed, or shape-mismatched --link-audit file must never collapse
+  // into `{ warnings: [] }` — that reads downstream as "checked, zero dead
+  // links found" when the truth is "could not check at all" (AGENTS.md: a
+  // failure is not a zero).
+
+  it("returns the warnings array on a well-formed check-links.mjs --json file", async () => {
+    const readFileImpl = async () =>
+      JSON.stringify({
+        issues: [],
+        warnings: [
+          {
+            file: "src/content/reference/y.json",
+            field: "sources[0].url",
+            message: "dead original, live archive",
+          },
+        ],
+        offlineNotice: null,
+      });
+
+    const result = await readLinkAuditWarnings("fake-path.json", {
+      readFileImpl,
+    });
+
+    expect(result.error).toBeNull();
+    expect(result.warnings).toEqual([
+      {
+        file: "src/content/reference/y.json",
+        field: "sources[0].url",
+        message: "dead original, live archive",
+      },
+    ]);
+  });
+
+  it("reports an error (not an empty array) when the file cannot be read", async () => {
+    const readFileImpl = async () => {
+      throw Object.assign(new Error("ENOENT: no such file"), {
+        code: "ENOENT",
+      });
+    };
+
+    const result = await readLinkAuditWarnings("missing.json", {
+      readFileImpl,
+    });
+
+    expect(result.warnings).toBeNull();
+    expect(result.error).toMatch(/could not read/i);
+  });
+
+  it("reports an error (not an empty array) when the file is not valid JSON", async () => {
+    const readFileImpl = async () => "{ not json ";
+
+    const result = await readLinkAuditWarnings("malformed.json", {
+      readFileImpl,
+    });
+
+    expect(result.warnings).toBeNull();
+    expect(result.error).toMatch(/not valid json/i);
+  });
+
+  it("reports an error (not an empty array) when the parsed JSON has no warnings array", () => {
+    const cases = [
+      "{}",
+      JSON.stringify({ issues: [] }),
+      JSON.stringify({ warnings: "not-an-array" }),
+      JSON.stringify(null),
+      "[]",
+    ];
+
+    return Promise.all(
+      cases.map(async (raw) => {
+        const result = await readLinkAuditWarnings("shape-mismatch.json", {
+          readFileImpl: async () => raw,
+        });
+        expect(result.warnings).toBeNull();
+        expect(result.error).toMatch(/warnings.*array/i);
+      })
+    );
   });
 });
 

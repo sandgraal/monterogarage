@@ -399,6 +399,17 @@ function knownGlossaryVocabulary(entries) {
   return known;
 }
 
+/**
+ * Escapes every regex metacharacter in `term` so it can be interpolated into
+ * `new RegExp(...)` and still match literally. `KNOWN_JARGON_TERMS` is
+ * currently all plain alphanumerics, but nothing enforces that going
+ * forward — a future term containing `.`, `+`, `(`, etc. must not silently
+ * change what the built pattern matches (or throw).
+ */
+function escapeRegExp(term) {
+  return term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export function findUndefinedGlossaryTerms(entries) {
   const known = knownGlossaryVocabulary(entries);
   const undefinedTerms = KNOWN_JARGON_TERMS.filter(
@@ -406,8 +417,13 @@ export function findUndefinedGlossaryTerms(entries) {
   );
   if (undefinedTerms.length === 0) return [];
 
+  // `g` flag: counting real occurrences (below) needs `String.prototype.match`
+  // to return every match, not just tell us whether one exists.
   const patterns = new Map(
-    undefinedTerms.map((term) => [term, new RegExp(`\\b${term}\\b`)])
+    undefinedTerms.map((term) => [
+      term,
+      new RegExp(`\\b${escapeRegExp(term)}\\b`, "g"),
+    ])
   );
   /** `term -> { count, files: Set<string> }` */
   const usages = new Map();
@@ -416,9 +432,13 @@ export function findUndefinedGlossaryTerms(entries) {
     if (entry.collection === "glossary") continue; // defining a term is not "used undefined"
     for (const text of proseStringsOf(entry.data)) {
       for (const term of undefinedTerms) {
-        if (!patterns.get(term).test(text)) continue;
+        // `String.prototype.match` resets the global regex's `lastIndex` to
+        // 0 before it starts, so the shared pattern is safe to reuse across
+        // every text/term pair here — no manual state reset needed.
+        const matches = text.match(patterns.get(term));
+        if (matches === null) continue;
         const record = usages.get(term) ?? { count: 0, files: new Set() };
-        record.count += 1;
+        record.count += matches.length;
         record.files.add(entry.file);
         usages.set(term, record);
       }
@@ -556,6 +576,67 @@ export function mapLinkWarningsToGapItems(warnings) {
     file: warning.file ?? warning.entry?.file,
     message: warning.message,
   }));
+}
+
+/**
+ * Reads a `check-links.mjs --json` file for `--link-audit`. Distinguishes
+ * three outcomes rather than collapsing "could not check" into "checked, zero
+ * found" (AGENTS.md: a failure is not a zero; an absence of evidence is not
+ * evidence of absence — see the module docstring's dead-source-links note,
+ * and `check-links.mjs`'s own `offlineNotice` for the precedent of surfacing
+ * an "I couldn't tell" state distinctly rather than silently):
+ *
+ * - the file is missing or unreadable,
+ * - the file's contents are not valid JSON,
+ * - the parsed JSON has no `warnings` array (not a `check-links.mjs --json`
+ *   file, or a version whose shape changed).
+ *
+ * `{ warnings: null, error: <string> }` for any of those; `{ warnings: [...],
+ * error: null }` on success. Never returns `{ warnings: [] }` as a stand-in
+ * for "could not check" — that is exactly the collapse this function exists
+ * to prevent.
+ *
+ * @param {string} filePath
+ * @param {{ readFileImpl?: (path: string, encoding: "utf8") => Promise<string> }} [options]
+ *   injectable so tests never touch the real filesystem — narrowed to the
+ *   one `readFile` overload this function actually calls, not the full
+ *   `typeof readFile` union.
+ * @returns {Promise<{ warnings: unknown[] | null, error: string | null }>}
+ */
+export async function readLinkAuditWarnings(
+  filePath,
+  { readFileImpl = readFile } = {}
+) {
+  let raw;
+  try {
+    raw = await readFileImpl(filePath, "utf8");
+  } catch (cause) {
+    return {
+      warnings: null,
+      error: `could not read --link-audit file ${filePath}: ${cause.message}`,
+    };
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (cause) {
+    return {
+      warnings: null,
+      error: `--link-audit file ${filePath} is not valid JSON: ${cause.message}`,
+    };
+  }
+
+  if (!Array.isArray(parsed?.warnings)) {
+    return {
+      warnings: null,
+      error:
+        `--link-audit file ${filePath} has no \`warnings\` array — is it ` +
+        `really a \`check-links.mjs --json\` output file?`,
+    };
+  }
+
+  return { warnings: parsed.warnings, error: null };
 }
 
 /* -------------------------------------------------------------------------
@@ -760,9 +841,17 @@ async function main() {
     const audit = await auditLinks(entries);
     linkWarnings = audit.warnings;
   } else if (args.linkAuditPath !== null) {
-    const raw = await readFile(args.linkAuditPath, "utf8");
-    const parsed = JSON.parse(raw);
-    linkWarnings = Array.isArray(parsed?.warnings) ? parsed.warnings : [];
+    const { warnings, error } = await readLinkAuditWarnings(args.linkAuditPath);
+    if (error !== null) {
+      // Missing/unreadable/malformed --link-audit input is a real failure of
+      // what was asked for, not "zero dead links" — surface it loudly and
+      // leave `linkWarnings` at `null` so the report still says "not checked
+      // this run" for dead-source-link rather than a false-clean "0".
+      console.error(`gaps — --link-audit: ${error}`);
+      process.exitCode = 1;
+    } else {
+      linkWarnings = warnings;
+    }
   }
 
   const report = buildGapsReport(entries, { linkWarnings });
