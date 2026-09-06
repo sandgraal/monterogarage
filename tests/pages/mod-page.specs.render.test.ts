@@ -33,13 +33,29 @@
  * Graded: the number and its unit reach both locales; the two locales agree
  * about every figure on the page; the entry's own per-locale *title* still
  * differs, so a page that had simply printed the same bytes twice cannot pass;
- * an id that resolves to nothing is shown as such rather than dropped.
+ * the **label over the figures** is a per-locale string from `ui.ts`; an id
+ * that resolves to nothing is shown as such rather than dropped.
  *
- * Left open: markup, headings, section order, and whether `4.5` prints as
- * `4,5` in Spanish. {@link figureTokens} normalises the decimal separator and
- * the unit's punctuation before comparing, so `100 N·m`, `100 N.m` and
- * `100Nm` are one figure and `4.5 m` / `4,5 m` are one value — the graders
- * pin the *stored number*, not a formatter T604 is free to choose.
+ * Left open: markup, section order, and whether `4.5` prints as `4,5` in
+ * Spanish. {@link figureTokens} normalises the decimal separator and the
+ * unit's punctuation before comparing, so `100 N·m`, `100 N.m` and `100Nm`
+ * are one figure and `4.5 m` / `4,5 m` are one value — the graders pin the
+ * *stored number*, not a formatter T604 is free to choose.
+ *
+ * ## Why the heading is graded after all (§4)
+ *
+ * The first draft of this file left headings entirely ungraded, and an
+ * independent review built the page that exploits it: a scratch renderer that
+ * emitted a literal `<h2>Figures</h2>` — English, hard-coded, identical on
+ * `/es/…` — put the right numbers in both locales and scored 100/100 here. A
+ * Spanish reader would get a correct `100 kg` under an English word.
+ *
+ * That is not a hypothetical defect class on this exact file: T601-F1 was a
+ * heading on this page saying the wrong thing while the data below it was
+ * right, and no grader saw it. So §4 grades the label — *that* it exists per
+ * section, that the two locales do not share one string, and that the string
+ * is one `ui.ts` produces — while still pinning no markup, no heading level,
+ * no id and no wording.
  *
  * ## Expected-failure convention
  *
@@ -51,6 +67,7 @@
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
+import { t } from "../../src/i18n/ui.ts";
 import {
   LENGTH_SPEC,
   ROOF_LOAD_SPEC,
@@ -208,6 +225,83 @@ function figureTokens(rendered: string): string[] {
 }
 
 /* -------------------------------------------------------------------------
+ * Locating a section's label without pinning its markup
+ * ---------------------------------------------------------------------- */
+
+/** Every heading the page renders, in document order, with its end offset. */
+function headings(html: string): readonly { text: string; end: number }[] {
+  const found: { text: string; end: number }[] = [];
+  for (const match of html.matchAll(
+    /<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1\s*>/gi
+  )) {
+    found.push({
+      text: text(match[2] ?? ""),
+      end: (match.index ?? 0) + match[0].length,
+    });
+  }
+  return found;
+}
+
+/**
+ * The nearest heading standing above `anchor`'s first appearance, or `null`
+ * if the anchor is absent or nothing precedes it.
+ *
+ * Any level, any attributes, any id: T604 chooses the markup and this only
+ * needs to know which label a reader sees above the block. Offsets are taken
+ * in the raw HTML, so a heading that closes *after* the anchor (an ancestor
+ * element, never a sibling label) is correctly not counted.
+ */
+function headingAbove(html: string, anchor: string): string | null {
+  const at = html.indexOf(anchor);
+  if (at < 0) return null;
+  return headings(html).findLast((heading) => heading.end <= at)?.text ?? null;
+}
+
+/** Every string `ui.ts` can produce in `locale` — 502 of them, all distinct
+ * from the other locale's (checked: the two tables share no value). */
+function uiValues(locale: Locale): readonly string[] {
+  return Object.values(t(locale) as unknown as Record<string, unknown>).filter(
+    (value): value is string => typeof value === "string"
+  );
+}
+
+/**
+ * The labels of the sections this page **already** has, so "the figures stand
+ * under a heading" cannot be satisfied by the heading of the section above
+ * them.
+ *
+ * A known list, with the caveat `.claude/GRADER-PRINCIPLES.md` attaches to
+ * every known list: it is airtight for these four and silent for a fifth
+ * section added later. Read from `t()` rather than written as literals, so a
+ * reworded heading cannot make it stale — only a *new* section can.
+ */
+function neighbouringSectionLabels(locale: Locale): readonly string[] {
+  const strings = t(locale);
+  return [
+    strings.modsRequiresHeading,
+    strings.modsAffectsHeading,
+    strings.modsTradeoffsHeading,
+    strings.sourcesHeading,
+  ];
+}
+
+/**
+ * Text that appears inside the figures block and nowhere else: the cited
+ * `reference` entry's own per-locale title, which the §3 grader already
+ * requires on the page. Anchoring on it adds no new demand on T604.
+ */
+const FIGURE_ANCHOR: Record<Locale, string> = {
+  en: `TEST reference ${ROOF_LOAD_SPEC.id}`,
+  es: `Referencia TEST ${ROOF_LOAD_SPEC.id}`,
+};
+
+/** The same idea for a section that exists today — the positive control. */
+const TRADEOFFS_ANCHOR: Record<Locale, string> = {
+  en: "TEST tradeoffs sentence in English.",
+  es: "Frase TEST de contras en español.",
+};
+
+/* -------------------------------------------------------------------------
  * 1. Anti-vacuity — the page renders, and it renders nothing numeric by luck
  * ---------------------------------------------------------------------- */
 
@@ -355,7 +449,94 @@ describe("one stored value, two renderings (AGENTS.md, I18N-04)", () => {
 });
 
 /* -------------------------------------------------------------------------
- * 4. An id that resolves to nothing is said, not swallowed
+ * 4. The label over the figures is translated too
+ *
+ * Right number, wrong language over it. The reviewer's scratch page put a
+ * literal `<h2>Figures</h2>` on `/es/…` and every other grader in this file
+ * stayed green, because they all read the figures and none read the words
+ * around them.
+ * ---------------------------------------------------------------------- */
+
+describe("the figures carry a per-locale label (I18N-01)", () => {
+  it("locates a section's label and reads it from `ui.ts` — control", async () => {
+    /*
+     * Green today and must stay green. It proves `headings`, `headingAbove`
+     * and `uiValues` all work against the *real* page before the two marked
+     * graders below use them, so a red marker there means "no per-locale
+     * label over the figures" and never "the helper is broken" — the
+     * `.claude/GRADER-PRINCIPLES.md` rule that a test failing for the wrong
+     * reason proves nothing.
+     *
+     * The tradeoffs section is the subject because MOD-01 makes it
+     * unconditional, so it is on every mod page in both locales.
+     */
+    for (const locale of LOCALES) {
+      const html = await render(locale);
+      expect(
+        headings(html).length,
+        `${locale}: the page renders no headings at all`
+      ).toBeGreaterThan(1);
+      expect(headingAbove(html, TRADEOFFS_ANCHOR[locale]), locale).toBe(
+        t(locale).modsTradeoffsHeading
+      );
+      expect(uiValues(locale)).toContain(t(locale).modsTradeoffsHeading);
+    }
+
+    // ...and the two locales do not share the one string, which is the
+    // property the marked graders below demand of the figures label.
+    expect(t("en").modsTradeoffsHeading).not.toBe(t("es").modsTradeoffsHeading);
+  });
+
+  it.fails(
+    "stands the figures under a label, in each locale's own words",
+    async () => {
+      const en = headingAbove(await render("en"), FIGURE_ANCHOR.en);
+      const es = headingAbove(await render("es"), FIGURE_ANCHOR.es);
+
+      expect(
+        en,
+        "no heading stands over the figures on the English page"
+      ).not.toBeNull();
+      expect(
+        es,
+        "no heading stands over the figures on the Spanish page"
+      ).not.toBeNull();
+      expect(
+        es,
+        "the Spanish page shows the English label over its figures"
+      ).not.toBe(en);
+    }
+  );
+
+  it.fails("takes that label from `ui.ts`, not from the markup", async () => {
+    /*
+     * The stricter half, and the one that survives a translated *literal*:
+     * two hard-coded strings, one per locale, would satisfy the grader above
+     * and still put the site's vocabulary somewhere `check:glossary` and the
+     * locale gate never look. Every other label on this page comes from
+     * `t(locale)`; so must this one.
+     *
+     * The neighbour check is what stops a figures block with no label of its
+     * own from borrowing the heading of the section above it — that heading
+     * is a `ui.ts` string too, and would otherwise pass both assertions.
+     */
+    for (const locale of LOCALES) {
+      const label = headingAbove(await render(locale), FIGURE_ANCHOR[locale]);
+
+      expect(
+        uiValues(locale),
+        `${locale}: "${label ?? "(no label)"}" is not a string ui.ts produces`
+      ).toContain(label);
+      expect(
+        neighbouringSectionLabels(locale),
+        `${locale}: the figures sit under another section's heading`
+      ).not.toContain(label);
+    }
+  });
+});
+
+/* -------------------------------------------------------------------------
+ * 5. An id that resolves to nothing is said, not swallowed
  * ---------------------------------------------------------------------- */
 
 describe("an unresolved figure id is shown as unresolved", () => {

@@ -29,9 +29,16 @@
  *
  * `it.fails` is the marker, one per test; T604 activates a grader by deleting
  * exactly that `.fails`. Unmarked tests pass today and must keep passing —
- * two of them are vacuous today by construction (nothing reads `specs` yet)
- * and are here so that the accept side of each reject rule is written down
- * before the rule exists, not after somebody trips over a false positive.
+ * the accept cases are vacuous today by construction (nothing reads `specs`
+ * yet) and are here so that the accept side of each reject rule is written
+ * down before the rule exists, not after somebody trips over a false
+ * positive.
+ *
+ * ## The position of a bad id is not part of the rule (§4)
+ *
+ * Added after an independent review mutation-tested this file and found every
+ * reject case citing a single id, so the id under test was always `specs[0]`.
+ * §4 is the fix and carries the reasoning.
  *
  * refs specs/001-foundation (MOD-01, MOD-02, PRC-03 precedent, REF-01, SCF-04)
  */
@@ -281,7 +288,138 @@ describe("the build refuses a figure id naming a kind with no figure", () => {
 });
 
 /* -------------------------------------------------------------------------
- * 4. Anti-vacuity — this harness can fail
+ * 4. WHERE the bad id sits in the list is not part of the rule
+ *
+ * Found by an independent review of this file, by mutation and not by reading
+ * it (`.claude/GRADER-PRINCIPLES.md`, "mutation-test the probe corpus
+ * itself"). Every reject case above cites exactly **one** id, so the id under
+ * test is always `specs[0]`. A scratch resolver that validated only the first
+ * element — `const [first] = specs`, a stray `return` where a `continue`
+ * belonged, `.find()` where `.filter()` belonged, all three realistic slips in
+ * a loop somebody writes once — turned every marker in this file green while
+ * shipping a build that resolves the first figure a mod cites and takes the
+ * rest on faith.
+ *
+ * These cases are that mutant's obituary. Each cites a list whose **first id
+ * resolves correctly** and whose bad id sits somewhere else, so passing them
+ * requires visiting every element; the accept case directly below them is what
+ * stops "a list longer than one is an error" from being the cheap way through.
+ *
+ * The positions are chosen against specific loop bugs, not for coverage's
+ * sake: index 1 of 2 kills first-only and an `i < length - 1` bound; index 1
+ * of 3 kills first-only *and* last-only (`specs.at(-1)`); two bad ids in one
+ * list kills "report the first problem and stop", which the module's own
+ * contract already forbids ("listing every issue rather than the first — one
+ * pass per fix", `src/integrations/validate-mods.ts`).
+ * ---------------------------------------------------------------------- */
+
+describe("the build checks EVERY cited id, not just the first", () => {
+  it("passes a mod citing three ids that all resolve", () => {
+    /*
+     * The accept side, and the control that makes the three rejects below
+     * mean what they say. Without it, a resolver that refused any `specs`
+     * list longer than one element would satisfy all three and be called
+     * correct. Vacuous today (nothing reads `specs`), green after T604.
+     */
+    return expect(
+      runOver(
+        corpusOf({
+          cites: [TORQUE_SPEC.id, ROOF_LOAD_SPEC.id, LENGTH_SPEC.id],
+        })
+      )
+    ).resolves.toBeNull();
+  });
+
+  it.fails(
+    "FAILS the build on an unresolvable id in SECOND position",
+    async () => {
+      const error = await runOver(
+        corpusOf({
+          cites: [TORQUE_SPEC.id, "test-ref-mod-nobody-wrote-this"],
+        })
+      );
+
+      expect(
+        error,
+        "the build resolved the first figure id and took the second on faith"
+      ).not.toBeNull();
+      expect(error?.message).toContain("test-ref-mod-nobody-wrote-this");
+    }
+  );
+
+  it.fails(
+    "FAILS the build on an unresolvable id in the MIDDLE of the list",
+    async () => {
+      // The position no off-by-one reaches by accident: not first, not last.
+      const error = await runOver(
+        corpusOf({
+          cites: [
+            TORQUE_SPEC.id,
+            "test-ref-mod-nobody-wrote-this",
+            ROOF_LOAD_SPEC.id,
+          ],
+        })
+      );
+
+      expect(
+        error,
+        "an unresolvable id between two good ones was accepted"
+      ).not.toBeNull();
+      expect(error?.message).toContain("test-ref-mod-nobody-wrote-this");
+    }
+  );
+
+  it.fails(
+    "FAILS the build on a wrong-kind id that is not the first cited",
+    async () => {
+      /*
+       * The same position argument applied to the other rule. A resolver can
+       * plausibly check existence for every id and the *kind* only for the
+       * first — two loops where one was meant — and the single-id cases above
+       * cannot tell the difference.
+       */
+      const error = await runOver(
+        corpusOf({
+          nonFigureKinds: ["vin-code"],
+          cites: [TORQUE_SPEC.id, "test-ref-mod-vin-code"],
+        })
+      );
+
+      expect(
+        error,
+        "a `vin-code` reference in second position was accepted as a figure"
+      ).not.toBeNull();
+      expect(error?.message).toContain("test-ref-mod-vin-code");
+    }
+  );
+
+  it.fails("names BOTH bad ids when a list carries two", async () => {
+    // "One pass per fix" — an author who fixes the id the message named and
+    // rebuilds into the same failure learns the check is untrustworthy.
+    const message =
+      (
+        await runOver(
+          corpusOf({
+            cites: [
+              "test-ref-mod-nobody-wrote-this",
+              TORQUE_SPEC.id,
+              "test-ref-mod-second-ghost",
+            ],
+          })
+        )
+      )?.message ?? "";
+
+    // Two ids sharing no prefix, so neither assertion can be satisfied by the
+    // other id's substring.
+    expect(message).toContain("test-ref-mod-nobody-wrote-this");
+    expect(message, "only the first bad id was reported").toContain(
+      "test-ref-mod-second-ghost"
+    );
+  });
+});
+
+/* -------------------------------------------------------------------------
+ * 5. Anti-vacuity — this harness can fail
  *
  * Every marked grader above asserts that a build *failed*. If `runOver` could
  * not report a failure at all — a mis-wired mock, a corpus written to the
