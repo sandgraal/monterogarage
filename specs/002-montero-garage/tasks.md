@@ -1218,12 +1218,17 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   granted to `anon`, tables keep `revoke all … from anon`). One reader — the
   world is a principal with no token, and `visibility.ts` already models it —
   costs one contract entry reviewed beside the migration, instead of two.
-  <br>*Also found (not patched):* `contract.ts`'s `RESERVED_HANDLES` lists
-  `gitana`, and `handles.test.ts`'s own positive control requires
-  `handleIssues("gitana")` to return no issues. Both cannot hold. The control is
-  the one that is right — Gitana Blanca is a *user's* truck (MIG-04), not the
-  site's identity — so `handles.ts` and the migration leave the handle
-  claimable and the grader's list is left for an independent session.
+  <br>*Also found, and since resolved the other way (2026-09-05, T2-401):*
+  `contract.ts`'s `RESERVED_HANDLES` listed `gitana` while `handles.test.ts`'s
+  positive control required `handleIssues("gitana")` to return no issues. This
+  note originally sided with the control; an independent test-writer pass and
+  two independent code-review passes reversed that call — MIG-04 makes Gitana
+  Blanca "user page #1 … used to drive the design of every garage view", the
+  site's own flagship, not one account among many, and `/en/garage/gitana/` in
+  a stranger's hands is exactly the impersonation surface the reserved list
+  exists for. `gitana` and `montero` are now reserved in `handles.ts`'s
+  `IMPERSONATION_HANDLES`, the SQL check constraint, and the grader's rejection
+  table alike; the display name's handle form `gitana-blanca` stays claimable.
   <br>*Judgment call recorded:* `profiles.handle` is declared **twice** — in the
   original `create table` and again as `alter table … add column if not exists`.
   A column added only by an `alter` is invisible to `createTableBody`, which is
@@ -1231,13 +1236,26 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   re-run the first migration. Both paths converge; every rule lives in the new
   file, once.
 
-- [ ] **T2-404 [PLATFORM]** Typed share grants: the `shares` table, create and
-  revoke RPCs (authenticated), the anon read RPCs, the Edge Function receipt
-  signer, and the accountless share page at a per-locale slug. Activates the
-  T2-401a and T2-401 grant graders. Depends: **T2-401a merged**, T2-401 merged,
-  T2-402. *(SHR-05..09)*
+- [ ] **T2-404 [PLATFORM]** Typed share grants + the public showcase/work-log
+  pages: the `shares` table, create and revoke RPCs (authenticated), the anon
+  read RPCs (serving both the share-token accountless page and T2-402's public
+  showcase/work-log pages through one reviewed reader), the Edge Function
+  receipt signer, the accountless share page at a per-locale slug, and the
+  showcase/work-log pages themselves (stable handle URLs, HANDOFF-DESIGN.md
+  chrome, hreflang). Activates the T2-401a and T2-401 grant graders, and
+  T2-402's public-pages graders. Depends: **T2-401a merged**, T2-401 merged,
+  T2-402 (handles/toggles/masking portion merged; public page rendering now in T2-404). *(SHR-05..09,
+  SHR-02..04)*
   <br>Kept out of T2-402 deliberately: this is a new trust boundary and it gets
   its own review rather than riding in behind the public pages.
+  <br>**Amended 2026-09-05 (owner decision):** absorbs T2-402's public
+  showcase/work-log page rendering — see T2-402's "Blocked" finding above.
+  There is no way to serve an anonymous reader under this schema's security
+  rules without either widening the `SHARE_READER_FUNCTIONS` allow-list a
+  grader pins, or building a second `security definer` RPC granted to `anon`
+  alongside this one. The world (no token) and a share-token holder are both
+  principals with no authenticated session; one anon-granted reader serves
+  both, reviewed once.
   <br>*Architecture, decided 2026-08-31 — see 002 §10 and the plan record:*
   <br>— **`security definer` RPC granted to `anon`**, tables keep
   `revoke all ... from anon`. No new RLS policy is owner-unscoped, so
