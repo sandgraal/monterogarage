@@ -295,6 +295,8 @@ const hasReferences = Object.values(referenceCatalogue).some(
     data-string-photo-alt={strings.garagePhotoAltTemplate}
     data-string-photo-type={strings.garagePhotoTypeRejected}
     data-string-photo-size={photoTooLarge}
+    data-string-set-cover={strings.garageSetCover}
+    data-string-remove-cover={strings.garageRemoveCover}
     data-string-form-new={strings.garageFormNewHeading}
     data-string-form-edit={strings.garageFormEditHeading}
     data-string-issue-name-required={strings.garageIssueNameRequired}
@@ -1592,9 +1594,24 @@ const hasReferences = Object.values(referenceCatalogue).some(
             {/* ---------------------------------------------------------- */}
             <template data-garage-row-template>
               <li class="garage__row">
-                <div class="garage__row-text">
-                  <span class="garage__row-name" data-row-name />
-                  <span class="garage__row-identity" data-row-identity />
+                <div class="garage__row-main">
+                  <div class="garage__row-media">
+                    <img
+                      class="garage__row-thumb"
+                      data-row-thumb
+                      alt=""
+                      hidden
+                    />
+                    <span
+                      class="garage__row-thumb-empty"
+                      data-row-thumb-empty
+                      aria-hidden="true"
+                    />
+                  </div>
+                  <div class="garage__row-text">
+                    <span class="garage__row-name" data-row-name />
+                    <span class="garage__row-identity" data-row-identity />
+                  </div>
                 </div>
                 <div class="garage__row-actions">
                   <button class="garage__button" type="button" data-row-open>
@@ -1606,14 +1623,32 @@ const hasReferences = Object.values(referenceCatalogue).some(
 
             <template data-garage-photo-template>
               <li class="garage__photo">
-                <img class="garage__photo-image" data-photo-image alt="" />
-                <button
-                  class="garage__link garage__link--danger"
-                  type="button"
-                  data-photo-remove
-                >
-                  {strings.garagePhotoRemove}
-                </button>
+                <div class="garage__photo-media">
+                  <img class="garage__photo-image" data-photo-image alt="" />
+                  <span
+                    class="garage__badge garage__photo-cover-badge"
+                    data-photo-cover-badge
+                    hidden
+                  >
+                    {strings.garageCoverBadge}
+                  </span>
+                </div>
+                <div class="garage__photo-actions">
+                  <button
+                    class="garage__link"
+                    type="button"
+                    data-photo-cover-toggle
+                  >
+                    {strings.garageSetCover}
+                  </button>
+                  <button
+                    class="garage__link garage__link--danger"
+                    type="button"
+                    data-photo-remove
+                  >
+                    {strings.garagePhotoRemove}
+                  </button>
+                </div>
               </li>
             </template>
 
@@ -1820,6 +1855,7 @@ const hasReferences = Object.values(referenceCatalogue).some(
     removeVehiclePhoto,
     saveHandle,
     setRecordVisibility,
+    setVehicleCover,
     setVehicleVisibility,
     signPhotoUrls,
     signReceiptUrls,
@@ -1907,6 +1943,7 @@ const hasReferences = Object.values(referenceCatalogue).some(
     type OdometerUnit,
   } from "../../lib/garage/odometer";
   import { photoIssue } from "../../lib/garage/photos";
+  import { resolveCoverPath } from "../../lib/garage/cover";
 
   interface SelectorPayload extends SelectorTaxonomyData {
     labels: {
@@ -2488,7 +2525,10 @@ const hasReferences = Object.values(referenceCatalogue).some(
       els.list.replaceChildren();
       els.empty.hidden = vehicles.length > 0;
 
-      for (const row of sortVehicles(vehicles, locale)) {
+      const rows = sortVehicles(vehicles, locale);
+      const items = new Map<string, HTMLElement>();
+
+      for (const row of rows) {
         const item = els.rowTemplate.content.firstElementChild?.cloneNode(
           true
         ) as HTMLElement | null;
@@ -2507,6 +2547,66 @@ const hasReferences = Object.values(referenceCatalogue).some(
         );
         open?.addEventListener("click", () => openDetail(row));
         els.list.append(item);
+        items.set(row.id, item);
+      }
+
+      void paintRowThumbnails(rows, items);
+    }
+
+    /**
+     * The cover thumbnail on each list card (GAR-01′, T2-306) — "rendering
+     * the designated cover — never just the first array entry — on the
+     * garage vehicle list card", the task line's own words.
+     *
+     * A second pass over the freshly painted list rather than part of the
+     * loop above: `resolveCoverPath` is synchronous but a *readable* image
+     * needs a signed URL, and signing every row's cover in one batched
+     * request is one round trip instead of one per truck. `paintList`
+     * fires this and does not await it — the names and the "Open" buttons
+     * are not held hostage to the signing request.
+     */
+    async function paintRowThumbnails(
+      rows: readonly VehicleRow[],
+      items: ReadonlyMap<string, HTMLElement>
+    ): Promise<void> {
+      const covers = new Map<string, string>();
+      for (const row of rows) {
+        const cover = resolveCoverPath(row);
+        if (cover !== null) covers.set(row.id, cover);
+      }
+      if (covers.size === 0) return;
+
+      const urls = await signPhotoUrls([...covers.values()]);
+      // Built once, not `rows.find(...)` per cover below — that would make
+      // this loop O(n²) across the whole garage instead of O(n).
+      const rowsById = new Map(rows.map((row) => [row.id, row] as const));
+
+      for (const [vehicleId, path] of covers) {
+        const item = items.get(vehicleId);
+        const url = urls.get(path);
+        // The list may have been repainted — a vehicle added, removed, or
+        // renamed — while the signing request was in flight. `contains`
+        // rather than a second lookup: an item still in `items` but no
+        // longer in the live list is exactly that case, and painting a
+        // detached node is harmless but pointless.
+        if (!item || !els.list.contains(item) || url === undefined) continue;
+        const row = rowsById.get(vehicleId);
+        const image = item.querySelector<HTMLImageElement>("[data-row-thumb]");
+        const empty = item.querySelector<HTMLElement>("[data-row-thumb-empty]");
+        // The same convention as every other row-template lookup in this
+        // file (see `paintList` above): if the row or the expected `<img>`
+        // is not there, skip this one rather than proceeding as though the
+        // thumbnail painted. That is also why the placeholder is only
+        // hidden inside this branch — hiding it unconditionally would leave
+        // a blank card (no placeholder, no image) on exactly this failure.
+        if (!image || !row) continue;
+        image.src = url;
+        image.alt = (text.stringPhotoAlt ?? "").replace(
+          "{name}",
+          row.display_name
+        );
+        image.hidden = false;
+        if (empty) empty.hidden = true;
       }
     }
 
@@ -2592,6 +2692,12 @@ const hasReferences = Object.values(referenceCatalogue).some(
       // request was in flight would otherwise paint the wrong gallery.
       if (opened?.id !== row.id) return;
 
+      // Resolved once for the whole gallery, never per photo: the cover is
+      // one designation, and asking `resolveCoverPath` inside the loop below
+      // would still be correct but would invite a second, subtly different
+      // notion of "is this the cover" to grow up beside it later.
+      const cover = resolveCoverPath(row);
+
       for (const path of paths) {
         const url = urls.get(path);
         if (url === undefined) continue;
@@ -2601,9 +2707,16 @@ const hasReferences = Object.values(referenceCatalogue).some(
         if (!item) continue;
         const image =
           item.querySelector<HTMLImageElement>("[data-photo-image]");
+        const badge = item.querySelector<HTMLElement>(
+          "[data-photo-cover-badge]"
+        );
+        const toggle = item.querySelector<HTMLButtonElement>(
+          "[data-photo-cover-toggle]"
+        );
         const drop = item.querySelector<HTMLButtonElement>(
           "[data-photo-remove]"
         );
+        const isCover = path === cover;
         if (image) {
           image.src = url;
           image.loading = "lazy";
@@ -2612,11 +2725,48 @@ const hasReferences = Object.values(referenceCatalogue).some(
             row.display_name
           );
         }
+        if (badge) badge.hidden = !isCover;
+        if (toggle) {
+          say(
+            toggle,
+            (isCover ? text.stringRemoveCover : text.stringSetCover) ?? ""
+          );
+          toggle.addEventListener("click", () => {
+            void setCover(row, isCover ? null : path).catch(() =>
+              unreachable(els.photoMessage)
+            );
+          });
+        }
         drop?.addEventListener("click", () => {
           void dropPhoto(row, path).catch(() => unreachable(els.photoMessage));
         });
         els.gallery.append(item);
       }
+    }
+
+    /**
+     * Designate — or, with `null`, remove — this vehicle's cover photo
+     * (GAR-01′, T2-306): the "Set as cover" / "Remove cover" control on the
+     * edit view's gallery.
+     *
+     * Repaints the gallery *and* goes through `replace`, the same as
+     * `dropPhoto` below: the toggled badge is this panel's problem, but the
+     * list card the reader returns to has to show the new cover too, and
+     * `replace` is what keeps `vehicles` (and the list paint it triggers) in
+     * step with every mutation this page makes.
+     */
+    async function setCover(
+      row: VehicleRow,
+      path: string | null
+    ): Promise<void> {
+      say(els.photoMessage, "");
+      const result = await setVehicleCover(row.id, path);
+      if (!result.ok) {
+        say(els.photoMessage, text.stringError ?? "");
+        return;
+      }
+      replace(result.value);
+      await paintPhotos(result.value);
     }
 
     /* ------------------------------------------------------------ records */
@@ -4522,10 +4672,48 @@ const hasReferences = Object.values(referenceCatalogue).some(
     border-radius: 8px;
   }
 
+  .garage__row-main {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+
+  .garage__row-media {
+    position: relative;
+    width: 3.25rem;
+    height: 3.25rem;
+    flex: 0 0 auto;
+  }
+
+  .garage__row-media > * {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 6px;
+  }
+
+  /*
+   * GAR-01′: the designated cover, never `photo_paths[0]` — see
+   * `resolveCoverPath` in `src/lib/garage/cover.ts`. The two elements below
+   * are mutually exclusive states of the same box, not a stack: whichever one
+   * the script leaves un-hidden is the one a reader sees.
+   */
+  .garage__row-thumb {
+    object-fit: cover;
+    border: 1px solid var(--line);
+  }
+
+  .garage__row-thumb-empty {
+    background: var(--chip);
+    border: 1px dashed var(--line);
+  }
+
   .garage__row-text {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
+    min-width: 0;
   }
 
   .garage__row-name {
@@ -5133,6 +5321,10 @@ const hasReferences = Object.values(referenceCatalogue).some(
     gap: 0.375rem;
   }
 
+  .garage__photo-media {
+    position: relative;
+  }
+
   .garage__photo-image {
     width: 100%;
     aspect-ratio: 4 / 3;
@@ -5140,6 +5332,19 @@ const hasReferences = Object.values(referenceCatalogue).some(
     background: var(--chip);
     border: 1px solid var(--line);
     border-radius: 6px;
+  }
+
+  /* GAR-01′: which one photo the "Remove cover" label below applies to. */
+  .garage__photo-cover-badge {
+    position: absolute;
+    top: 0.375rem;
+    left: 0.375rem;
+  }
+
+  .garage__photo-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
   }
 
   .garage__field {

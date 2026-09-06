@@ -36,6 +36,7 @@ function row(overrides: Partial<VehicleRow> = {}): VehicleRow {
     engine_id: "6g74-sohc",
     odometer_km: 247500,
     photo_paths: [],
+    cover_photo_path: null,
     is_showcase_public: false,
     is_worklog_public: false,
     ...overrides,

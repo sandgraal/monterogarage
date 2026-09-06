@@ -83,64 +83,55 @@ function vehicle(overrides: Partial<CoverPhotoSource> = {}): CoverPhotoSource {
  * ====================================================================== */
 
 describe("resolveCoverPath renders the photo the owner designated", () => {
-  it.fails(
-    "returns the designated path when it is one of the vehicle's photos",
-    () => {
-      expect(resolveCoverPath(vehicle({ cover_photo_path: PHOTOS[1] }))).toBe(
-        PHOTOS[1]
-      );
-    }
-  );
+  it("returns the designated path when it is one of the vehicle's photos", () => {
+    expect(resolveCoverPath(vehicle({ cover_photo_path: PHOTOS[1] }))).toBe(
+      PHOTOS[1]
+    );
+  });
 
   // **The Nth photo, not the most recent and not the first** — the task line
   // names this explicitly, and it is an `it.each` table rather than one
   // assertion about the middle photo because "works for index 1" and "works
   // for every index" are different claims, and an implementation that
   // special-cased either end would satisfy the first.
-  it.fails.each(PHOTOS.map((path, index) => [index, path] as const))(
+  it.each(PHOTOS.map((path, index) => [index, path] as const))(
     "designating photo %i of three resolves to that photo",
     (_index, path) => {
       expect(resolveCoverPath(vehicle({ cover_photo_path: path }))).toBe(path);
     }
   );
 
-  it.fails(
-    "does not depend on where the designated photo sits in the array",
-    () => {
-      // The same designation, the same answer, whatever order the array is in.
-      // A resolver written as "find the cover, else the first" passes the
-      // assertions above and fails this one only if the array is shuffled — so
-      // the array is shuffled.
-      const reordered = [PHOTOS[2], PHOTOS[0], PHOTOS[1]];
+  it("does not depend on where the designated photo sits in the array", () => {
+    // The same designation, the same answer, whatever order the array is in.
+    // A resolver written as "find the cover, else the first" passes the
+    // assertions above and fails this one only if the array is shuffled — so
+    // the array is shuffled.
+    const reordered = [PHOTOS[2], PHOTOS[0], PHOTOS[1]];
 
-      expect(
-        resolveCoverPath(
-          vehicle({ photo_paths: reordered, cover_photo_path: PHOTOS[0] })
-        )
-      ).toBe(PHOTOS[0]);
-    }
-  );
+    expect(
+      resolveCoverPath(
+        vehicle({ photo_paths: reordered, cover_photo_path: PHOTOS[0] })
+      )
+    ).toBe(PHOTOS[0]);
+  });
 });
 
 describe("resolveCoverPath renders the placeholder rather than guessing", () => {
-  it.fails(
-    "returns null when the vehicle has photos but no designation",
-    () => {
-      // GAR-01′, read literally: "a vehicle with photos but no cover renders the
-      // same placeholder image used when the vehicle has no photos". The whole
-      // of this requirement is the *absence* of a fallback, so this is the
-      // grader that fails against the obvious wrong implementation.
-      expect(resolveCoverPath(vehicle({ cover_photo_path: null }))).toBeNull();
-    }
-  );
+  it("returns null when the vehicle has photos but no designation", () => {
+    // GAR-01′, read literally: "a vehicle with photos but no cover renders the
+    // same placeholder image used when the vehicle has no photos". The whole
+    // of this requirement is the *absence* of a fallback, so this is the
+    // grader that fails against the obvious wrong implementation.
+    expect(resolveCoverPath(vehicle({ cover_photo_path: null }))).toBeNull();
+  });
 
-  it.fails("returns null when the vehicle has no photos at all", () => {
+  it("returns null when the vehicle has no photos at all", () => {
     expect(
       resolveCoverPath(vehicle({ photo_paths: [], cover_photo_path: null }))
     ).toBeNull();
   });
 
-  it.fails("never falls back to the first photo", () => {
+  it("never falls back to the first photo", () => {
     // Stated as its own grader, and asserted as a non-equality, because
     // `toBeNull()` above would also be satisfied by a resolver that happened
     // to return null for a *different* reason. This one names the value that
@@ -151,7 +142,7 @@ describe("resolveCoverPath renders the placeholder rather than guessing", () => 
     expect(resolved).toBeNull();
   });
 
-  it.fails("returns null for a designation the vehicle does not have", () => {
+  it("returns null for a designation the vehicle does not have", () => {
     // The dangling case. The database is supposed to make it unrepresentable
     // (`tests/garage/cover-photo.test.ts` grades that); this is the belt, and
     // it matters because the wrong answer here is not a missing image — it is
@@ -166,28 +157,25 @@ describe("resolveCoverPath renders the placeholder rather than guessing", () => 
     ).toBeNull();
   });
 
-  it.fails(
-    "returns null for a designation under another vehicle's prefix",
-    () => {
-      // Same discipline as `vehiclePhotoPaths` in `./vehicle.ts`: a path that
-      // does not live under `<owner>/<vehicle>/` is not this vehicle's, even if
-      // the array it was read from says otherwise — and `photo_paths` is an
-      // array a client wrote.
-      const other = "33333333-3333-4333-8333-333333333333";
-      const foreign = `${other}/${VEHICLE}/TEST-T2-306A-PHOTO-1.jpg`;
+  it("returns null for a designation under another vehicle's prefix", () => {
+    // Same discipline as `vehiclePhotoPaths` in `./vehicle.ts`: a path that
+    // does not live under `<owner>/<vehicle>/` is not this vehicle's, even if
+    // the array it was read from says otherwise — and `photo_paths` is an
+    // array a client wrote.
+    const other = "33333333-3333-4333-8333-333333333333";
+    const foreign = `${other}/${VEHICLE}/TEST-T2-306A-PHOTO-1.jpg`;
 
-      expect(
-        resolveCoverPath(
-          vehicle({
-            photo_paths: [...PHOTOS, foreign],
-            cover_photo_path: foreign,
-          })
-        )
-      ).toBeNull();
-    }
-  );
+    expect(
+      resolveCoverPath(
+        vehicle({
+          photo_paths: [...PHOTOS, foreign],
+          cover_photo_path: foreign,
+        })
+      )
+    ).toBeNull();
+  });
 
-  it.fails("returns null for a designation with an extra path segment", () => {
+  it("returns null for a designation with an extra path segment", () => {
     // `<owner>/<vehicle>/<file>` is exactly three segments. A fourth means the
     // path was built by something that is not `photoObjectPath`, and a
     // resolver that shrugged at it would hand a hand-crafted key to the
@@ -207,19 +195,19 @@ describe("resolveCoverPath renders the placeholder rather than guessing", () => 
  * ====================================================================== */
 
 describe("coverPhotoWrite touches the cover column and nothing else", () => {
-  it.fails("sets the cover with a single-key patch", () => {
+  it("sets the cover with a single-key patch", () => {
     expect(coverPhotoWrite(PHOTOS[1])).toEqual({
       cover_photo_path: PHOTOS[1],
     });
   });
 
-  it.fails("clears the cover with the same shape", () => {
+  it("clears the cover with the same shape", () => {
     // "Remove cover" is a designation of none, not a different operation, and
     // certainly not a delete of the photo.
     expect(coverPhotoWrite(null)).toEqual({ cover_photo_path: null });
   });
 
-  it.fails("never carries photo_paths", () => {
+  it("never carries photo_paths", () => {
     // The grader the task line asked for by name. T2-304's seeding found a
     // lost-update race on `vehicles.photo_paths` — two writers
     // read-modify-write the array and one clobbers the other, stranding a real
