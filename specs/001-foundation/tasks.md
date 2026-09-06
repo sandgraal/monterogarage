@@ -34,7 +34,7 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
   - **Perf margin (T204 review, F3), measured 3 runs per page:** the webfonts plus the selector chrome cost the glossary pages some of their headroom. `/en/glossary/` and `/es/glosario/` sit at **92–93 / 90** after the two savings taken here (the per-row fit markers are built by the client instead of server-rendered into all 154 cards, −98 kB; and each card carries an index into a de-duplicated fitment table instead of its own escaped JSON, −19 kB). Every other sampled page is 98–100. **The glossary margin is 2–3 points; the next page-weight regression there lands red.** Not taken, with its measured value: moving the ~11 kB inlined taxonomy payload out to a fetched static JSON is worth a further ~2 points, but needs the selector and both listings to become async — deferred as a named follow-up rather than shipped unreviewed at the end of a review round. The reviewer's alternative ("inline only where a listing exists") provably cannot help here: the pages under budget pressure *are* the listings. The `latin-ext` font subsets were measured too — **zero** `latin-ext` codepoints appear anywhere in the built site, so they cost zero runtime bytes (their `unicode-range` already prevents the download) and are kept so a future European name in a source title does not fall back mid-word.
   - **Design-fidelity follow-up (T204 review, F7):** HANDOFF-DESIGN's site chrome puts the vehicle chip in the header, always visible. T204 ships the bar and panel at the top of `<main>` instead — a functional superset (idle CTA, full picker, active chip, clear) but not the final chrome. Header integration is recorded as a design-fidelity follow-up, not a defect. The skip link was re-anchored past the selector in the same review.
 
-- [ ] **T203a [TEST]** Graders for the `global`-market fitment bug (found 2026-09-06,
+- [x] **T203a [TEST]** Graders for the `global`-market fitment bug (found 2026-09-06,
   during T504a's authoring, owner-approved as a real bug fix rather than a
   content sweep): `src/lib/fitment/index.ts`'s `matchesVehicle` treats a
   present `fitment.markets` as a **direct-match facet** — `if (allowed ===
@@ -61,8 +61,63 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
   of the 89 `markets: ["global"]` entries) rather than only synthetic
   fixtures, so the fix is proven against the actual data it must unbreak.
   Depends: T203 merged. *(FIT-01, FIT-03, FIT-04)*
+  - **RULING MADE BY THIS TASK (2026-09-06) — binding on T203b and on every
+    content author.** The owner's ruling settles `["global"]`; the mixed case
+    it names as needing a decision is decided here: **`"global"` is
+    absorbing.** Any `fitment.markets` array that *contains* `"global"` — not
+    only `["global"]` as its sole member, but `["global", "us"]`,
+    `["au", "global"]`, and every other mix — resolves as **no market
+    restriction at all**, exactly as if the field were omitted; the real
+    market ids beside it are inert. Four reasons, in the order they carried
+    weight: (1) the ruling's own words are "`global` *in* a `markets` array",
+    not "as the sole member of"; (2) set semantics — every
+    `DIRECT_MATCH_FACETS` facet is a disjunction of acceptable values,
+    `"global"` denotes the universal market set, and a union with the
+    universal set is the universal set; any other reading makes one token's
+    meaning depend on its neighbours, which is how a taxonomy stops being
+    checkable; (3) the fitment module's stated bias (T203 decision (a)) errs
+    towards showing, because "hiding is the destructive answer … showing is
+    recoverable in one click"; (4) the corpus agrees — all 14 mixed entries
+    shipping today use the extra id as an **addition** to the general-export
+    scope, never as an exclusion (`gls`/`glx` are `["au","global"]`,
+    `option-code-gen3-transmission-v5a51` is `["global","us"]`, the four
+    `g4-*` problems and the five generation entries enumerate every market
+    their generation was sold in *plus* `global`).
+    **The cost, stated plainly:** once T203b lands, *"everywhere EXCEPT X"* is
+    no longer spellable as `["global", …]`. Express it by listing the real
+    markets and **omitting** `"global"`.
+    **Deliberately NOT changed:** `"global"` on the *selection* side stays
+    literal (a visitor who picks general-export has picked one scope, not all
+    of them, so a `markets: ["us"]` fitment still does not match them);
+    combination scoping stays literal (`combos-gen4-global` records the
+    general-export offering list and must not start answering for `gen4 × cr`
+    — VEH-03 rule 3's "no entry at all is *unknown*, never impossible" is the
+    honest answer there); and no other facet gains an absorbing value
+    (`trims: ["global"]` is an unknown trim id, not a wildcard).
+    Recorded on this line, and not only in the graders' file headers, for the
+    reason T207's own line already records: *a ruling that exists only in a
+    transcript is a ruling the next agent re-litigates.*
+    `tests/lib/fitment/global-market-content.test.ts` carries a `KNOWN_MIXED`
+    ratchet over today's 14 mixed entries, so the author of the 15th is made
+    to read this paragraph before adding an id to the list.
+  - **What landed:** `tests/lib/fitment/global-market.test.ts` (fixtures — the
+    rule, the boundary tables over every real market, and the positive
+    controls that catch a *too-broad* fix: an implementation that strips
+    `"global"` from every facet, or that turns `markets: []` into
+    "unrestricted", goes red on them) and
+    `tests/lib/fitment/global-market-content.test.ts` (the same rule against
+    the 103 shipped entries that declare `global` — 89 exactly, 14 mixed).
+    Marker style is `it.fails`, one line per grader; T203b activates each by
+    deleting exactly that `.fails`. The two authorities are kept apart in the
+    corpus file: the `it.fails` graders over the 89 follow from the owner's
+    ruling verbatim, those over the 14 follow from the interpretive call
+    above, and no decision-dependent assertion spans both — so a future
+    reversal of the absorbing reading touches only the mixed-specific block
+    (review F2).
 - [ ] **T203b [PLATFORM]** Implements the T203a seam: `"global"` inside a
-  `markets` array resolves as no market restriction, everywhere
+  `markets` array resolves as no market restriction (**including when it
+  appears alongside real market ids** — see the absorbing-`global` ruling on
+  the T203a line above), everywhere
   `matchesVehicle`/`entryAppliesTo` are consulted (provisional-match
   indicator logic from T204/F8 must keep working correctly — a `["global"]`
   fitment should read as a **full** match, not a provisional one, since it
