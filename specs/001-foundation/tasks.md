@@ -367,7 +367,17 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
     spelling and the false positive it must not reopen are pinned in
     `src/lib/procedures/figures.test.ts`.
 - [ ] **T503 [CONTENT]** Parts wave 1: every part referenced by T303/T403/T404 garage+problem entries. Depends: T501, gaps report. *(PRT-01, PRT-02)*
-- [ ] **T504 [CONTENT]** Procedures wave 1: maintenance set (oil, filters, timing belt 6G74, diffs/tcase fluid, brakes, plugs) — bilingual, cited, safety-flagged where due. Depends: T502. *(PRC-01, PRC-02, PRC-03)*
+- [ ] **T504a [TEST]** Render graders for the procedures index page
+  (`procedures-index.render.test.ts`) — cards render, hrefs resolve, filters
+  work, T204's provisional-match indicator shows on a partial fitment match.
+  T502's own reviewer deferred this exact grader (AGENTS.md's `[TEST]`-debt
+  ledger, T502 entry, 2026-09-05): the index page has no content to render
+  against until this task's sibling ships, and having T502's implementer
+  author it for his own freshly-written page would repeat T601-F2's failure
+  mode on the exact surface it happened on once already. Depends: T502
+  merged. Fixtures need real entries: author alongside T504 (coordinate with
+  T504's author rather than inventing procedure fixtures from nothing). *(PRC-01, SCF-06)*
+- [ ] **T504 [CONTENT]** Procedures wave 1: maintenance set (oil, filters, timing belt 6G74, diffs/tcase fluid, brakes, plugs) — bilingual, cited, safety-flagged where due. Depends: T502. Does not merge without T504a's grader landing alongside it — see AGENTS.md's `[TEST]`-debt ledger, T502 entry. *(PRC-01, PRC-02, PRC-03)*
 
 ## Phase 6 — Modifications
 - [x] **T601 [PLATFORM]** Mods schema (typed requires/breaks references) + page template. Depends: T203. *(MOD-01, MOD-02)*
