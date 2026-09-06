@@ -22,6 +22,16 @@ export default defineConfig(
       // in every other worktree — a build break nobody in those checkouts can
       // see the cause of. (`.prettierignore` already skips `.claude/`.)
       ".claude/**",
+      // Supabase Edge Functions are Deno, not Node: `Deno.serve`, `Deno.env`,
+      // and `jsr:`/`https:` import specifiers are all valid there and all
+      // errors here, and this repo ships no Deno toolchain to lint them with.
+      // Linting them under Node's globals would report five findings that are
+      // each "this file is not Node", which is the kind of noise that gets a
+      // rule switched off rather than a file fixed. What actually grades this
+      // directory is `tests/garage/receipt-signer.test.ts`, which reads the
+      // source for the rules that matter (never a caller-supplied path, never
+      // a TTL above the ceiling, never a second signer).
+      "supabase/functions/**",
     ],
   },
   eslint.configs.recommended,

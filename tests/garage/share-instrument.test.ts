@@ -420,7 +420,7 @@ describe("every table that exists is a table some grader knows about", () => {
  * ====================================================================== */
 
 describe("typed share grants (SHR-05..08)", () => {
-  it.fails("every declared share reader exists in the migrations", () => {
+  it("every declared share reader exists in the migrations", () => {
     const declared = contractRoutineNames();
     const missing = SHARE_READER_FUNCTIONS.filter(
       (reader) => !declared.includes(reader.name)
@@ -432,7 +432,7 @@ describe("typed share grants (SHR-05..08)", () => {
     expect(missing).toEqual([]);
   });
 
-  it.fails("the anon-executable set EQUALS the declared share readers", () => {
+  it("the anon-executable set EQUALS the declared share readers", () => {
     // The closed allow-list, completeness half. The deny half is unmarked
     // above and green; this is the direction that cannot be satisfied until a
     // reader exists and is granted. Both halves together are the equality.
@@ -441,7 +441,7 @@ describe("typed share grants (SHR-05..08)", () => {
     ).toEqual([]);
   });
 
-  it.fails("every share reader is `security definer`", () => {
+  it("every share reader is `security definer`", () => {
     // Not a style preference: the caller has no `auth.uid()`, so an invoker
     // function would run as `anon` and be filtered by RLS to nothing. Definer
     // is what makes the surface work — and what makes everything below
@@ -453,7 +453,7 @@ describe("typed share grants (SHR-05..08)", () => {
     expect(invokers).toEqual([]);
   });
 
-  it.fails("every share reader carries `set search_path = ''`", () => {
+  it("every share reader carries `set search_path = ''`", () => {
     const issues = requireShareReaders()
       .filter(
         (routine) =>
@@ -467,20 +467,20 @@ describe("typed share grants (SHR-05..08)", () => {
     expect(issues).toEqual([]);
   });
 
-  it.fails("TOKEN 1/3: compares a hash, never a plaintext token column", () => {
+  it("TOKEN 1/3: compares a hash, never a plaintext token column", () => {
     // Three graders, not one, because they fail independently and for
     // different reasons. This one is about what a database leak costs: if the
     // row holds the token, reading the table is holding every live grant.
     expect(requireShareReaders().flatMap(tokenHashIssues)).toEqual([]);
   });
 
-  it.fails("TOKEN 2/3: tests `expires_at`", () => {
+  it("TOKEN 2/3: tests `expires_at`", () => {
     // SHR-08: "Every grant … SHALL carry an expiry." A column nobody reads is
     // not an expiry, it is a comment.
     expect(requireShareReaders().flatMap(expiryCheckIssues)).toEqual([]);
   });
 
-  it.fails("TOKEN 3/3: tests `revoked_at`", () => {
+  it("TOKEN 3/3: tests `revoked_at`", () => {
     // The likeliest defect in the whole feature, and the reason the triple is
     // three findings. A reader that validates the hash and checks the expiry
     // and skips this is a grant that **cannot be revoked** — and it passes
@@ -491,7 +491,7 @@ describe("typed share grants (SHR-05..08)", () => {
     expect(requireShareReaders().flatMap(revocationCheckIssues)).toEqual([]);
   });
 
-  it.fails("names its columns — no `select *`, no `setof` a user table", () => {
+  it("names its columns — no `select *`, no `setof` a user table", () => {
     // SHR-06: where a grant does not open costs, the data returned "SHALL
     // omit the cost fields entirely rather than blanking them at render
     // time". `select *` and `returns setof public.records` both make that
@@ -501,7 +501,7 @@ describe("typed share grants (SHR-05..08)", () => {
     expect(requireShareReaders().flatMap(projectionIssues)).toEqual([]);
   });
 
-  it.fails("the accountless path is read-only (SHR-07)", () => {
+  it("the accountless path is read-only (SHR-07)", () => {
     // "WHILE a request carries no authenticated session, no grant SHALL admit
     // any write." Graded on the path rather than on the three names above —
     // see the unmarked sweep, which applies this to whatever is actually

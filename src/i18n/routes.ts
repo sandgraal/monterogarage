@@ -185,6 +185,35 @@ export const COLLECTION_ROUTE_SEGMENTS = {
    * part or a system), so there is no GLO-02 ruling to defer to here.
    */
   search: { en: "search", es: "buscar" },
+  /**
+   * T2-404 — the accountless share page (002 SHR-05, SHR-07).
+   *
+   * Not a content collection either: it renders one vehicle's history for the
+   * holder of a bearer token that never reaches this server (the token lives
+   * in the URL fragment, see `src/lib/garage/share-link.ts`). It is here for
+   * the same reason `signIn` is — this registry is what `BaseLayout` reads to
+   * emit hreflang pairs and what the locale switcher reads to cross between
+   * `/en/share/` and `/es/compartir/`, and a second registry with the same
+   * rule, for the same job, is how the two drift apart.
+   *
+   * `compartir` is the plain Costa Rican verb-as-noun for what produced the
+   * page — the owner *compartió* the truck's history with somebody. It is not
+   * a glossary headword (sharing is an action on the site, not a truck part or
+   * a system), so there is no GLO-02 ruling to defer to, exactly as for
+   * `buscar` above.
+   *
+   * **The page is `noindex` and carries `Referrer-Policy: no-referrer`**
+   * (003 MEC-04, and `vercel.json`'s headers block). Being in this registry
+   * gives it hreflang pairs and a locale switcher; it does not give it a place
+   * in a search index, and the two are not the same decision.
+   *
+   * The literal pair is duplicated in `src/lib/garage/share-route.ts`, which
+   * `share-link.ts` reads — that module cannot import this one as a *value*
+   * without dragging `astro:content` into the browser, and it carries a
+   * `satisfies` clause against this entry's literal type so the two cannot
+   * drift. Same shape, same reason, as `handles.ts`' `GARAGE_ROUTE_SEGMENTS`.
+   */
+  share: { en: "share", es: "compartir" },
 } as const satisfies Readonly<Record<string, Readonly<Record<Locale, string>>>>;
 
 export type CollectionRouteId = keyof typeof COLLECTION_ROUTE_SEGMENTS;

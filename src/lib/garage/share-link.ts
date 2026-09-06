@@ -1,6 +1,6 @@
 /**
- * Where a share token lives in a URL — the seam, declared by T2-401 [TEST],
- * filled by T2-404 [PLATFORM].
+ * Where a share token lives in a URL — declared by T2-401 [TEST], filled by
+ * T2-404 [PLATFORM].
  *
  * ## The whole module is one decision, and it is a security decision
  *
@@ -25,21 +25,17 @@
  * 2. **The client POSTs it, never GETs it.** A `GET /rest/v1/rpc/x?token=…`
  *    puts the credential straight back into the log the fragment kept it out
  *    of. PostgREST accepts RPC over both verbs, so this is a real choice
- *    somebody can make wrongly.
+ *    somebody can make wrongly. `src/lib/supabase/shares.ts` is the only caller
+ *    and it goes through `supabase-js`'s `rpc()`, which POSTs.
  * 3. **`Referrer-Policy: no-referrer` on the share page.** The fragment is not
  *    in a `Referer`, but the *path* still is, and the path names a page that
- *    exists only because somebody was given a grant. `vercel.json` has no
- *    `headers` block today; this is a file edit, not a dashboard setting.
- *
- * ## Not implemented
- *
- * Every function throws {@link NOT_IMPLEMENTED}.
+ *    exists only because somebody was given a grant. `vercel.json` carries the
+ *    `headers` block that sends it.
  *
  * refs specs/002-montero-garage (SHR-05, SHR-07, SHR-08), 003 (MEC-04)
  */
-
-/** The seam marker. Every grader waiting on T2-404 asserts on this string. */
-export const NOT_IMPLEMENTED = "not implemented: T2-401";
+import { localeHref, type Locale } from "../../i18n/routing.ts";
+import { SHARE_ROUTE_SEGMENTS } from "./share-route.ts";
 
 /**
  * The fragment key the token travels under.
@@ -51,20 +47,44 @@ export const NOT_IMPLEMENTED = "not implemented: T2-401";
 export const SHARE_TOKEN_FRAGMENT_KEY = "t";
 
 /**
+ * The share page's route in `locale`, **without** the locale prefix or the
+ * deploy base — the same shape `collectionRoutePath` returns, so
+ * `localeHref` can add both at the moment a link is rendered.
+ *
+ * The segment pair is shared with `src/i18n/routes.ts` through
+ * `./share-route.ts` — see that module for why the literals live outside the
+ * Astro-facing registry and how the two are kept from drifting.
+ */
+export function sharePagePath(locale: Locale): string {
+  return `/${SHARE_ROUTE_SEGMENTS[locale]}/`;
+}
+
+/**
  * The full share URL for `token`, in `locale`.
  *
  * `origin` is a parameter rather than read from `import.meta.env` so this stays
- * pure and gradeable without a build.
+ * pure and gradeable without a build — and so the one caller that has to build
+ * a link for somebody else's browser (the owner's garage, copying a link to the
+ * clipboard) cannot accidentally emit a `localhost` URL from a preview deploy.
+ *
+ * The token is appended with no encoding because it is 64 hex characters by
+ * construction (`extensions.gen_random_bytes(32)`, hex-encoded in
+ * `create_share_grant`); `encodeURIComponent` would be a no-op on that alphabet
+ * and would hide a change of alphabet rather than surviving one. It is applied
+ * anyway, for the day somebody changes the encoding in the migration and does
+ * not read this comment.
  */
 export function shareLinkFor(input: {
   readonly origin: string;
-  readonly locale: string;
+  readonly locale: Locale;
   readonly token: string;
 }): string {
-  // The token is deliberately NOT interpolated into this message. A seam error
-  // is precisely the kind of string that ends up in a log, and a bearer secret
-  // has no business in one.
-  throw new Error(`${NOT_IMPLEMENTED} — shareLinkFor(${input.locale})`);
+  const url = new URL(
+    localeHref(input.locale, sharePagePath(input.locale)),
+    input.origin
+  );
+  url.hash = `${SHARE_TOKEN_FRAGMENT_KEY}=${encodeURIComponent(input.token)}`;
+  return url.toString();
 }
 
 /**
@@ -72,15 +92,30 @@ export function shareLinkFor(input: {
  *
  * `null`, never `""`: an absent token and an empty one are different states and
  * only one of them is worth sending to the database (AGENTS.md — a failure is
- * not a zero).
+ * not a zero). An empty string would be hashed and compared against every live
+ * grant, which is a query nobody meant to run.
  *
  * **Reads the fragment only.** A token in the query string is not a token this
- * function will honour, so a link that leaked one into the log does not also
- * work — it fails, loudly, where somebody will notice.
+ * function will honour, so a link that leaked one into a log does not also
+ * work — it fails, loudly, where somebody will notice, instead of quietly
+ * rewarding the leak.
  */
 export function shareTokenFromUrl(url: string): string | null {
-  // Origin and path only, never the fragment — same reasoning as above.
-  throw new Error(
-    `${NOT_IMPLEMENTED} — shareTokenFromUrl(${url.split("#")[0]})`
-  );
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+
+  // `URL.hash` keeps the leading `#`, and an absent fragment is `""` rather
+  // than null — so the empty case has to be answered before parsing, or
+  // `URLSearchParams("")` would hand back a well-formed empty map and the
+  // caller would get `""` for "no token at all".
+  const fragment = parsed.hash.replace(/^#/, "");
+  if (fragment === "") return null;
+
+  const token = new URLSearchParams(fragment).get(SHARE_TOKEN_FRAGMENT_KEY);
+  if (token === null || token === "") return null;
+  return token;
 }
