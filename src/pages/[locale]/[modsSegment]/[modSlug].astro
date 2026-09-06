@@ -89,6 +89,7 @@ import { selectorTaxonomyData } from "../../../lib/vehicle-taxonomy";
 import { costBandAccessibleName, costBandGlyphs } from "../../../lib/problems";
 import { readReferencable, resolveRequirements } from "../../../lib/mods";
 import { modSafety } from "../../../lib/mods/safety";
+import { specRows } from "../../../lib/procedures/specs";
 import { DIFFICULTY_MAX } from "../../../schemas/problems";
 import { MOD_REFERENCE_COLLECTIONS } from "../../../schemas/mods";
 import { GENERATION_IDS, type GenerationId } from "../../../schemas/vehicles";
@@ -210,6 +211,40 @@ const affects = data.affects.map((row) => ({
       ? null
       : modReferenceCollectionLabel(strings, row.ref.collection),
 }));
+
+/**
+ * The figures this mod states, resolved from the `reference` entries its
+ * `specs` ids name (T604).
+ *
+ * **`specRows` from `src/lib/procedures/specs.ts`, shared and not forked** —
+ * the judgment call T603 left open, decided here and recorded on T604's task
+ * line. The module takes ids, reference entries and a locale, and it says
+ * nothing about procedures: what it owns is `reference`'s own storage shape
+ * (`quantitySchema`'s value / min–max forms), the unit-id → symbol table, and
+ * the rule that the *number* is formatted with `Intl.NumberFormat` in the page
+ * locale while the *symbol* is not translated at all. A mods-local copy would
+ * be a second `UNIT_SYMBOLS`, a second decimal-separator decision and a second
+ * "is the degree sign written tight against its figure" answer — three ways for
+ * one stored figure to render differently on two pages of the same site, which
+ * is the duplication AGENTS.md's shared-data rule exists to prevent.
+ *
+ * The row shape is the same too, deliberately: the reference entry's own
+ * per-locale title beside figures read out of the entry, so the number exists
+ * once in the repository and both locales render from that one copy.
+ */
+/*
+ * `?? []` for defense-in-depth: `modsShared.specs` has `.default([])`, so
+ * after content parsing `data.specs` should always be present (as `[]` when
+ * omitted in the source file). The nullish-coalescing is here as a guard
+ * against unexpected `null` or `undefined` values, the same defensive read
+ * `local.affectsNotes ?? {}` above makes. "No figures" renders as no section,
+ * never as a crash and never as an empty one.
+ */
+const specs = specRows(
+  data.specs ?? [],
+  await getCollection("reference"),
+  locale
+);
 
 const safety = modSafety(data);
 
@@ -450,6 +485,58 @@ function formatAccessed(iso: string): string {
     </section>
 
     {
+      /*
+       * The figures, under a heading of their own read from `t(locale)`.
+       *
+       * Its own section and its own label, not a row folded into the tradeoffs
+       * paragraph: a figure a reader is going to act on ("rated to 100 kg")
+       * needs to be findable, and a block borrowing the heading above it reads
+       * as part of that section's argument. The label comes from `ui.ts` for
+       * the reason `modsSpecsHeading`' docstring records — a hard-coded English
+       * `<h2>Figures</h2>` on `/es/…` is the T601-F1 defect class on this exact
+       * file, and it renders correct numbers under the wrong language.
+       *
+       * Rendered only when the entry cites something. An empty section, or a
+       * "0 kg" where a mod simply states no load rating, would be a confident
+       * answer derived from having failed to look — and plenty of mods
+       * honestly state no number at all.
+       */
+      specs.length > 0 && (
+        <section class="section" aria-labelledby="specs-heading">
+          <h2 id="specs-heading">{strings.modsSpecsHeading}</h2>
+          <p class="section__intro">{strings.modsSpecsIntro}</p>
+          <ul class="specs">
+            {specs.map((spec) => (
+              <li
+                class="specs__row"
+                data-kind={spec.kind ?? undefined}
+                data-resolved={String(spec.resolved)}
+              >
+                {/*
+                 * `spec.title` is the *reference entry's* own per-locale title,
+                 * so the words differ between locales while the figure beside
+                 * them does not — which is what "shared data, per-locale prose"
+                 * means on a rendered page. The id is the fallback rather than
+                 * a blank: an unresolved row says which id it could not find,
+                 * exactly as an unresolved prerequisite does.
+                 */}
+                <span class="specs__title">{spec.title ?? spec.id}</span>
+                {spec.figures.map((figure) => (
+                  <span class="datum specs__figure">{figure}</span>
+                ))}
+                {!spec.resolved && (
+                  <span class="requires__unresolved">
+                    {strings.modsSpecUnresolvedLabel}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    {
       data.sources.length > 0 && (
         <section class="section" aria-labelledby="sources-heading">
           <h2 id="sources-heading">{strings.sourcesHeading}</h2>
@@ -623,6 +710,33 @@ function formatAccessed(iso: string): string {
     font-size: 0.6875rem;
     color: var(--muted-strong);
     border: 1.5px dashed var(--faint);
+    border-radius: 4px;
+    padding: 0.125rem 0.5rem;
+  }
+
+  /* The figures list — the `requires` list's shape, one field over. */
+  .specs {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .specs__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  /* The number reads as a datum, not as prose — the site-wide convention. */
+  .specs__figure {
+    font-weight: 700;
+    color: var(--ink);
+    background: var(--chip);
     border-radius: 4px;
     padding: 0.125rem 0.5rem;
   }

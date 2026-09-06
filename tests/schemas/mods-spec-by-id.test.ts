@@ -216,19 +216,19 @@ describe("no figure may be declared in the mods prose shape (define time)", () =
  * ---------------------------------------------------------------------- */
 
 describe("`modsShared` has a typed, referenced-by-id figure field (T603)", () => {
-  it.fails("declares `specs` in shared data", () => {
+  it("declares `specs` in shared data", () => {
     // The seam, at its narrowest. T602's finding in one assertion: there is
     // no typed home for a figure on a mods entry.
     expect(Object.keys(modsShared)).toContain("specs");
   });
 
-  it.fails("accepts an entry that cites a figure by id", () => {
+  it("accepts an entry that cites a figure by id", () => {
     const entry = makeMod({ specs: [TORQUE_SPEC.id, ROOF_LOAD_SPEC.id] });
 
     expect(accepts(entry), issueSummary(entry)).toBe(true);
   });
 
-  it.fails("does not report `specs` as an unknown key", () => {
+  it("does not report `specs` as an unknown key", () => {
     // Stated separately from "accepts" so the failure message says *which*
     // shape of rejection happened: an unknown key means the field does not
     // exist, and an issue under `specs` means it exists and refused this
@@ -238,7 +238,7 @@ describe("`modsShared` has a typed, referenced-by-id figure field (T603)", () =>
     ).not.toContain("specs");
   });
 
-  it.fails("treats `specs` as a field the collection owns", () => {
+  it("treats `specs` as a field the collection owns", () => {
     // The `OWNED_SHARED_FIELDS` table above is frozen at today's list for a
     // stated reason; this is the one grader that moves it.
     expectOnlyThisIsUnrecognised(
@@ -317,7 +317,7 @@ describe("a mod states no figure of its own (T603, PRC-03 precedent)", () => {
    * an unexpected pass. Issues under `specs` are empty today and non-empty
    * only once the field exists and refuses this value.
    */
-  it.fails.each<[string, unknown]>([
+  it.each<[string, unknown]>([
     [
       "a nested kind-owned figure",
       { id: TORQUE_SPEC.id, torque: { value: 100, unit: "nm" } },
@@ -337,7 +337,7 @@ describe("a mod states no figure of its own (T603, PRC-03 precedent)", () => {
     expect(issuesUnder(entry, "specs").length).toBeGreaterThan(0);
   });
 
-  it.fails("parses `specs` to exactly the ids the entry wrote", () => {
+  it("parses `specs` to exactly the ids the entry wrote", () => {
     /*
      * The category stated once more, this time without a table: whatever
      * shape T604 declares, what a page receives is the list of ids and
@@ -353,7 +353,7 @@ describe("a mod states no figure of its own (T603, PRC-03 precedent)", () => {
     expect(data["specs"]).toEqual([TORQUE_SPEC.id, ROOF_LOAD_SPEC.id]);
   });
 
-  it.fails("refuses a catalogue token written where a spec id belongs", () => {
+  it("refuses a catalogue token written where a spec id belongs", () => {
     /*
      * The mistake an author makes: pasting the *token* instead of naming the
      * entry that holds the number. An entry id is lowercase kebab-case and a
@@ -371,7 +371,7 @@ describe("a mod states no figure of its own (T603, PRC-03 precedent)", () => {
     expect(issuesUnder(entry, "specs").length).toBeGreaterThan(0);
   });
 
-  it.fails("refuses the same figure cited twice on one entry", () => {
+  it("refuses the same figure cited twice on one entry", () => {
     /*
      * `procedures` already refuses this (`checkDuplicateStrings`), and the
      * reason carries over unchanged: a page renders one row per cited id, so
@@ -383,7 +383,7 @@ describe("a mod states no figure of its own (T603, PRC-03 precedent)", () => {
     expect(issuesUnder(entry, "specs").length).toBeGreaterThan(0);
   });
 
-  it.fails("accepts several distinct figures on one entry", () => {
+  it("accepts several distinct figures on one entry", () => {
     // The positive control for the duplicate rule. Without it, "duplicates
     // are refused" is satisfied by a rule that refuses every list longer
     // than one — and a roof rack legitimately states a load rating, a
@@ -443,7 +443,7 @@ describe("a mod states no figure of its own (T603, PRC-03 precedent)", () => {
  * ---------------------------------------------------------------------- */
 
 describe("a figure written into a mod's sentence is an inlined value", () => {
-  it.fails.each<[string, "en" | "es", string]>([
+  it.each<[string, "en" | "es", string]>([
     ["N·m", "en", "Torque the rack feet to 100 N·m before loading it."],
     ["Nm, no separator", "en", "Torque the rack feet to 100Nm before loading."],
     ["N·m in ES", "es", "Apriete las patas a 100 N·m antes de cargarla."],
@@ -464,24 +464,21 @@ describe("a figure written into a mod's sentence is an inlined value", () => {
     }
   );
 
-  it.fails(
-    "rejects a figure in the summary, which renders on every card",
-    () => {
-      /*
-       * The T502 review's F2 defect, one collection later. A summary renders on
-       * the detail page *and* on every index card, and a detector scoped to the
-       * "interesting" field only would ship the figure twice, once per locale,
-       * on the most surfaces of any field this collection has.
-       */
-      const entry = makeMod({
-        summaries: { en: "A roof rack rated by a 100 N·m fastener torque." },
-      });
+  it("rejects a figure in the summary, which renders on every card", () => {
+    /*
+     * The T502 review's F2 defect, one collection later. A summary renders on
+     * the detail page *and* on every index card, and a detector scoped to the
+     * "interesting" field only would ship the figure twice, once per locale,
+     * on the most surfaces of any field this collection has.
+     */
+    const entry = makeMod({
+      summaries: { en: "A roof rack rated by a 100 N·m fastener torque." },
+    });
 
-      expect(issuesUnder(entry, "prose.en.summary").length).toBeGreaterThan(0);
-    }
-  );
+    expect(issuesUnder(entry, "prose.en.summary").length).toBeGreaterThan(0);
+  });
 
-  it.fails("rejects a figure in an `affectsNotes` row", () => {
+  it("rejects a figure in an `affectsNotes` row", () => {
     // The consequence sentences are where a tradeoff's number actually gets
     // written — "the springs lose 4.5 L of travel" is a claim about a figure,
     // keyed per row, in both locales.
@@ -503,7 +500,7 @@ describe("a figure written into a mod's sentence is an inlined value", () => {
     );
   });
 
-  it.fails("rejects a figure in the title", () => {
+  it("rejects a figure in the title", () => {
     const entry = makeMod({
       titles: { en: "Roof rack, torqued to 100 N·m" },
     });
