@@ -27,5 +27,9 @@ tests/repo-hygiene/__scratch__/
 .claude/worktrees/
 *.local
 
+# The `npm run gaps` content-backlog report (T703, GAP-01) — a generated
+# artifact, uploaded by CI, never committed.
+/gaps-report.json
+
 # OS
 .DS_Store

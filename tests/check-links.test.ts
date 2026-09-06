@@ -20,6 +20,7 @@ import {
   findArchiveShapeIssues,
   findUnreachableLinks,
   isArchiveUrl,
+  serializeLinkIssue,
 } from "../scripts/check-links.mjs";
 
 /** A no-op delay so tests exercising archive-host retry/backoff/spacing logic stay fast. */
@@ -550,5 +551,24 @@ describe("auditLinks", () => {
       issues.some((i: { message: string }) => /HTTP 500/.test(i.message))
     ).toBe(true);
     expect(warnings).toEqual([]);
+  });
+});
+
+describe("serializeLinkIssue", () => {
+  it("keeps file, field and message and drops the entry's full data (--json, T703)", () => {
+    const issue = {
+      entry: {
+        file: "src/content/reference/x.json",
+        data: { id: "x", sources: [{ url: "https://example.invalid" }] },
+      },
+      field: "sources[0]",
+      message: "src/content/reference/x.json: unreachable",
+    };
+
+    expect(serializeLinkIssue(issue)).toEqual({
+      file: "src/content/reference/x.json",
+      field: "sources[0]",
+      message: "src/content/reference/x.json: unreachable",
+    });
   });
 });

@@ -40,6 +40,11 @@ jobs:
       issues: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          # `npm run gaps`'s `stale-anecdotal` category reads each file's last
+          # commit date via `git log` (T703) — a shallow checkout would make
+          # every entry look like it was "last touched" on the clone commit.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
@@ -58,10 +63,32 @@ jobs:
         id: link_check
         run: |
           set +e
-          npm run check:links > link-check-output.txt 2>&1
+          npm run check:links -- --json link-audit.json > link-check-output.txt 2>&1
           echo "exit_code=$?" >> "$GITHUB_OUTPUT"
           set -e
           cat link-check-output.txt
+
+      # T703's fully-checked gaps report: `--link-audit` reuses the JSON the
+      # step above already wrote (`--json link-audit.json`) instead of
+      # auditing reachability a second time — this is the one place in CI
+      # `npm run gaps` includes the dead-source-link category for real,
+      # because this is the one job that has already paid the network cost.
+      # `if: always()`: the step above wrote `link-audit.json` before it
+      # could ever exit non-zero (`scripts/check-links.mjs`'s `main()` writes
+      # `--json` before checking `issues.length`), so this runs, and is worth
+      # running, even on a red link check.
+      - name: Content gaps report (full — includes dead source links)
+        if: always()
+        run: npm run gaps -- --link-audit link-audit.json
+
+      - name: Upload content gaps report (JSON)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: gaps-report-full
+          path: gaps-report.json
+          retention-days: 30
+          if-no-files-found: warn
 
       # GAP-01: `check:links` itself only fails on both-url-and-archiveUrl
       # unreachable, so a non-zero exit here means real problems, not warnings

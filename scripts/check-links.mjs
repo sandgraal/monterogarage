@@ -65,10 +65,20 @@
  * AGENTS.md rules out for this task. When cross-entry references exist, they
  * get their own audit here, alongside this one, not instead of it.
  *
- * Usage: node scripts/check-links.mjs
+ * Usage: node scripts/check-links.mjs [--json <path>]
+ *
+ * `--json <path>` additionally writes `{ issues, warnings, offlineNotice }` as
+ * JSON (file/field/message only — never the entry's full `data`), so a caller
+ * that already paid this run's network cost can reuse the result instead of
+ * auditing a second time. `scripts/gaps.mjs --link-audit <path>` is that
+ * caller (T703): `link-check.yml` runs this script once with `--json`, and
+ * the `gaps` step downstream folds the same run's `warnings` into the
+ * dead-source-link category — never a second network pass.
  *
  * refs specs/001-foundation (SCF-02, SCF-03, GAP-01)
  */
+import { writeFile } from "node:fs/promises";
+
 import { CONTENT_ROOT, loadContentEntries } from "./lib/content-entries.mjs";
 
 const ARCHIVE_HOST = "web.archive.org";
@@ -538,7 +548,29 @@ export async function auditLinks(entries, options = {}) {
   return { issues: [...shapeIssues, ...issues], warnings, offlineNotice };
 }
 
+/**
+ * `{entry, field, message}` -> `{file, field, message}` — never the full
+ * entry. Exported so `--json`'s output shape is unit-testable without
+ * shelling out to the real CLI (which would need the network).
+ */
+export function serializeLinkIssue(issue) {
+  return {
+    file: issue.entry?.file,
+    field: issue.field,
+    message: issue.message,
+  };
+}
+
+function parseArgs(argv) {
+  const args = { jsonPath: null };
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === "--json") args.jsonPath = argv[++i];
+  }
+  return args;
+}
+
 async function main() {
+  const args = parseArgs(process.argv.slice(2));
   const entries = await loadContentEntries(CONTENT_ROOT);
   const { issues, warnings, offlineNotice } = await auditLinks(entries);
 
@@ -552,6 +584,23 @@ async function main() {
         `not a build failure (GAP-01/T703 tracks these):`
     );
     for (const warning of warnings) console.warn(`  • ${warning.message}`);
+  }
+
+  if (args.jsonPath !== null) {
+    await writeFile(
+      args.jsonPath,
+      JSON.stringify(
+        {
+          issues: issues.map(serializeLinkIssue),
+          warnings: warnings.map(serializeLinkIssue),
+          offlineNotice,
+        },
+        null,
+        2
+      ) + "\n",
+      "utf8"
+    );
+    console.log(`check:links — wrote ${args.jsonPath}`);
   }
 
   if (issues.length > 0) {
