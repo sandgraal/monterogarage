@@ -13,6 +13,23 @@
  * pages are rendered from that one copy — which is the property PRC-03 is
  * about, and the property a page that re-typed the figure would quietly lose.
  *
+ * ## `mods` reads this module too, and that was the point (T604)
+ *
+ * It lives under `procedures/` for its history, not for its scope: nothing here
+ * knows what a procedure is. What it owns is **`reference`'s** storage shape
+ * (`quantitySchema`'s value / min–max forms), the unit-id → symbol table below,
+ * and the split between a number formatted in the page locale and a symbol that
+ * is not translated at all. Those are one set of answers for the whole site.
+ * T604 gave `mods` the same by-id figure field and rendered it through
+ * {@link specRows} unchanged rather than forking a mods-local copy, which would
+ * have been a second `UNIT_SYMBOLS`, a second decimal-separator decision and a
+ * second answer to the degree-sign spacing question — three ways for one stored
+ * figure to render differently on two pages of the same site.
+ *
+ * So a change here is felt by two collections. If one of them ever needs a
+ * genuinely different answer, move this module up a level rather than copying
+ * it down.
+ *
  * ## Why the unit symbols are not in the UI-strings module
  *
  * `N·m` is not prose. It is the SI symbol, identical in English and in Costa

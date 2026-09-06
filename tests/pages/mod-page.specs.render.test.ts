@@ -365,7 +365,7 @@ describe("the page renders at all", () => {
  * ---------------------------------------------------------------------- */
 
 describe("both locales render the resolved figure (T603)", () => {
-  it.fails("renders the torque figure in English and in Spanish", async () => {
+  it("renders the torque figure in English and in Spanish", async () => {
     for (const locale of LOCALES) {
       expect(
         figureTokens(await render(locale)),
@@ -374,7 +374,7 @@ describe("both locales render the resolved figure (T603)", () => {
     }
   });
 
-  it.fails("renders the load rating in English and in Spanish", async () => {
+  it("renders the load rating in English and in Spanish", async () => {
     /*
      * The shape T602 named: "a Spanish reader's only view of a figure like
      * '100 kg roof load' is an English sentence inside a citation". After
@@ -389,7 +389,7 @@ describe("both locales render the resolved figure (T603)", () => {
     }
   });
 
-  it.fails("renders a decimal figure from one stored value", async () => {
+  it("renders a decimal figure from one stored value", async () => {
     // `4.5` stored once. `4.5 m` and `4,5 m` are both correct renderings and
     // both normalise to the same token; `4.6 m` in one locale would not.
     for (const locale of LOCALES) {
@@ -397,20 +397,16 @@ describe("both locales render the resolved figure (T603)", () => {
     }
   });
 
-  it.fails(
-    "renders the figure on an entry that cites exactly one",
-    async () => {
-      // The single-figure case. Separate from the subject so "renders the
-      // figures" and "renders *a* figure" are two assertions rather than one
-      // that could pass because a list happened to be non-empty.
-      for (const locale of LOCALES) {
-        expect(
-          figureTokens(await render(locale, ONE_FIGURE_ID)),
-          locale
-        ).toEqual(["100kg"]);
-      }
+  it("renders the figure on an entry that cites exactly one", async () => {
+    // The single-figure case. Separate from the subject so "renders the
+    // figures" and "renders *a* figure" are two assertions rather than one
+    // that could pass because a list happened to be non-empty.
+    for (const locale of LOCALES) {
+      expect(figureTokens(await render(locale, ONE_FIGURE_ID)), locale).toEqual(
+        ["100kg"]
+      );
     }
-  );
+  });
 });
 
 /* -------------------------------------------------------------------------
@@ -418,7 +414,7 @@ describe("both locales render the resolved figure (T603)", () => {
  * ---------------------------------------------------------------------- */
 
 describe("one stored value, two renderings (AGENTS.md, I18N-04)", () => {
-  it.fails("states exactly the same figures in both locales", async () => {
+  it("states exactly the same figures in both locales", async () => {
     /*
      * The divergence guard, and the assertion this whole file is for. A
      * figure that exists once and is rendered twice cannot differ between
@@ -438,7 +434,7 @@ describe("one stored value, two renderings (AGENTS.md, I18N-04)", () => {
     expect(es).toEqual(en);
   });
 
-  it.fails("still shows each locale its own words for the figure", async () => {
+  it("still shows each locale its own words for the figure", async () => {
     /*
      * The mirror, and the control that stops "both locales are identical"
      * being satisfied by a page that renders the English one twice. The
@@ -494,28 +490,25 @@ describe("the figures carry a per-locale label (I18N-01)", () => {
     expect(t("en").modsTradeoffsHeading).not.toBe(t("es").modsTradeoffsHeading);
   });
 
-  it.fails(
-    "stands the figures under a label, in each locale's own words",
-    async () => {
-      const en = headingAbove(await render("en"), FIGURE_ANCHOR.en);
-      const es = headingAbove(await render("es"), FIGURE_ANCHOR.es);
+  it("stands the figures under a label, in each locale's own words", async () => {
+    const en = headingAbove(await render("en"), FIGURE_ANCHOR.en);
+    const es = headingAbove(await render("es"), FIGURE_ANCHOR.es);
 
-      expect(
-        en,
-        "no heading stands over the figures on the English page"
-      ).not.toBeNull();
-      expect(
-        es,
-        "no heading stands over the figures on the Spanish page"
-      ).not.toBeNull();
-      expect(
-        es,
-        "the Spanish page shows the English label over its figures"
-      ).not.toBe(en);
-    }
-  );
+    expect(
+      en,
+      "no heading stands over the figures on the English page"
+    ).not.toBeNull();
+    expect(
+      es,
+      "no heading stands over the figures on the Spanish page"
+    ).not.toBeNull();
+    expect(
+      es,
+      "the Spanish page shows the English label over its figures"
+    ).not.toBe(en);
+  });
 
-  it.fails("takes that label from `ui.ts`, not from the markup", async () => {
+  it("takes that label from `ui.ts`, not from the markup", async () => {
     /*
      * The stricter half, and the one that survives a translated *literal*:
      * two hard-coded strings, one per locale, would satisfy the grader above
@@ -547,7 +540,7 @@ describe("the figures carry a per-locale label (I18N-01)", () => {
  * ---------------------------------------------------------------------- */
 
 describe("an unresolved figure id is shown as unresolved", () => {
-  it.fails("names the unwritten id on the page, in both locales", async () => {
+  it("names the unwritten id on the page, in both locales", async () => {
     /*
      * The build refuses this corpus
      * (`tests/integrations/validate-mods-specs.test.ts`), so this is
@@ -562,7 +555,7 @@ describe("an unresolved figure id is shown as unresolved", () => {
     }
   });
 
-  it.fails("does not render it as a figure", async () => {
+  it("does not render it as a figure", async () => {
     // "We could not find this number" must not become "this number is
     // nothing". The unresolved row adds no token to either locale's figure
     // list, so the counts stay equal to the three that resolved.

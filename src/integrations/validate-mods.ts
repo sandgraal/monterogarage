@@ -47,6 +47,7 @@ import {
   assertModsResolve,
   readMods,
   readReferencable,
+  readReferenceKinds,
   type ModIssue,
   type ReferencableEntry,
 } from "../lib/mods/index.ts";
@@ -185,10 +186,26 @@ export async function runModsBuildCheck(
 
   const mods = readMods(modEntries.map((entry) => entry.data));
 
+  /**
+   * `id → kind` for the whole `reference` collection — what a cited figure id
+   * resolves against (T604).
+   *
+   * Read from the loaded corpus rather than from `getCollection`, exactly as
+   * `referencable` is: this hook runs before the content layer is available,
+   * and a check that could not see `reference` would have to either skip the
+   * rule or assume every id is fine. Assuming is the failure this whole module
+   * exists to prevent.
+   */
+  const referenceKinds = readReferenceKinds(
+    entries
+      .filter((entry) => entry.collection === "reference")
+      .map((entry) => entry.data)
+  );
+
   try {
     // Throws on the first build that carries a broken mods graph, listing
     // every issue rather than the first — one pass per fix.
-    assertModsResolve(mods, readReferencable(referencable));
+    assertModsResolve(mods, readReferencable(referencable), referenceKinds);
   } catch (error) {
     throw withFileIndex(error, entries);
   }
@@ -206,9 +223,11 @@ export async function runModsBuildCheck(
     (total, mod) => total + mod.references.length,
     0
   );
+  const specs = mods.reduce((total, mod) => total + mod.specs.length, 0);
   logger.info(
     `${mods.length} mod${mods.length === 1 ? "" : "s"}: ` +
-      `${references} typed reference${references === 1 ? "" : "s"} resolve, ` +
+      `${references} typed reference${references === 1 ? "" : "s"} and ` +
+      `${specs} cited figure${specs === 1 ? "" : "s"} resolve, ` +
       `and no requirement loops (MOD-01, MOD-02)`
   );
 }
