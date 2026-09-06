@@ -500,7 +500,7 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
     spelling and the false positive it must not reopen are pinned in
     `src/lib/procedures/figures.test.ts`.
 - [ ] **T503 [CONTENT]** Parts wave 1: every part referenced by T303/T403/T404 garage+problem entries. Depends: T501, gaps report. *(PRT-01, PRT-02)*
-- [ ] **T504a [TEST]** Render graders for the procedures index page
+- [x] **T504a [TEST]** Render graders for the procedures index page
   (`procedures-index.render.test.ts`) — cards render, hrefs resolve, filters
   work, T204's provisional-match indicator shows on a partial fitment match.
   T502's own reviewer deferred this exact grader (AGENTS.md's `[TEST]`-debt
@@ -510,6 +510,40 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
   mode on the exact surface it happened on once already. Depends: T502
   merged. Fixtures need real entries: author alongside T504 (coordinate with
   T504's author rather than inventing procedure fixtures from nothing). *(PRC-01, SCF-06)*
+  - **Shipped (2026-09-06), 43 graders in `tests/pages/procedures-index.render.test.ts`:
+    26 active, 17 `it.fails`.** The corpus is T504's real eight entries, read off
+    disk and parsed through the *registered* collection schema, so the page is
+    handed what a real build hands it; expectations are derived from the corpus
+    (one card per entry on disk, a pill per system present, "provisional" =
+    any fitment facet outside FIT-03's gen/market/year/engine quadruple) rather
+    than hard-coded, so wave 2 cannot turn the file red by existing. The one
+    synthetic entry is the sub-`tsb` confidence-caveat control, built by
+    `makeProcedure` — no wave-1 entry is below `fsm-confirmed`, so without it
+    the caveat assertions could never fail.
+  - **`hrefs resolve` is graded against the routes the *detail* page's own
+    `getStaticPaths` builds**, in both directions, not against a URL shape. A
+    "starts with `/en/`" assertion cannot tell a working URL from the plausible
+    404 that T501 shipped on two pages at once.
+  - **The 17 markers all need one seam: `src/lib/procedures/index-view.ts`'
+    `enhanceProceduresIndex(root, win)`** — committed here as a stub that throws
+    `not implemented: T504a`. Astro compiles a page `<script>` into a client
+    module that resolves *empty* under Vitest's SSR transform (measured, not
+    assumed), so "filters work" and "the provisional indicator shows" are not
+    gradeable at all while the wiring is inline in the template. The fix is a
+    verbatim move of the template's existing `enhance()` behind the seam, taking
+    `window` as a parameter — the split the repo already made three times
+    (`rememberLocaleFromClick`, `matchesProceduresFilter`,
+    `createVehicleListingView`). The implementer deletes one `.fails` per
+    activated grader.
+  - **Both proofs were run, not argued.** Activation: a scratch
+    `enhanceProceduresIndex` plus the two-line template delegation flipped all
+    17 markers (43/43 green with `.fails` stripped), then reverted. Mutation:
+    23 deliberate defects across the filter rule, the fitment painter, the
+    template and the summary component — inverted pill match, provisional never
+    set, provisional on every fitting row, bare-route href, ES slug in the EN
+    href, `data-system` dropped, `data-fitment` pinned to 0, safety chip on every
+    card, fit count over the whole corpus, EN prose in both locales, and more —
+    were each caught, by specific graders, with no survivors.
 - [x] **T504 [CONTENT]** Procedures wave 1: maintenance set (oil, filters, timing belt 6G74, diffs/tcase fluid, brakes, plugs) — bilingual, cited, safety-flagged where due. Depends: T502. Does not merge without T504a's grader landing alongside it — see AGENTS.md's `[TEST]`-debt ledger, T502 entry. *(PRC-01, PRC-02, PRC-03)*
   - **Shipped (2026-09-06).** Eight procedures, all `fsm-confirmed`, all sourced
     from the PAJERO workshop manual (PWJE0001): `gen3-engine-oil-and-filter-change`,
