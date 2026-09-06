@@ -25,18 +25,30 @@
  *   content-encoding: br
  *
  * An uncompressed harness therefore does not serve "the artifact" — it serves
- * a document ~5× heavier than the one any visitor downloads (`/en/glossary/`:
- * 266043 bytes raw, 50414 gzipped, 46037 brotlied), and Lighthouse's
- * performance score is built partly on transfer cost. The gap is not
- * academic: `/en/glossary/` scored 99 through the uncompressed harness on an
- * idle machine and 90 — SCF-06's floor, exactly — on a busy one, with no code
- * change in between, because a 266 KB document has no headroom left and the
- * load decides the rest. Serving the same built bytes compressed puts it
+ * a document five times heavier than the one any visitor downloads
+ * (`/en/glossary/`: 271958 bytes raw, 53874 as production sends it), and
+ * Lighthouse's performance score is built partly on transfer cost. The gap is
+ * not academic: `/en/glossary/` scored 99 through the uncompressed harness on
+ * an idle machine and 90 — SCF-06's floor, exactly — on a busy one, with no
+ * code change in between, because a 266 KB document has no headroom left and
+ * the load decides the rest. Serving the same built bytes compressed puts it
  * clear of the budget and keeps it there: the score stops describing the
  * harness and starts describing the site again.
  *
- * The three behaviours below were each read off production rather than
- * guessed, so the harness under-reports nothing:
+ * ## The rule this file is held to
+ *
+ * **Never serve a response lighter than production's.** A harness that
+ * over-compresses fails in the silent direction: it passes a page that would
+ * miss the budget for a real visitor, and nothing in the run says so. Every
+ * behaviour below is therefore measured against the live site rather than
+ * assumed, *including the compression level* (see `COMPRESS_OPTIONS`) — the
+ * first version of this file guessed brotli quality 5 and was 12-14% lighter
+ * than production on every asset sampled.
+ *
+ * As it stands the harness reproduces production to the byte on the page that
+ * matters (`/en/glossary/`: 53874 both) and lands one byte under on the two
+ * small assets sampled (4224 vs 4225, 2056 vs 2057) — 0.02%, which is the
+ * difference between two brotli builds, not a level mismatch.
  *
  * - **Brotli preferred, gzip as the fallback.** Vercel answers `br` to a
  *   browser that offers both, and so does this.
@@ -118,22 +130,36 @@ const compress = Object.freeze({
   gzip: promisify(zlib.gzip),
 });
 
+/**
+ * The *levels*, not just the codecs, are read off production — because a
+ * merge-blocking budget that serves a lighter response than the deployed site
+ * can pass a page that would miss the budget in front of a real visitor, and
+ * it would do it silently. Compression level is therefore part of the
+ * fidelity claim, not a free tuning knob.
+ *
+ * Measured 2026-09-05 by fetching the live site with a single
+ * `Accept-Encoding`, *not* decoding the body, and recompressing the identity
+ * bytes locally at every level. Vercel compresses at brotli quality 3:
+ *
+ *   page / asset          identity   prod br   local q3   local q5   local q11
+ *   /en/glossary/           271958     53874      53874      47419       40864
+ *   /en/                     20919      4225       4224       3728        3313
+ *   _astro/BaseLayout.css     8668      2057       2056       1773        1659
+ *
+ * q3 reproduces production to the byte on HTML and to within one byte on CSS.
+ * q5 — the value this file shipped with for one review round — was 12-14%
+ * *lighter* than production across all three, i.e. wrong in the dangerous
+ * direction. q11 is 24% lighter and costs 304 ms on the glossary page, which
+ * would also distort time-to-first-byte; q3 costs 1.6 ms.
+ *
+ * gzip is only reached by a client that refuses brotli, which Lighthouse's
+ * Chrome never is, but the same rule applies to it: production's gzip is
+ * level 5 (`/en/` 4123 vs local L5 4117, CSS 1959 vs 1965), and zlib's
+ * default level 6 was again slightly lighter than production.
+ */
 const COMPRESS_OPTIONS = Object.freeze({
-  // Quality 5, not brotli's default 11: this is a *server*, and the audits
-  // read time-to-first-byte as part of the score, so a half-second stall
-  // spent squeezing out a few more kilobytes would trade one distortion for
-  // another. Measured on `dist/en/glossary/index.html` (266043 bytes):
-  //
-  //   gzip     50414 bytes    5.9 ms
-  //   br q5    46037 bytes    4.4 ms   ← here
-  //   br q11   39707 bytes  456.4 ms
-  //
-  // q5 is the quality CDNs use for on-the-fly brotli, it already beats gzip,
-  // and the ~6 KB it leaves on the table err on the side of a *heavier*
-  // response than production sends — the direction that cannot flatter a
-  // page into budget.
-  br: { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 5 } },
-  gzip: { level: zlib.constants.Z_DEFAULT_COMPRESSION },
+  br: { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 3 } },
+  gzip: { level: 5 },
 });
 
 /**

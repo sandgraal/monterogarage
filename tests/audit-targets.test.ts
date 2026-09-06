@@ -15,6 +15,7 @@
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import zlib from "node:zlib";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -424,8 +425,55 @@ describe("serve-dist compression over HTTP", () => {
     close: () => Promise<void>;
   };
 
-  /** Long enough to compress well, and well over `MIN_COMPRESS_BYTES`. */
-  const page = `<!doctype html><html lang="en"><body>${"<p>Gitana Blanca</p>".repeat(400)}</body></html>`;
+  /**
+   * A glossary-page-shaped fixture: ~160 KB of deterministic pseudo-random
+   * prose, not a repeated string.
+   *
+   * The entropy is the point. The first version of this fixture repeated one
+   * `<p>` 400 times, which brotli squeezes to *identical* output at q3 and
+   * q5 — so the level assertion below passed against the very quality this
+   * file exists to rule out. A fixture that cannot fail is not a grader.
+   * Here q3 / q5 / q11 land at 28406 / 25731 / 20432 bytes, all distinct.
+   */
+  const page = (() => {
+    let seed = 20260905;
+    const random = () =>
+      (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+    const words = [
+      "montero",
+      "pajero",
+      "shogun",
+      "gitana",
+      "blanca",
+      "diferencial",
+      "balatas",
+      "refrigerante",
+      "transferencia",
+      "suspension",
+      "amortiguador",
+      "cardan",
+      "rotula",
+      "bujia",
+      "inyector",
+      "turbo",
+      "intercooler",
+      "radiador",
+      "alternador",
+      "embrague",
+    ];
+    const rows: string[] = [];
+    for (let i = 0; i < 900; i += 1) {
+      const text = Array.from(
+        { length: 3 + Math.floor(random() * 9) },
+        () => words[Math.floor(random() * words.length)]
+      ).join(" ");
+      rows.push(
+        `<li id="t${i}" data-k="${Math.floor(random() * 1e9).toString(36)}">` +
+          `<h3>${text}</h3><p>${text} ${Math.floor(random() * 1e6)}</p></li>`
+      );
+    }
+    return `<!doctype html><html lang="en"><body><ul>${rows.join("")}</ul></body></html>`;
+  })();
   const tiny = "<!doctype html><html lang=en><body>hi</body></html>";
   /** Binary bytes standing in for a webfont; served byte-for-byte or not at all. */
   const font = Buffer.from(
@@ -459,6 +507,43 @@ describe("serve-dist compression over HTTP", () => {
     expect(await response.text()).toBe(page);
     expect(Number(response.headers.get("content-length"))).toBeLessThan(
       Buffer.byteLength(page) / 2
+    );
+  });
+
+  /*
+   * The level is pinned, not just the codec. Serving a *lighter* response
+   * than production is the one failure mode of this server that no other
+   * check would catch: the page renders, the a11y sweep passes, and the
+   * budget simply grades a document lighter than the deployed one, passing a
+   * page that would miss SCF-06 in front of a real visitor. Measured against
+   * the live site on 2026-09-05, Vercel compresses at brotli q3 / gzip 5 —
+   * `/en/glossary/` came back as exactly `brotliCompressSync(raw, q3)`, to
+   * the byte. Changing either number here is a claim about production, so it
+   * has to be re-measured, not tuned.
+   */
+  it("compresses at production's level, never lighter", async () => {
+    const raw = Buffer.from(page);
+
+    const brotlied = await fetch(`${server.origin}/en/`, {
+      headers: { "accept-encoding": "br" },
+    });
+    expect(Number(brotlied.headers.get("content-length"))).toBe(
+      zlib.brotliCompressSync(raw, {
+        params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 3 },
+      }).length
+    );
+
+    const gzipped = await fetch(`${server.origin}/en/`, {
+      headers: { "accept-encoding": "gzip" },
+    });
+    expect(Number(gzipped.headers.get("content-length"))).toBe(
+      zlib.gzipSync(raw, { level: 5 }).length
+    );
+
+    // The direction that matters, stated as its own assertion: brotli's
+    // default (q11) would be far lighter than anything production sends.
+    expect(Number(brotlied.headers.get("content-length"))).toBeGreaterThan(
+      zlib.brotliCompressSync(raw).length
     );
   });
 
