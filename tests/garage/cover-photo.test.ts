@@ -520,7 +520,7 @@ function pendingMarkerIssues(
  * ====================================================================== */
 
 describe("the cover designation is a column of its own (GAR-01′)", () => {
-  it.fails(`public.${TABLE}.${COVER_PHOTO_COLUMN} exists`, () => {
+  it(`public.${TABLE}.${COVER_PHOTO_COLUMN} exists`, () => {
     // The column-level sweep in `schema-shape.test.ts` grades this too, from
     // the contract table. Repeated here on purpose: this file is where an
     // implementer looks, and a feature whose central column is only asserted
@@ -531,7 +531,7 @@ describe("the cover designation is a column of its own (GAR-01′)", () => {
     ).not.toBeNull();
   });
 
-  it.fails("is nullable — 'no cover' is a state, not an error", () => {
+  it("is nullable — 'no cover' is a state, not an error", () => {
     // GAR-01′ requires a vehicle with photos and no cover to render the
     // placeholder, which means "no cover" has to be *storable*. A `not null`
     // would make the removal of a cover impossible to express except by
@@ -545,7 +545,7 @@ describe("the cover designation is a column of its own (GAR-01′)", () => {
     expect(isNotNullFor(sql, TABLE, COVER_PHOTO_COLUMN)).toBe(false);
   });
 
-  it.fails("carries no default — a cover is chosen, never assigned", () => {
+  it("carries no default — a cover is chosen, never assigned", () => {
     // A `default photo_paths[1]` would be the silent promotion GAR-01′
     // forbids, spelled as DDL, applied to every vehicle ever created, and
     // invisible in every diff after the one that added it.
@@ -565,11 +565,11 @@ describe("the cover designation is a column of its own (GAR-01′)", () => {
 });
 
 describe("a cover the vehicle does not have is refused by the database", () => {
-  it.fails("relates the cover column to photo_paths", () => {
+  it("relates the cover column to photo_paths", () => {
     expect(coverMembershipIssues(migrationSql())).toEqual([]);
   });
 
-  it.fails("does not settle for a constraint that ignores photo_paths", () => {
+  it("does not settle for a constraint that ignores photo_paths", () => {
     // The second finding, named. Without this the grader above would be
     // satisfiable by any check that happened to mention the column — and
     // "mentions the column" is exactly what a hurried `check
@@ -582,11 +582,11 @@ describe("a cover the vehicle does not have is refused by the database", () => {
 });
 
 describe("removing the cover photo clears the designation", () => {
-  it.fails("fires something on update, before the row is written", () => {
+  it("fires something on update, before the row is written", () => {
     expect(coverClearingIssues(migrationSql())).toEqual([]);
   });
 
-  it.fails("clears to null and never promotes another photo", () => {
+  it("clears to null and never promotes another photo", () => {
     // Same rule, different half, asserted separately so a red suite says which
     // of the two an implementer missed. `photo_paths[1]` satisfies "assigns
     // the column" and violates the requirement.
@@ -735,7 +735,7 @@ function coverIsSound(row: CoverRow): string[] {
 describe.skipIf(!live.available)(
   liveTitle("a cover names a photo the vehicle actually has", live),
   () => {
-    it.fails("an owner designates one of their own photos", async () => {
+    it("an owner designates one of their own photos", async () => {
       // The positive control, and it is *first* in every grader below too: the
       // refusals in this block are all satisfied by a column that does not
       // exist, so each one proves the write path works before it proves the
@@ -768,7 +768,7 @@ describe.skipIf(!live.available)(
     // photo added, not just the most recent or the first. A table rather than
     // one assertion, because an implementation that special-cased either end
     // of the array would satisfy a single-case grader.
-    it.fails.each([0, 1, 2].map((index) => [index]))(
+    it.each([0, 1, 2].map((index) => [index]))(
       "photo %i of three can be the cover",
       async (index) => {
         const scenario = await provisionScenario(stackOf(live));
@@ -799,7 +799,7 @@ describe.skipIf(!live.available)(
       }
     );
 
-    it.fails("a path the vehicle does not have is refused", async () => {
+    it("a path the vehicle does not have is refused", async () => {
       // The defect the task line names: "not a user error to accept
       // silently". Structured positive-then-negative so a missing column fails
       // at the first step rather than passing the refusal vacuously.
@@ -839,7 +839,7 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails("another vehicle's photo is refused", async () => {
+    it("another vehicle's photo is refused", async () => {
       // The same rule with a path that is real, owned by the same person, and
       // still not this truck's. It is the plausible mistake — one garage, two
       // vehicles, one stale tab — where the invented path above is the
@@ -874,7 +874,7 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails("a vehicle with no photos cannot be given a cover", async () => {
+    it("a vehicle with no photos cannot be given a cover", async () => {
       const scenario = await provisionScenario(stackOf(live));
       try {
         const { vehicleId } = await vehicleWithPhotos(
@@ -904,7 +904,7 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails("the cover can be cleared explicitly", async () => {
+    it("the cover can be cleared explicitly", async () => {
       // T2-306's "Remove cover" affordance. Clearing is a designation of none,
       // not a deletion of the photo — so the photo must still be there
       // afterwards, which is the half a "remove cover" button wired to the
@@ -936,40 +936,37 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails(
-      "one owner cannot set the cover on another's vehicle",
-      async () => {
-        // A new writable column on an existing table inherits the update policy
-        // — and "inherits" is a claim, not a fact, until something asks.
-        const scenario = await provisionScenario(stackOf(live));
-        try {
-          const { vehicleId, paths } = await vehicleWithPhotos(
-            scenario,
-            scenario.ownerA,
-            2
-          );
-          expect(
-            (await setCover(scenario, scenario.ownerA, vehicleId, paths[0])).ok
-          ).toBe(true);
+    it("one owner cannot set the cover on another's vehicle", async () => {
+      // A new writable column on an existing table inherits the update policy
+      // — and "inherits" is a claim, not a fact, until something asks.
+      const scenario = await provisionScenario(stackOf(live));
+      try {
+        const { vehicleId, paths } = await vehicleWithPhotos(
+          scenario,
+          scenario.ownerA,
+          2
+        );
+        expect(
+          (await setCover(scenario, scenario.ownerA, vehicleId, paths[0])).ok
+        ).toBe(true);
 
-          await setCover(scenario, scenario.ownerB, vehicleId, paths[1]);
+        await setCover(scenario, scenario.ownerB, vehicleId, paths[1]);
 
-          expect(
-            (await readVehicle(scenario, scenario.ownerA, vehicleId))
-              .cover_photo_path
-          ).toBe(paths[0]);
-        } finally {
-          await teardownScenario(scenario);
-        }
+        expect(
+          (await readVehicle(scenario, scenario.ownerA, vehicleId))
+            .cover_photo_path
+        ).toBe(paths[0]);
+      } finally {
+        await teardownScenario(scenario);
       }
-    );
+    });
   }
 );
 
 describe.skipIf(!live.available)(
   liveTitle("removing the cover photo clears the designation", live),
   () => {
-    it.fails("removing the cover leaves no cover", async () => {
+    it("removing the cover leaves no cover", async () => {
       const scenario = await provisionScenario(stackOf(live));
       try {
         const { vehicleId, paths } = await vehicleWithPhotos(
@@ -998,7 +995,7 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails("does not silently promote another photo", async () => {
+    it("does not silently promote another photo", async () => {
       // Stated separately and asserted as non-equalities, because
       // `toBeNull()` alone would also be satisfied by a resolver that returned
       // null for some other reason. GAR-01′'s words are "rather than silently
@@ -1029,7 +1026,7 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails("removing a NON-cover photo leaves the cover alone", async () => {
+    it("removing a NON-cover photo leaves the cover alone", async () => {
       // The over-reach direction: the same defect wearing the opposite coat,
       // and much harder to notice in production, because a cover that
       // *disappears* looks like a rendering glitch rather than a data one.
@@ -1058,7 +1055,7 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails("emptying the photo array clears the cover", async () => {
+    it("emptying the photo array clears the cover", async () => {
       const scenario = await provisionScenario(stackOf(live));
       try {
         const { vehicleId, paths } = await vehicleWithPhotos(
@@ -1115,7 +1112,7 @@ describe.skipIf(!live.available)(liveTitle("two tabs, one truck", live), () => {
     await Promise.all([first(), second()]);
   }
 
-  it.fails.each(ORDERS.map((order) => [order]))(
+  it.each(ORDERS.map((order) => [order]))(
     "%s: one tab removes the cover while the other re-designates it",
     async (order) => {
       // The delete-then-reselect race, at its sharpest. Tab B is looking at
@@ -1152,7 +1149,7 @@ describe.skipIf(!live.available)(liveTitle("two tabs, one truck", live), () => {
     }
   );
 
-  it.fails.each(ORDERS.map((order) => [order]))(
+  it.each(ORDERS.map((order) => [order]))(
     "%s: one tab removes the cover while the other picks a different photo",
     async (order) => {
       // The likelier version, and the one with a *right* answer rather than
@@ -1190,7 +1187,7 @@ describe.skipIf(!live.available)(liveTitle("two tabs, one truck", live), () => {
     }
   );
 
-  it.fails.each(ORDERS.map((order) => [order]))(
+  it.each(ORDERS.map((order) => [order]))(
     "%s: designating a cover does not lose a photo the other tab added",
     async (order) => {
       // **The grader that refuses to bless the same race in a different

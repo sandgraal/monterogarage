@@ -369,7 +369,6 @@ export const USER_TABLES: readonly TableContract[] = [
         requirement:
           "GAR-01′ (one designated cover photo, cleared rather than dangling)",
         type: /text|varchar|character varying/,
-        pending: "T2-306",
       },
       {
         name: "is_showcase_public",

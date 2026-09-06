@@ -62,6 +62,7 @@ import {
   type ChosenMedia,
   type RecordMediaRow,
 } from "../garage/record-media.ts";
+import { coverPhotoWrite } from "../garage/cover.ts";
 import type { VehicleRow, VehicleWrite } from "../garage/vehicle.ts";
 import type { RecordRow, RecordWrite } from "../garage/record.ts";
 import type {
@@ -76,7 +77,8 @@ import type {
  */
 const VEHICLE_COLUMNS =
   "id, owner_id, display_name, generation_id, market_id, model_year, " +
-  "engine_id, odometer_km, photo_paths, is_showcase_public, is_worklog_public";
+  "engine_id, odometer_km, photo_paths, cover_photo_path, is_showcase_public, " +
+  "is_worklog_public";
 
 /** The record columns the page reads, for the same reason (GAR-02′). */
 const RECORD_COLUMNS =
@@ -492,6 +494,40 @@ export async function setVehicleVisibility(
   const { data, error } = await open.value.client
     .from("vehicles")
     .update(patch)
+    .eq("id", id)
+    .select(VEHICLE_COLUMNS)
+    .single();
+  if (error || !data) return failed();
+  return { ok: true, value: asRow(data) };
+}
+
+/**
+ * Set — or, with `null`, clear — this vehicle's cover photo (GAR-01′, T2-306).
+ *
+ * A write of its own rather than a fourth field on {@link updateVehicle}, and
+ * for the same reason {@link setVehicleVisibility} already is one: a
+ * "Set as cover" click and an edit to the profile form are two different
+ * events, and folding the cover into `VehicleWrite` would let an untouched
+ * form field revert a designation set in another tab the moment the profile
+ * is next saved (`src/lib/garage/cover.test.ts` grades this guard on the
+ * write's shape).
+ *
+ * `coverPhotoWrite` is the whole body: exactly one key, so this patch cannot
+ * lose a photo the way an earlier, whole-array `photo_paths` write once did
+ * (T2-304, ticketed as T2-305). Membership — refusing a path this vehicle does
+ * not have — is the database's job, enforced by
+ * `vehicles_cover_photo_path_ck`; a refusal surfaces here as an ordinary
+ * failed result, the same as any other write this module makes.
+ */
+export async function setVehicleCover(
+  id: string,
+  path: string | null
+): Promise<GarageResult<VehicleRow>> {
+  const open = await session();
+  if (!open.ok) return open;
+  const { data, error } = await open.value.client
+    .from("vehicles")
+    .update(coverPhotoWrite(path))
     .eq("id", id)
     .select(VEHICLE_COLUMNS)
     .single();
