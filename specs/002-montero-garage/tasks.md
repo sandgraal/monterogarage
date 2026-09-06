@@ -1379,6 +1379,20 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   `search`/`buscar`, which T702 added to both TypeScript lists and not to the
   SQL — so the form has been refusing a handle the database accepts since
   T702.
+  <br>**Fixed 2026-09-06 (post-merge, two branches converged on it
+  independently):** `20260906120000_share_grants.sql` shared its timestamp
+  prefix with T2-306's already-merged `20260906120000_vehicle_cover_photo.sql`
+  — both authored the same minute, neither noticed at review — which made
+  `supabase db reset` fail with `duplicate key value violates unique
+  constraint "schema_migrations_pkey"` and took down Tier-B (live-stack)
+  locally and in CI. This branch (`fix/002-t2-405-migration-timestamp-
+  collision`) renamed it to `20260906120001_share_grants.sql`; `fix/002-t2-
+  404-copilot-followups` (#125) renamed it to `20260906120100_share_grants.sql`
+  as part of the same Copilot-follow-up pass and merged to `main` first
+  (`8c9baeb`). `#125`'s timestamp is what shipped — this branch's own rename
+  is superseded and its migration file, plus the three prose references to the
+  old filename (`src/lib/supabase/shares.ts`, `tests/garage/contract.ts`, this
+  file), were resolved to match `main`'s on merge rather than re-diverging.
 
 - [ ] **T2-403 [PLATFORM]** Community evidence surfacing: opt-in per-record
   first-hand evidence on problem pages (001 GAR-04 re-cut). Depends: T2-402,
