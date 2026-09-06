@@ -175,6 +175,16 @@ export const COLLECTION_ROUTE_SEGMENTS = {
    * names the section, and the section is a list.
    */
   procedures: { en: "procedures", es: "procedimientos" },
+  /**
+   * T702 — the site-wide search page (SRCH-01, SRCH-02).
+   *
+   * Not a content collection (same shape as `signIn` above): it has no
+   * entries of its own, only an index built from the collections that do.
+   * `buscar` is the plain Costa Rican verb-as-noun a reader looks for; it is
+   * not a glossary headword (searching is an action on the site, not a truck
+   * part or a system), so there is no GLO-02 ruling to defer to here.
+   */
+  search: { en: "search", es: "buscar" },
 } as const satisfies Readonly<Record<string, Readonly<Record<Locale, string>>>>;
 
 export type CollectionRouteId = keyof typeof COLLECTION_ROUTE_SEGMENTS;

@@ -80,7 +80,7 @@ import {
 import { collectionRouteParams, collectionRoutePaths } from "../../i18n/routes";
 import VehicleFitSummary from "../../components/VehicleFitSummary.astro";
 import { glossarySystemLabel, t } from "../../i18n/ui";
-import { formatCount } from "../../lib/glossary-filter";
+import { formatCount, glossaryTermDomId } from "../../lib/glossary-filter";
 import { buildFitmentTable } from "../../lib/vehicle-listing";
 import {
   GLOSSARY_SYSTEMS,
@@ -128,7 +128,7 @@ const terms = entries
     return {
       id: entry.id,
       /** `/` appears in ids derived from nested files; it is not id-safe. */
-      domId: `term-${entry.id.replace(/\//g, "--")}`,
+      domId: glossaryTermDomId(entry.id),
       system: system as GlossarySystem,
       /** Read by the vehicle filter; never interpreted on this page (FIT-01). */
       fitment,
