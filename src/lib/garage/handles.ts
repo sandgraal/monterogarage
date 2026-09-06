@@ -202,6 +202,8 @@ const SITE_ROUTE_HANDLES = [
   "modificaciones",
   "procedures",
   "procedimientos",
+  "search",
+  "buscar",
 ] as const;
 
 /**
