@@ -6,7 +6,9 @@
  * Both audits are otherwise only exercised end-to-end, where a wrong base
  * prefix looks like a passing run over zero pages, or — worse — like a
  * passing run over an unstyled page whose CSS 404'd. These are the two pure
- * functions where that mistake is visible.
+ * functions where that mistake is visible — plus the preview server's
+ * content-encoding negotiation, which is the third way the harness can grade
+ * a document the deployed site never serves.
  *
  * refs specs/001-foundation (SCF-03, SCF-06)
  */
@@ -22,7 +24,13 @@ import {
   normalizeBase,
   resolveChromePath,
 } from "../scripts/lib/audit-targets.mjs";
-import { resolveRequest } from "../scripts/serve-dist.mjs";
+import {
+  MIN_COMPRESS_BYTES,
+  isCompressibleType,
+  negotiateEncoding,
+  resolveRequest,
+  startServer,
+} from "../scripts/serve-dist.mjs";
 
 const LOCALES = ["en", "es"];
 
@@ -329,5 +337,170 @@ describe("serve-dist resolveRequest", () => {
     const resolved = resolveRequest("/Gitana-Montero/%E0%A4%A", config);
     expect(resolved.file).toBeNull();
     expect(resolved.reason).toBe("undecodable path");
+  });
+});
+
+/*
+ * Compression is graded here because an uncompressed preview server is a
+ * *silent* defect: every page still renders, every a11y rule still passes,
+ * and only the Lighthouse performance number moves — by enough, on a heavy
+ * page, to cross SCF-06's budget and back between runs. Production (Vercel)
+ * answers `content-encoding: br` to any browser that asks, so a harness that
+ * does not is measuring a document no visitor downloads.
+ */
+describe("serve-dist isCompressibleType", () => {
+  it("compresses text and the structured text types", () => {
+    for (const type of [
+      "text/html; charset=utf-8",
+      "text/css; charset=utf-8",
+      "text/javascript; charset=utf-8",
+      "application/json; charset=utf-8",
+      "application/xml; charset=utf-8",
+      "image/svg+xml",
+    ]) {
+      expect(isCompressibleType(type), type).toBe(true);
+    }
+  });
+
+  it("leaves already-compressed formats alone", () => {
+    // Gzipping a woff2 makes it *bigger* (34940 → 34973 bytes for
+    // `archivo-400-800-latin.woff2`), which is the opposite of the fidelity
+    // this server exists for.
+    for (const type of [
+      "font/woff2",
+      "font/woff",
+      "image/png",
+      "image/jpeg",
+      "image/webp",
+      "image/x-icon",
+      "application/octet-stream",
+      undefined,
+    ]) {
+      expect(isCompressibleType(type), String(type)).toBe(false);
+    }
+  });
+});
+
+describe("serve-dist negotiateEncoding", () => {
+  it("prefers brotli when the client offers both, as production does", () => {
+    expect(negotiateEncoding("gzip, deflate, br")).toBe("br");
+    expect(negotiateEncoding("br;q=1.0, gzip;q=1.0")).toBe("br");
+  });
+
+  it("falls back to gzip for a client that only speaks gzip", () => {
+    expect(negotiateEncoding("gzip, deflate")).toBe("gzip");
+  });
+
+  it("sends identity when the client did not ask", () => {
+    expect(negotiateEncoding(undefined)).toBeNull();
+    expect(negotiateEncoding("")).toBeNull();
+    expect(negotiateEncoding("identity")).toBeNull();
+  });
+
+  it("reads q=0 as a refusal, not as an offer", () => {
+    expect(negotiateEncoding("br;q=0, gzip;q=0")).toBeNull();
+    expect(negotiateEncoding("br;q=0, gzip")).toBe("gzip");
+  });
+
+  it("honours explicit quality over preference order", () => {
+    expect(negotiateEncoding("br;q=0.1, gzip;q=0.9")).toBe("gzip");
+  });
+
+  it("accepts the wildcard, and its refusal", () => {
+    expect(negotiateEncoding("*")).toBe("br");
+    expect(negotiateEncoding("identity, *;q=0")).toBeNull();
+    expect(negotiateEncoding("*;q=0, gzip")).toBe("gzip");
+  });
+
+  it("ignores case and stray whitespace", () => {
+    expect(negotiateEncoding("  GZIP ;Q=1 ")).toBe("gzip");
+  });
+});
+
+describe("serve-dist compression over HTTP", () => {
+  let distDir: string;
+  let server: {
+    origin: string;
+    close: () => Promise<void>;
+  };
+
+  /** Long enough to compress well, and well over `MIN_COMPRESS_BYTES`. */
+  const page = `<!doctype html><html lang="en"><body>${"<p>Gitana Blanca</p>".repeat(400)}</body></html>`;
+  const tiny = "<!doctype html><html lang=en><body>hi</body></html>";
+  /** Binary bytes standing in for a webfont; served byte-for-byte or not at all. */
+  const font = Buffer.from(
+    Array.from({ length: 4096 }, (_, index) => (index * 37 + 11) % 256)
+  );
+
+  beforeAll(async () => {
+    distDir = await mkdtemp(path.join(os.tmpdir(), "serve-dist-gzip-"));
+    await mkdir(path.join(distDir, "en"), { recursive: true });
+    await writeFile(path.join(distDir, "en", "index.html"), page);
+    await writeFile(path.join(distDir, "404.html"), page);
+    await writeFile(path.join(distDir, "tiny.html"), tiny);
+    await writeFile(path.join(distDir, "font.woff2"), font);
+    server = await startServer({ distDir, base: "/" });
+  });
+
+  afterAll(async () => {
+    await server?.close();
+    await rm(distDir, { recursive: true, force: true });
+  });
+
+  it("compresses HTML with brotli for a browser-shaped request", async () => {
+    const response = await fetch(`${server.origin}/en/`, {
+      headers: { "accept-encoding": "gzip, deflate, br" },
+    });
+    expect(response.headers.get("content-encoding")).toBe("br");
+    expect(response.headers.get("vary")).toBe("accept-encoding");
+    // `fetch` decodes transparently — which is the point: Lighthouse, Pa11y
+    // and Playwright all read the original markup, and only the bytes on the
+    // wire changed.
+    expect(await response.text()).toBe(page);
+    expect(Number(response.headers.get("content-length"))).toBeLessThan(
+      Buffer.byteLength(page) / 2
+    );
+  });
+
+  it("falls back to gzip, and to identity when nothing is offered", async () => {
+    const gzipped = await fetch(`${server.origin}/en/`, {
+      headers: { "accept-encoding": "gzip" },
+    });
+    expect(gzipped.headers.get("content-encoding")).toBe("gzip");
+    expect(await gzipped.text()).toBe(page);
+
+    const plain = await fetch(`${server.origin}/en/`, {
+      headers: { "accept-encoding": "identity" },
+    });
+    expect(plain.headers.get("content-encoding")).toBeNull();
+    expect(plain.headers.get("content-length")).toBe(
+      String(Buffer.byteLength(page))
+    );
+    expect(await plain.text()).toBe(page);
+  });
+
+  it("leaves fonts and sub-kilobyte files uncompressed, as production does", async () => {
+    expect(tiny.length).toBeLessThan(MIN_COMPRESS_BYTES);
+    const small = await fetch(`${server.origin}/tiny.html`, {
+      headers: { "accept-encoding": "gzip, deflate, br" },
+    });
+    expect(small.headers.get("content-encoding")).toBeNull();
+    expect(await small.text()).toBe(tiny);
+
+    const woff = await fetch(`${server.origin}/font.woff2`, {
+      headers: { "accept-encoding": "gzip, deflate, br" },
+    });
+    expect(woff.headers.get("content-encoding")).toBeNull();
+    expect(woff.headers.get("vary")).toBeNull();
+    expect(Buffer.from(await woff.arrayBuffer())).toEqual(font);
+  });
+
+  it("still serves the 404 page, compressed, with its 404 status", async () => {
+    const response = await fetch(`${server.origin}/nowhere/`, {
+      headers: { "accept-encoding": "gzip, deflate, br" },
+    });
+    expect(response.status).toBe(404);
+    expect(response.headers.get("content-encoding")).toBe("br");
+    expect(await response.text()).toBe(page);
   });
 });
