@@ -290,10 +290,14 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
   source, since the alias already correctly covers MX usage) establishing
   `acumulador` as the everyday Costa Rican term for a hydraulic-brake
   pressure accumulator, independent of `batería`'s "car battery" sense; (2)
-  add it to `all-electrical-bateria`'s aliases as
-  `{term: "acumulador"/"acumuladores", locale: "es", countries: ["CR"],
-  falseFriend: true}`, following the `es|llanta` precedent named in T403's
-  own note above; (3) confirm `check:glossary` now accepts `acumulador` in
+  add it to `all-electrical-bateria`'s aliases as two separate alias
+  objects — `{term: "acumulador", locale: "es", countries: ["CR"],
+  falseFriend: true}` and `{term: "acumuladores", locale: "es",
+  countries: ["CR"], falseFriend: true}` — one per singular/plural, matching
+  how every existing glossary entry encodes the two forms (a single alias
+  object takes one `term`, never a `/`-joined pair); following the
+  `es|llanta` precedent named in T403's own note above. (3) confirm
+  `check:glossary` now accepts `acumulador` in
   a brake-hydraulics sense without breaking its existing `batería` coverage
   (grade both directions — the word still resolves to `batería` in a
   battery-sense sentence, and no longer errors in a brake-accumulator-sense
