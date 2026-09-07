@@ -703,19 +703,75 @@ describe("the placeholder route never leaks into the resolved page's chrome", ()
  * "mutation-test the probe corpus itself").
  */
 
-/** Extracts the sole `<script>…</script>` body from a page's raw source. */
+/**
+ * Extracts the sole `<script …>…</script>` body from raw page source text.
+ * The open tag may carry attributes (`type="module"`, `is:inline`, …) — the
+ * behavioral check this file performs is on the block's *body*, not on how
+ * the tag announces itself, so matching the tag generically here does not
+ * loosen anything the tests below actually assert on. Still requires
+ * *exactly one* match, so a page with zero or multiple `<script>` blocks
+ * still fails loudly rather than silently matching nothing or the wrong one.
+ */
+function extractScriptFromSource(source: string, label: string): string {
+  const matches = [
+    ...source.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g),
+  ];
+  expect(
+    matches.length,
+    `expected exactly one <script> block in ${label}, found ${matches.length}`
+  ).toBe(1);
+  return matches[0]?.[1] ?? "";
+}
+
+/** Extracts the sole `<script …>…</script>` body from a page's raw source. */
 function extractScriptSource(pageRelativePath: string): string {
   const template = readFileSync(
     new URL(pageRelativePath, import.meta.url),
     "utf8"
   );
-  const matches = [...template.matchAll(/<script>([\s\S]*?)<\/script>/g)];
-  expect(
-    matches.length,
-    `expected exactly one <script> block in ${pageRelativePath}, found ${matches.length}`
-  ).toBe(1);
-  return matches[0]?.[1] ?? "";
+  return extractScriptFromSource(template, pageRelativePath);
 }
+
+describe("extractScriptSource — helper self-test (mutation-proofing the probe)", () => {
+  // Decoupled from any file on disk, so a broken regex is caught here first —
+  // GitHub review thread r3947430651: the original literal `<script>` match
+  // would miss `type="module"`/`is:inline` variants even though the runtime
+  // behavior is unchanged; this generalizes the open-tag match without
+  // touching what the "exactly one block" invariant or the body capture do.
+  it("matches a bare <script> tag — the real pages' own shape, POSITIVE CONTROL", () => {
+    const source = `<html><body><script>const x = 1;</script></body></html>`;
+    expect(extractScriptFromSource(source, "test fixture")).toBe(
+      "const x = 1;"
+    );
+  });
+
+  it('matches a <script> tag carrying attributes (type="module", is:inline, …)', () => {
+    const moduleSource = `<script type="module">const x = 1;</script>`;
+    expect(extractScriptFromSource(moduleSource, "test fixture")).toBe(
+      "const x = 1;"
+    );
+    const inlineSource = `<script is:inline>const y = 2;</script>`;
+    expect(extractScriptFromSource(inlineSource, "test fixture")).toBe(
+      "const y = 2;"
+    );
+  });
+
+  it("still throws when there is no <script> block at all", () => {
+    // The generalized tag match must not become so permissive that "found
+    // nothing" silently returns an empty string instead of failing loudly.
+    expect(() =>
+      extractScriptFromSource(
+        `<html><body>no script here</body></html>`,
+        "test fixture"
+      )
+    ).toThrow();
+  });
+
+  it("still throws when there is more than one <script> block", () => {
+    const source = `<script>a();</script><script>b();</script>`;
+    expect(() => extractScriptFromSource(source, "test fixture")).toThrow();
+  });
+});
 
 /**
  * The `if (!<resultVar>.ok) { … }` block immediately following the network
