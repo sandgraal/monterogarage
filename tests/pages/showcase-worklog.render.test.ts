@@ -898,12 +898,9 @@ describe("runtime noindex on refusal — private by default (SHR-01, SHR-02)", (
   // `src/pages/[locale]/[garageSegment]/[handle]/[vehicle]/[worklog].astro`'s
   // `if (!history.ok) { … }` block calls `setNoindex(true)` when
   // `history.reason === "refused"`.
-  it.fails(
-    "the work-log page noindexes on a refused records read (T2-404b escaped defect)",
-    () => {
-      const script = extractScriptSource(WORKLOG_PAGE_PATH);
-      const block = extractRefusalBlock(script, "history");
-      expect(noindexesOnRefusal(block, "history")).toBe(true);
-    }
-  );
+  it("the work-log page noindexes on a refused records read (T2-404b escaped defect)", () => {
+    const script = extractScriptSource(WORKLOG_PAGE_PATH);
+    const block = extractRefusalBlock(script, "history");
+    expect(noindexesOnRefusal(block, "history")).toBe(true);
+  });
 });

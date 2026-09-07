@@ -420,6 +420,7 @@ const generationLabelsJson = JSON.stringify(generationLabels).replaceAll(
       // answer, and a failure is said as one.
       const history = await readPublicRecords(params);
       if (!history.ok) {
+        if (history.reason === "refused") setNoindex(true);
         say(
           history.reason === "refused"
             ? (text.stringNotFound ?? "")
