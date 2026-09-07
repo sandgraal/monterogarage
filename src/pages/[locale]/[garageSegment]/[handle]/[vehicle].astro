@@ -41,7 +41,10 @@
  * The public-cover-photo bucket is a separate branch; the world reader does not
  * return a cover URL yet, so this renders the same placeholder a photo-less
  * vehicle gets (GAR-01′). The `[data-showcase-cover]` image is the seam a public
- * cover URL slots into later with no rewrite here.
+ * cover URL slots into later with no rewrite here, and `data-string-cover-alt`
+ * (`publicCoverAltTemplate`) is the alt-text half of that same forward seam:
+ * plumbed to the DOM now, read by the client only once that branch fills the
+ * image, so it lands adding no markup here.
  *
  * refs specs/002-montero-garage (SHR-02, SHR-04, SHR-01, GAR-01′, MIG-03),
  * specs/001-foundation (SCF-01, I18N-01, I18N-04, I18N-08),
@@ -199,6 +202,7 @@ const generationLabelsJson = JSON.stringify(generationLabels).replaceAll(
 
 <script>
   import { isLocale, localeHref, type Locale } from "../../../../i18n/routing";
+  import { SITE_NAME } from "../../../../site";
   import { readPublicVehicle } from "../../../../lib/supabase/shares";
   import {
     applyResolvedShowcaseLinks,
@@ -346,7 +350,11 @@ const generationLabelsJson = JSON.stringify(generationLabels).replaceAll(
       name!.setAttribute("role", "heading");
       name!.setAttribute("aria-level", "2");
       identity!.textContent = identityLabel(resolved);
-      document.title = `${resolved.display_name} — Montero Garage`;
+      // The client override of the server-rendered `<title>` uses the same
+      // single brand source `src/site.ts` owns (002 MIG-01), so a rename lands
+      // here too and never diverges from the `${...} — ${SITE_NAME}` the
+      // frontmatter emitted.
+      document.title = `${resolved.display_name} — ${SITE_NAME}`;
 
       // The work-log link, only when the owner published that page too — the
       // two switches are independent (SHR-02).

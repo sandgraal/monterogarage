@@ -166,6 +166,7 @@ const generationLabelsJson = JSON.stringify(generationLabels).replaceAll(
     localeHref,
     type Locale,
   } from "../../../../../i18n/routing";
+  import { SITE_NAME } from "../../../../../site";
   import {
     readPublicRecords,
     readPublicVehicle,
@@ -392,7 +393,11 @@ const generationLabelsJson = JSON.stringify(generationLabels).replaceAll(
       name!.setAttribute("role", "heading");
       name!.setAttribute("aria-level", "2");
       identity!.textContent = identityLabel(resolved);
-      document.title = `${resolved.display_name} — Montero Garage`;
+      // The client override of the server-rendered `<title>` uses the same
+      // single brand source `src/site.ts` owns (002 MIG-01), so a rename lands
+      // here too and never diverges from the `${...} — ${SITE_NAME}` the
+      // frontmatter emitted.
+      document.title = `${resolved.display_name} — ${SITE_NAME}`;
 
       if (resolved.is_showcase_public) {
         showcaseLink!.href = localeHref(
