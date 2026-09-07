@@ -1218,17 +1218,49 @@ export const GRANT_REVOCATION_COLUMN = "revoked_at";
  * finding — "an ungraded table", which is what the constitution's "every user
  * table ships with row-level security proven by graders" forbids.
  *
- * **Empty today, and deliberately so.** Every table that exists is enumerated,
- * and so is every table a named task is going to create. In particular
- * `shares` is *not* exempt — T2-401 added it to `USER_TABLES` as a pending
- * entry, which is the ordering the task list encodes (T2-401 merges before
- * T2-404). Exempting it here to keep a build quiet would re-open the hole this
- * map was added to close.
+ * Every table that exists is enumerated, and so is every table a named task
+ * is going to create. In particular `shares` is *not* exempt — T2-401 added
+ * it to `USER_TABLES` as a pending entry, which is the ordering the task list
+ * encodes (T2-401 merges before T2-404). Exempting it here to keep a build
+ * quiet would re-open the hole this map was added to close.
+ *
+ * **`search_index_entries` (T801/T802, RM-01/RM-02) is the one entry, and the
+ * only kind of table that belongs here.** It is the git→Supabase read-model —
+ * the same glossary/problems/parts/mods content this site already renders
+ * into public HTML, synced by CI, never a user's private data — so RM-02's
+ * `select` grant to `anon`/`authenticated` is the correct end state, not a
+ * finding this sweep should raise. `tests/garage/`'s standard (every
+ * anonymous grant on a *user* table is a leak) is the wrong question to ask
+ * about a table that is public reference content by design; the right
+ * question — that every *write* verb stays denied to everyone but
+ * `service_role` — belongs to `tests/sync/contract.ts`'s
+ * `SEARCH_INDEX_WRITE_VERBS`/`SEARCH_INDEX_WRITE_DENIED_ROLES` and
+ * `tests/sync/rules.ts`'s `writeGrantIssues`, which is this table's actual
+ * ACL contract and lives in the suite that owns it. Exempting the table here
+ * only silences the private-data sweeps (`ungradedTableIssues`,
+ * `tableGrantIssues`) from asking a question about it that has no correct
+ * answer in their vocabulary — it does not silence the write-verb proof.
+ *
+ * This entry predates T802 landing the migration it describes (this branch,
+ * `feat/001-t802a-exempt-search-index`, carries no `search_index_entries`
+ * migration of its own) — the same "declared ahead of the migration" shape
+ * `PENDING_USER_TABLES` uses for a table, applied here to an exemption
+ * instead. T802 rebases onto this once it merges and drops its own
+ * (out-of-process) edit to this map; see AGENTS.md's 2026-09-06/07 note on
+ * why the addition is authored here and not by T802's implementer.
  */
 export const EXEMPT_PUBLIC_TABLES: ReadonlyMap<string, string> = new Map<
   string,
   string
->([]);
+>([
+  [
+    "search_index_entries",
+    "RM-01/RM-02 (T801/T802): the git→Supabase read-model — public reference " +
+      "content synced by CI, not a user's private data. select to " +
+      "anon/authenticated is correct here; write-verb absence is proven by " +
+      "tests/sync/, which owns this table's ACL contract.",
+  ],
+]);
 
 /**
  * `table.column` boolean columns that may default to **true**, and why.

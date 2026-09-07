@@ -309,6 +309,13 @@ describe("privileges are graded at the END of the directory", () => {
     // ACL for anything to be known about. The `createdTables` half is what
     // keeps this airtight anyway — the day `shares` exists it joins this sweep
     // from the other side, whether or not anyone remembers to move it.
+    //
+    // `tableGrantIssues` skips anything named in `EXEMPT_PUBLIC_TABLES` by
+    // default — as of this branch, `search_index_entries` (RM-01/RM-02) —
+    // because that table's `select` grant to `anon`/`authenticated` is public
+    // reference content by design, not a user-data leak. Neither this call
+    // site nor `rls-deny-by-default.test.ts`'s equivalent filters `tables`
+    // itself; both get the exemption for free from the default.
     const sql = migrationSql();
     const tables = [
       ...new Set([
@@ -383,24 +390,36 @@ describe("every table that exists is a table some grader knows about", () => {
     expect(ungradedTableIssues(migrationSql())).toEqual([]);
   });
 
-  it("the exemption map is EMPTY — growing it is a deliberate diff", () => {
+  it("the exemption map holds exactly ONE entry, named and reasoned — growing it further is a deliberate diff", () => {
     // Round-2 review, F4. This used to iterate the map asserting each entry
     // carried a reason, which over an empty map is a test that cannot fail —
     // the exact thing this file's own standard forbids.
     //
-    // Asserting the size instead does two jobs. It can fail, and it turns
-    // adding an exemption into an edit *here*, in a file called
-    // `share-instrument`, rather than a quiet line in a data table. That
-    // closes the path where T2-404 unblocks its own red build by exempting
-    // `shares` with a plausible-sounding reason: the exemption and the
-    // grader's blessing of it now land in the same diff, where a conductor
-    // reviewing the sharing work will see both.
+    // The map stopped being empty on the branch that added
+    // `search_index_entries` (RM-01/RM-02, `tests/garage/contract.ts`'s own
+    // docstring on the map has the full reasoning: public reference content
+    // this site already renders into HTML, not a user's private records, so
+    // `tableGrantIssues`'s "no anonymous role holds anything" default is the
+    // wrong question to ask about it). Iterating is no longer vacuous, so it
+    // is restored alongside the exact-size check, which still does the job
+    // asserting size alone used to do on its own: it turns adding a SECOND
+    // exemption into an edit *here*, in a file called `share-instrument`,
+    // rather than a quiet line in a data table. That closes the path where a
+    // future branch unblocks its own red build by exempting some other table
+    // with a plausible-sounding reason: the exemption and the grader's
+    // blessing of it now land in the same diff, where a conductor reviewing
+    // the work will see both.
     //
     // The mechanism itself — that a named exemption is honoured and an
     // unnamed table is not — is graded against a synthetic map in
-    // `reviewer-probes.test.ts` (G10), so keeping this one at zero costs no
-    // coverage.
-    expect(EXEMPT_PUBLIC_TABLES.size).toBe(0);
+    // `reviewer-probes.test.ts` (G10, and now G28 for the `tableGrantIssues`
+    // half specifically), so this file staying at exactly one real entry
+    // costs no coverage.
+    expect(EXEMPT_PUBLIC_TABLES.size).toBe(1);
+    expect([...EXEMPT_PUBLIC_TABLES.keys()]).toEqual(["search_index_entries"]);
+    for (const [table, reason] of EXEMPT_PUBLIC_TABLES) {
+      expect(reason.length, table).toBeGreaterThan(20);
+    }
   });
 
   it("stores no share token in the clear, in any table", () => {
