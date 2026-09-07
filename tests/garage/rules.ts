@@ -2163,10 +2163,25 @@ export function publicationFlagGateIssues(
       // legitimate spelling is a single query whose own predicate says so.
       const range = ranges.find((entry) => at >= entry.start && at < entry.end);
       const predicate = range ? wherePredicate(range.text) : null;
-      // `at` is an offset into the body; `predicate.end` into the statement.
+      // `at` is an offset into the body; `predicate.end` into `range.text`.
+      // Those are different coordinate spaces: `range.text` is the *trimmed*
+      // statement (see `statementRanges`' own doc comment — `start`/`end` are
+      // untrimmed, `text` is `.trim()`-ed), so an offset into `range.text` is
+      // relative to wherever the untrimmed statement's own leading whitespace
+      // ends, not to `range.start` itself. Almost every non-first statement
+      // in an indented plpgsql body has at least one such leading space once
+      // `normalizeSql` has collapsed its original indentation down to one.
+      // `leadingTrim` recovers that offset directly from the same untrimmed
+      // slice `range.text` was produced from, so `textStart` — not
+      // `range.start` — is what `at` has to be measured against.
+      const leadingTrim = range
+        ? body.slice(range.start, range.end).length -
+          body.slice(range.start, range.end).trimStart().length
+        : 0;
+      const textStart = range ? range.start + leadingTrim : 0;
       // The flag has to sit inside the region the predicate actually governs —
       // see `wherePredicate` for the `union` arm this closes.
-      if (range && predicate && at - range.start < predicate.end) {
+      if (range && predicate && at - textStart < predicate.end) {
         if (impliesTokenAbsent(predicate.text, tokenArgument)) continue;
         // Or the flag lives only inside `or` branches of the predicate that
         // each imply it. One gated branch does not cover an ungated sibling —

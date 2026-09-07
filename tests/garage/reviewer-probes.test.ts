@@ -3536,6 +3536,45 @@ const G27U_KEYWORD_SUFFIX_IDENTIFIER = flagReader(`
   end;
 `);
 
+/**
+ * G27v ACCEPT — a genuinely-gated flag read as a **non-first** top-level
+ * statement of the body (PR #141 bot-review, `at`/`predicate.end` coordinate
+ * mismatch).
+ *
+ * `wherePredicate` is called with `range.text` — the statement *trimmed* —
+ * but the caller compared its `end` offset against `at - range.start`, an
+ * offset into the *untrimmed* statement. `range.start` and the point
+ * `range.text` actually starts from disagree by exactly the untrimmed
+ * statement's own leading whitespace, and every statement but the first in a
+ * body carries one such leading space once `normalizeSql` has collapsed its
+ * original indentation down to a single character — which is what the
+ * `v_noop := 1;` line before the real read manufactures here.
+ *
+ * Pinned as a regression for the *coordinate-consistent* formula rather than
+ * as a fail-before/pass-after demonstration of the reported defect: the
+ * reported mismatch is bounded by one collapsed-whitespace character, and the
+ * shortest distance a legitimately-gated occurrence of either publication
+ * flag can sit from `predicate.end` is bounded below by the flag's own
+ * column-name length (18 characters, `is_worklog_public`) — an order of
+ * magnitude past the one-character error, so no fixture built from this
+ * project's actual `PUBLIC_VISIBILITY_FLAG_COLUMNS` names can flip between
+ * the pre-fix and post-fix formula. It still earns its place: a cruder
+ * regression of the same defect class — comparing the raw, un-adjusted `at`
+ * against `predicate.end` — pushes the flag's occurrence *past* `predicate.end`
+ * in this fixture's numbers and this fixture catches it, where none of the
+ * other G27 fixtures (all first-statement bodies) would.
+ */
+const G27V_LEADING_WHITESPACE_GATED = flagReader(`
+  declare
+    v_noop int;
+  begin
+    v_noop := 1;
+    return query select jsonb_build_object('id', v.id)
+      from public.vehicles v
+     where p_token is null and v.is_worklog_public is true;
+  end;
+`);
+
 describe("T2-401 (d): the `setof` rule has an ACCEPT case at last", () => {
   it.each(G18_SETOF_NON_USER_TABLE)(
     "accepts `returns setof` %s",
@@ -4082,11 +4121,18 @@ describe("T2-404a: SHR-09, the flags and the world path", () => {
   it.each<[string, string]>([
     ["G27n the gate expressed as an `elsif`", G27N_ELSIF_GATED],
     ["G27t the flag in a join's `on`, gated by the `where`", G27T_ON_CLAUSE],
+    [
+      "G27v a gated read as a non-first statement (leading whitespace)",
+      G27V_LEADING_WHITESPACE_GATED,
+    ],
   ])("%s is ACCEPTED", (_label, fixture) => {
     // Paired with the rejects above, one for one. G27n is G27m's control and
     // G27t is G27r's: without them, "an `elsif` never gates" and "a flag
     // outside the predicate text is never gated" are both mutations the corpus
-    // survives, and each would reject a reader doing the right thing.
+    // survives, and each would reject a reader doing the right thing. G27v is
+    // the coordinate-space regression (PR #141): the accept case has to
+    // survive on a statement whose own leading whitespace was collapsed and
+    // then trimmed away, not just on the first statement of a body.
     expect(publicationFlagIssues(fixture, SHARE_READER_NAMES)).toEqual([]);
   });
 
@@ -4185,6 +4231,7 @@ describe("T2-404a: SHR-09, the flags and the world path", () => {
       G27S_NEGATIVE_ELSE,
       G27T_ON_CLAUSE,
       G27U_KEYWORD_SUFFIX_IDENTIFIER,
+      G27V_LEADING_WHITESPACE_GATED,
     ]) {
       expect(functions(fixture)).toHaveLength(1);
       expect(anonExecutableFunctions(fixture)).toHaveLength(1);
@@ -4358,6 +4405,10 @@ describe("T2-401: every new probe fires, and every control stays silent", () => 
         publicationFlagIssues(G27G_CONJUNCT_ACCEPT, SHARE_READER_NAMES),
         publicationFlagIssues(G27N_ELSIF_GATED, SHARE_READER_NAMES),
         publicationFlagIssues(G27T_ON_CLAUSE, SHARE_READER_NAMES),
+        publicationFlagIssues(
+          G27V_LEADING_WHITESPACE_GATED,
+          SHARE_READER_NAMES
+        ),
         publicationFlagGateIssues(readerOf(CORRECT_SHARE_READER), true),
         ...G18_SETOF_NON_USER_TABLE.map(([, fixture]) =>
           functions(sql(fixture)).flatMap(projectionIssues)
