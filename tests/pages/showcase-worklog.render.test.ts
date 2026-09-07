@@ -76,6 +76,8 @@
  * specs/001-foundation (SCF-01, I18N-01, I18N-04, I18N-05),
  * specs/001-foundation/design/HANDOFF-DESIGN.md
  */
+import { readFileSync } from "node:fs";
+
 import { JSDOM } from "jsdom";
 import { describe, expect, it } from "vitest";
 
@@ -644,4 +646,208 @@ describe("the placeholder route never leaks into the resolved page's chrome", ()
     expect(doc.documentElement.outerHTML).toBe(once);
     expect(doc.querySelectorAll('link[rel="canonical"]')).toHaveLength(1);
   });
+});
+
+/* =========================================================================
+ * 6. Runtime `noindex` on refusal — private by default, escaped defect audit
+ * ====================================================================== */
+
+/**
+ * ## The rule, derived from the spec — not from either page's own code
+ *
+ * **SHR-01**: "Everything a user stores SHALL default to private… no
+ * client-trusted checks." **SHR-02**: a vehicle gets a public showcase/
+ * work-log page only once its owner *publishes* it, at a URL that is stable
+ * but not, by that stability, automatically legitimate content — the
+ * publication flag is what makes it so. A **refused** resolution — a vehicle
+ * read whose `reason` is `"refused"`, or a records read whose `reason` is
+ * `"refused"` — is SHR-01's private-by-default state surfacing through this
+ * page: there is nothing published to hand a crawler as canonical content,
+ * so the page must not be left indexable. `src/lib/garage/showcase-view.ts`'s
+ * own module note states the invariant this section derives from directly: a
+ * crawler that reaches an unresolvable URL "finds no resolvable handle there
+ * and the page `noindex`es itself at runtime, **the same belt the templates
+ * apply to every refusal**" (emphasis in the source) — "every," not "every
+ * refusal discovered on the first network call." A refusal surfacing one
+ * `await` later, after the vehicle has already resolved and `setNoindex(false)`
+ * has already run, is still a refusal, and the belt still applies.
+ *
+ * ## Why this section reads the page's own source text
+ *
+ * This file's header explains at length why Vitest cannot execute either
+ * page's `<script>` (Astro compiles it to an empty client module under
+ * Vitest's SSR transform — T504a's `procedures-index.render.test.ts` proved
+ * the same thing one page over and is this repo's precedent for the fix: pull
+ * the wiring into an importable seam). That fix is not available here without
+ * editing the page templates, which this file's own author may not do
+ * (AGENTS.md's `[TEST]`/`[PLATFORM]` separation) — and `showcase-view.ts`'s
+ * own module note enumerates exactly what the seam owns (route construction,
+ * handle resolution, the publication gate, the placeholder-link rewrite);
+ * runtime `noindex` toggling is deliberately not on that list, so there is no
+ * existing seam call to grade here the way section 5 grades
+ * `applyResolvedShowcaseLinks`.
+ *
+ * So, following T504a's own precedent for exactly this situation ("the
+ * weakest assertion in this file… here because Vitest has no stronger one
+ * available"), the two assertions below read the shipped `<script>` source
+ * directly — but *structurally*, not by naive substring search: each locates
+ * the exact `if (!<result>.ok) { … }` block that follows one specific network
+ * call, by brace-balancing from that block's own opening `{` (not a
+ * fixed-length slice, so a reformat does not change what is read), and checks
+ * *within that isolated block* for the one-line guard shape both pages
+ * already use for their vehicle-resolution refusal:
+ * `if (<result>.reason === "refused") setNoindex(true);`. The helper that
+ * recognizes that shape is unit-tested on its own below, independent of any
+ * file on disk, so a change to the regex cannot silently stop matching the
+ * real pattern without a test noticing first (GRADER-PRINCIPLES.md,
+ * "mutation-test the probe corpus itself").
+ */
+
+/** Extracts the sole `<script>…</script>` body from a page's raw source. */
+function extractScriptSource(pageRelativePath: string): string {
+  const template = readFileSync(
+    new URL(pageRelativePath, import.meta.url),
+    "utf8"
+  );
+  const matches = [...template.matchAll(/<script>([\s\S]*?)<\/script>/g)];
+  expect(
+    matches.length,
+    `expected exactly one <script> block in ${pageRelativePath}, found ${matches.length}`
+  ).toBe(1);
+  return matches[0]?.[1] ?? "";
+}
+
+/**
+ * The `if (!<resultVar>.ok) { … }` block immediately following the network
+ * call this page assigns to `resultVar` — found by brace-balancing from the
+ * block's own opening `{` to its matching `}`. Throws, naming the variable,
+ * if that exact shape is gone, so a structural change to the page's control
+ * flow fails loudly as "the shape this file expects is gone" rather than as a
+ * silent empty match that would make every assertion below vacuously true.
+ */
+function extractRefusalBlock(script: string, resultVar: string): string {
+  const marker = `if (!${resultVar}.ok) {`;
+  const start = script.indexOf(marker);
+  if (start === -1) {
+    throw new Error(
+      `could not find "${marker}" in the extracted <script> — ` +
+        `this page's refusal-handling shape has changed`
+    );
+  }
+  const braceStart = start + marker.length - 1; // the "{" itself
+  let depth = 0;
+  for (let i = braceStart; i < script.length; i++) {
+    if (script[i] === "{") depth++;
+    else if (script[i] === "}") {
+      depth--;
+      if (depth === 0) return script.slice(braceStart, i + 1);
+    }
+  }
+  throw new Error(`unbalanced braces reading the "${resultVar}" block`);
+}
+
+/**
+ * Does this refusal block set `noindex` whenever `<resultVar>.reason` is
+ * `"refused"`? Matches the one-line guard shape (tolerant of the `{ … }`
+ * block form and of whitespace) both pages already use for their
+ * vehicle-resolution refusal — anchored to the specific variable and reason,
+ * so a `setNoindex(true)` gated on a *different* reason, or present nowhere
+ * in this block, does not match.
+ */
+function noindexesOnRefusal(block: string, resultVar: string): boolean {
+  const pattern = new RegExp(
+    `if\\s*\\(\\s*${resultVar}\\.reason\\s*===\\s*["']refused["']\\s*\\)` +
+      `\\s*\\{?\\s{0,20}setNoindex\\(\\s*true\\s*\\)`
+  );
+  return pattern.test(block);
+}
+
+const SHOWCASE_PAGE_PATH =
+  "../../src/pages/[locale]/[garageSegment]/[handle]/[vehicle].astro";
+const WORKLOG_PAGE_PATH =
+  "../../src/pages/[locale]/[garageSegment]/[handle]/[vehicle]/[worklog].astro";
+
+describe("noindexesOnRefusal — helper self-test (mutation-proofing the probe)", () => {
+  // Decoupled from any file on disk, so a broken regex is caught here first,
+  // not discovered only by a downstream test failing for the wrong reason.
+  it("recognizes the guarded single-line form", () => {
+    const block = `{ if (x.reason === "refused") setNoindex(true); say("hi"); }`;
+    expect(noindexesOnRefusal(block, "x")).toBe(true);
+  });
+
+  it("recognizes the guarded block form", () => {
+    const block = `{ if (x.reason === "refused") {\n  setNoindex(true);\n  say("hi");\n} }`;
+    expect(noindexesOnRefusal(block, "x")).toBe(true);
+  });
+
+  it("does NOT match a call gated on a different reason — POSITIVE CONTROL for the negative below", () => {
+    // Without this, "recognizes the guarded form" above could be satisfied by
+    // a helper that matches `setNoindex(true)` anywhere in the block,
+    // regardless of what it is actually gated on.
+    const block = `{ if (x.reason === "error") setNoindex(true); }`;
+    expect(noindexesOnRefusal(block, "x")).toBe(false);
+  });
+
+  it("does NOT match a block with no setNoindex call at all — T2-404b's exact defect shape", () => {
+    const block = `{ say(x.reason === "refused" ? a : b); return; }`;
+    expect(noindexesOnRefusal(block, "x")).toBe(false);
+  });
+});
+
+describe("extractRefusalBlock — helper self-test", () => {
+  it("balances nested braces rather than stopping at the first closer", () => {
+    const script = `before(); if (!x.ok) { if (nested) { a(); } b(); } after();`;
+    const block = extractRefusalBlock(script, "x");
+    expect(block).toBe(`{ if (nested) { a(); } b(); }`);
+  });
+
+  it("names the missing variable rather than failing silently", () => {
+    expect(() => extractRefusalBlock(`if (!y.ok) {}`, "x")).toThrow(/x/);
+  });
+});
+
+describe("runtime noindex on refusal — private by default (SHR-01, SHR-02)", () => {
+  it("the showcase page noindexes on a refused vehicle read — the correct pattern, graded green", () => {
+    // The showcase page's only network call is `readPublicVehicle`; it never
+    // fetches records at all (section 4 above: "the showcase page never
+    // carries records"). This is the file's positive control for the
+    // structural-extraction approach itself: it must pass unmodified against
+    // current `main`, proving the harness recognizes the correct pattern
+    // rather than merely never recognizing anything.
+    const script = extractScriptSource(SHOWCASE_PAGE_PATH);
+    const block = extractRefusalBlock(script, "result");
+    expect(noindexesOnRefusal(block, "result")).toBe(true);
+  });
+
+  it("the work-log page noindexes on its own refused vehicle read — POSITIVE CONTROL for the defect below", () => {
+    // Without this, "the records-refusal path fails to noindex" below could
+    // be satisfied by a page that never noindexes on *any* refusal — this
+    // pins that the vehicle-resolution half of the same page gets it right,
+    // so the gap graded next is specifically the records-refusal path, not
+    // the whole page.
+    const script = extractScriptSource(WORKLOG_PAGE_PATH);
+    const block = extractRefusalBlock(script, "vehicleResult");
+    expect(noindexesOnRefusal(block, "vehicleResult")).toBe(true);
+  });
+
+  // T2-404b escaped to `main`: the work-log page's `open()` calls
+  // `setNoindex(false)` once the vehicle resolves, then fetches records via
+  // `readPublicRecords`. On `!history.ok && history.reason === "refused"` it
+  // renders the "not published" string — but returns without ever restoring
+  // `setNoindex(true)`, leaving an indexable page whose own body says the
+  // vehicle's work-log is not published. Every *other* refusal path in this
+  // file (both pages' vehicle reads) gets this right; the records-refusal
+  // path is the one gap. Activated by adding the same one-line guard used
+  // two tests above, in the `history` branch: delete this `.fails` once
+  // `src/pages/[locale]/[garageSegment]/[handle]/[vehicle]/[worklog].astro`'s
+  // `if (!history.ok) { … }` block calls `setNoindex(true)` when
+  // `history.reason === "refused"`.
+  it.fails(
+    "the work-log page noindexes on a refused records read (T2-404b escaped defect)",
+    () => {
+      const script = extractScriptSource(WORKLOG_PAGE_PATH);
+      const block = extractRefusalBlock(script, "history");
+      expect(noindexesOnRefusal(block, "history")).toBe(true);
+    }
+  );
 });
