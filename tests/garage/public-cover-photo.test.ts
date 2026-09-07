@@ -791,18 +791,15 @@ describe("share_read_vehicle: the cover gate, run against the shipped migration"
     expect(coverExposureIssues(requireVehicleReader())).toEqual([]);
   });
 
-  it.fails(
-    "POSITIVE CONTROL: the world path actually projects cover_photo_path (GAR-01′)",
-    () => {
-      // Without this, every clean report above is satisfied by a routine that
-      // never mentions the column — a showcase page that never shows a cover.
-      // Deleting this marker is the whole of this file's activation signal for
-      // the RPC half; the corpus and the two guards above do not move.
-      expect(requireVehicleReader().body).toMatch(
-        new RegExp(`\\b${COVER_PHOTO_COLUMN}\\b`)
-      );
-    }
-  );
+  it("POSITIVE CONTROL: the world path actually projects cover_photo_path (GAR-01′)", () => {
+    // Without this, every clean report above is satisfied by a routine that
+    // never mentions the column — a showcase page that never shows a cover.
+    // Deleting this marker is the whole of this file's activation signal for
+    // the RPC half; the corpus and the two guards above do not move.
+    expect(requireVehicleReader().body).toMatch(
+      new RegExp(`\\b${COVER_PHOTO_COLUMN}\\b`)
+    );
+  });
 });
 
 /* =========================================================================
@@ -924,30 +921,27 @@ describe.skipIf(!live.available)(
       }
     );
 
-    it.fails(
-      "POSITIVE CONTROL: a showcase-PUBLIC vehicle's cover IS exposed, matching the stored path",
-      async () => {
-        // Without this, "no cover when showcase is private" above is
-        // satisfiable by a reader that never returns a cover to anyone —
-        // a showcase card that never shows one.
-        const scenario = await provisionScenario(stackOf(live));
-        try {
-          const handle = await claimHandle(scenario);
-          const { vehicleId, coverPath } = await vehicleWithCover(scenario, {
-            isShowcasePublic: true,
-            isWorklogPublic: false,
-          });
+    it("POSITIVE CONTROL: a showcase-PUBLIC vehicle's cover IS exposed, matching the stored path", async () => {
+      // Without this, "no cover when showcase is private" above is
+      // satisfiable by a reader that never returns a cover to anyone —
+      // a showcase card that never shows one.
+      const scenario = await provisionScenario(stackOf(live));
+      try {
+        const handle = await claimHandle(scenario);
+        const { vehicleId, coverPath } = await vehicleWithCover(scenario, {
+          isShowcasePublic: true,
+          isWorklogPublic: false,
+        });
 
-          const row = await readAsWorld(scenario, handle, vehicleId);
+        const row = await readAsWorld(scenario, handle, vehicleId);
 
-          expect(row).toBeDefined();
-          expect(Object.hasOwn(row ?? {}, COVER_PHOTO_COLUMN)).toBe(true);
-          expect(row?.[COVER_PHOTO_COLUMN]).toBe(coverPath);
-        } finally {
-          await teardownScenario(scenario);
-        }
+        expect(row).toBeDefined();
+        expect(Object.hasOwn(row ?? {}, COVER_PHOTO_COLUMN)).toBe(true);
+        expect(row?.[COVER_PHOTO_COLUMN]).toBe(coverPath);
+      } finally {
+        await teardownScenario(scenario);
       }
-    );
+    });
 
     it("a vehicle with neither flag public is not returned at all — the cover question is moot", async () => {
       // The trivial case the task brief names in passing: nothing to expose

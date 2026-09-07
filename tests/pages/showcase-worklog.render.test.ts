@@ -937,7 +937,7 @@ describe("runtime noindex on refusal — private by default (SHR-01, SHR-02)", (
  * ====================================================================== */
 
 describe("publicCoverPhotoUrl — the public cover URL, once the seam is filled (GAR-01′)", () => {
-  it.fails("builds the public storage object URL for a cover path", () => {
+  it("builds the public storage object URL for a cover path", () => {
     expect(
       publicCoverPhotoUrl({
         supabaseUrl: "https://example.supabase.co",
@@ -949,42 +949,36 @@ describe("publicCoverPhotoUrl — the public cover URL, once the seam is filled 
     );
   });
 
-  it.fails(
-    "returns null for a null cover path — POSITIVE CONTROL for the placeholder path below",
-    () => {
-      // Without this, "the placeholder renders when there is no cover" (the
-      // structural checks below) could be satisfied by a function that always
-      // returns *some* URL, string-built from a `null` path, that a browser
-      // would 404 on rather than the page honestly showing no cover at all.
-      expect(
-        publicCoverPhotoUrl({
-          supabaseUrl: "https://example.supabase.co",
-          coverPath: null,
-        })
-      ).toBeNull();
-    }
-  );
+  it("returns null for a null cover path — POSITIVE CONTROL for the placeholder path below", () => {
+    // Without this, "the placeholder renders when there is no cover" (the
+    // structural checks below) could be satisfied by a function that always
+    // returns *some* URL, string-built from a `null` path, that a browser
+    // would 404 on rather than the page honestly showing no cover at all.
+    expect(
+      publicCoverPhotoUrl({
+        supabaseUrl: "https://example.supabase.co",
+        coverPath: null,
+      })
+    ).toBeNull();
+  });
 
-  it.fails(
-    "does not produce a doubled slash when supabaseUrl already carries a trailing one",
-    () => {
-      // `SUPABASE_BROWSER_CONFIG.url` is `new URL(...).origin` and never carries
-      // a trailing slash today (`src/lib/supabase/config.ts`) — but the origin
-      // a caller hands in is this function's *input*, not something it may
-      // assume the shape of, and `.../public//vehicle-cover-photos/...` is a
-      // different (and likely 404ing) URL from the correct one.
-      expect(
-        publicCoverPhotoUrl({
-          supabaseUrl: "https://example.supabase.co/",
-          coverPath: "a/b/c.jpg",
-        })
-      ).toBe(
-        `https://example.supabase.co/storage/v1/object/public/${VEHICLE_COVER_PHOTOS_BUCKET}/a/b/c.jpg`
-      );
-    }
-  );
+  it("does not produce a doubled slash when supabaseUrl already carries a trailing one", () => {
+    // `SUPABASE_BROWSER_CONFIG.url` is `new URL(...).origin` and never carries
+    // a trailing slash today (`src/lib/supabase/config.ts`) — but the origin
+    // a caller hands in is this function's *input*, not something it may
+    // assume the shape of, and `.../public//vehicle-cover-photos/...` is a
+    // different (and likely 404ing) URL from the correct one.
+    expect(
+      publicCoverPhotoUrl({
+        supabaseUrl: "https://example.supabase.co/",
+        coverPath: "a/b/c.jpg",
+      })
+    ).toBe(
+      `https://example.supabase.co/storage/v1/object/public/${VEHICLE_COVER_PHOTOS_BUCKET}/a/b/c.jpg`
+    );
+  });
 
-  it.fails("never mistakes an empty string for a real path", () => {
+  it("never mistakes an empty string for a real path", () => {
     // `cover_photo_path` is `string | null` everywhere else in this codebase
     // (`vehicles.cover_photo_path`'s own column comment) — an empty string is
     // not a value that column, or the RPC that reads it, is documented to
@@ -1279,36 +1273,26 @@ describe("coverElementVariable / coverIsWiredToSeam — helper self-tests (mutat
 });
 
 describe("the showcase page's own <script> (T2-404d)", () => {
-  it.fails(
-    "wires [data-showcase-cover] to publicCoverPhotoUrl, guarded, with the localized alt (GAR-01′)",
-    () => {
-      // The real defect, read structurally for the reason section 6's own
-      // header gives at length: Astro compiles this `<script>` to an empty
-      // client module under Vitest's SSR transform, so there is no DOM to
-      // drive. `coverIsWiredToSeam`'s own self-tests above already prove this
-      // helper recognizes the correct shape and rejects today's real one —
-      // this assertion is what turns green the moment the page's `enhance()`
-      // gains the block those self-tests describe.
-      const script = extractScriptSource(SHOWCASE_PAGE_PATH);
-      expect(coverIsWiredToSeam(script)).toBe(true);
-    }
-  );
-
-  it("TODAY: the placeholder markup ships `hidden` on the cover image and no cover query in the script — confirms the .fails above fails for the SEAM, not a typo", () => {
-    // Unmarked, and it must keep passing right up until the moment the test
-    // above is activated — the two are opposite readings of the same file and
-    // cannot both describe the shipped page. Pinned by reading the page's raw
-    // source rather than asserting `coverIsWiredToSeam(...) === false` a
-    // second time, so a change to the *markup* (the `hidden` attribute
-    // disappearing from `<img data-showcase-cover>`) is caught here even if
-    // the script-wiring helper above were somehow satisfied by accident.
-    const template = readFileSync(
-      new URL(SHOWCASE_PAGE_PATH, import.meta.url),
-      "utf8"
-    );
-    expect(template).toMatch(/data-showcase-cover[^>]*\bhidden\b/);
-
+  it("wires [data-showcase-cover] to publicCoverPhotoUrl, guarded, with the localized alt (GAR-01′)", () => {
+    // The real defect, read structurally for the reason section 6's own
+    // header gives at length: Astro compiles this `<script>` to an empty
+    // client module under Vitest's SSR transform, so there is no DOM to
+    // drive. `coverIsWiredToSeam`'s own self-tests above already prove this
+    // helper recognizes the correct shape and rejects today's real one —
+    // this assertion is what turns green the moment the page's `enhance()`
+    // gains the block those self-tests describe.
     const script = extractScriptSource(SHOWCASE_PAGE_PATH);
-    expect(coverElementVariable(script)).toBeNull();
+    expect(coverIsWiredToSeam(script)).toBe(true);
   });
+
+  /*
+   * The "TODAY" test that used to live here — asserting the placeholder
+   * markup's `hidden` attribute AND that `coverElementVariable` found no
+   * query at all — is gone now that T2-404d has wired the cover element. Its
+   * own comment named its retirement moment exactly: "it must keep passing
+   * right up until the moment the test above is activated — the two are
+   * opposite readings of the same file and cannot both describe the shipped
+   * page." Section 2's identical retirement, in the same words, for the
+   * identical reason, is the precedent this follows.
+   */
 });

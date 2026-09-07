@@ -86,14 +86,17 @@
  * (T802's `sync-plan.test.ts` records the identical retirement).
  *
  * {@link SHOWCASE_SEAM_NOT_IMPLEMENTED} was left exported, unused, for exactly
- * the reason it is used again now: `./cover.ts` kept `COVER_SEAM` after T2-306
- * for "a future seam in this module is free to reuse the pattern," and
- * {@link publicCoverPhotoUrl} (point 5 above) is that future seam arriving.
- * T2-404d declares it as a throwing stub — the page-template wiring and the
- * world-reader RPC's own `cover_photo_path` projection are a separate
- * `[PLATFORM]` task this file does not implement — and the same activation
- * rule applies: delete exactly the `.fails` marker on the grader it satisfies,
- * never edit the assertion.
+ * the reason it was used again for a second seam: `./cover.ts` kept
+ * `COVER_SEAM` after T2-306 for "a future seam in this module is free to
+ * reuse the pattern," and {@link publicCoverPhotoUrl} (point 5 above) was
+ * that future seam's own throwing stub, declared by T2-404d [TEST]. The
+ * pairing `[PLATFORM]` task (this one) replaced the throw with the real logic
+ * — the public-URL construction here, the world-reader RPC's own
+ * `cover_photo_path` projection in `20260907140000_public_showcase_cover.sql`,
+ * and the page's own `<script>` wiring — and deleted exactly the `.fails`
+ * markers the two graders (`tests/garage/public-cover-photo.test.ts`,
+ * `tests/pages/showcase-worklog.render.test.ts`) carried for it, following the
+ * same discharge-and-reopen pattern this note already records once above.
  *
  * refs specs/002-montero-garage (SHR-02, SHR-03, SHR-04, SHR-09, GAR-01′),
  * specs/001-foundation (SCF-01, I18N-04),
@@ -509,18 +512,21 @@ export const VEHICLE_COVER_PHOTOS_BUCKET = "vehicle-cover-photos";
  * The public URL for a vehicle's cover photo, or `null` when there is none to
  * show.
  *
- * ## The seam — declared by T2-404d, filled by the pairing `[PLATFORM]` task
+ * ## The seam — declared by T2-404d [TEST], filled here by T2-404d [PLATFORM]
  *
  * T2-404b shipped the storage half: a public `vehicle-cover-photos` bucket,
  * kept in sync with `vehicles.cover_photo_path` by a copy-on-designate
  * trigger, world-readable at
  * `<PUBLIC_SUPABASE_URL>/storage/v1/object/public/vehicle-cover-photos/<path>`
- * (the migration's own header comment). What it left unbuilt is the *display*
- * half: the world-reader RPC (`share_read_vehicle`, `20260907120000_public_
- * pages.sql`) returns no cover field yet, and the showcase page's
- * `[data-showcase-cover]` image has nothing setting a `src` on it — see that
- * page's own doc comment, "The cover photo is the no-cover placeholder, on
- * purpose (for now)."
+ * (the migration's own header comment). It left the *display* half unbuilt:
+ * the world-reader RPC's `p_token is null` branch never projected
+ * `cover_photo_path`, and the showcase page's `[data-showcase-cover]` image
+ * had nothing setting a `src` on it. `20260907140000_public_showcase_cover.sql`
+ * closes the first gap — the world path now projects the column, gated on
+ * `is_showcase_public` specifically (never the row-admitting OR) — and the
+ * page's own `<script>` closes the second, calling this function and wiring
+ * its result into the image, guarded so a `null` result leaves the shipped
+ * placeholder exactly as it was.
  *
  * This function is the one place that knows the public-URL shape, so a page
  * calls it rather than re-deriving `.../storage/v1/object/public/…` inline —
@@ -551,6 +557,9 @@ export function publicCoverPhotoUrl(input: {
   readonly supabaseUrl: string;
   readonly coverPath: string | null;
 }): string | null {
-  void input;
-  throw new Error(SHOWCASE_SEAM_NOT_IMPLEMENTED);
+  if (input.coverPath === null || input.coverPath === "") return null;
+  const origin = input.supabaseUrl.endsWith("/")
+    ? input.supabaseUrl.slice(0, -1)
+    : input.supabaseUrl;
+  return `${origin}/storage/v1/object/public/${VEHICLE_COVER_PHOTOS_BUCKET}/${input.coverPath}`;
 }
