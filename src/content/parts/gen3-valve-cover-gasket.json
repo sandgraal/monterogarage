@@ -1,0 +1,41 @@
+{
+  "id": "gen3-valve-cover-gasket",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    },
+    "engines": ["6g74-sohc", "6g75"]
+  },
+  "oemNumber": "MD303148",
+  "system": "engine",
+  "quantityPerVehicle": 2,
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen 2, 2.5, 3; SPORT Valve Cover Gasket (MD303148): part number, fitment table, quantity per vehicle and the note that one gasket fits either bank",
+      "url": "https://lusooverland.com/VP-MMC-MD303148",
+      "archiveUrl": "https://web.archive.org/web/20260907002943/https://lusooverland.com/VP-MMC-MD303148",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    },
+    {
+      "title": "YoshiParts — Mitsubishi OEM rocker cover gasket MD303148: part number and description, independent of the Montero specialist's catalogue above",
+      "url": "https://yoshiparts.com/parts/mitsubishi-MD303148",
+      "archiveUrl": "https://web.archive.org/web/20260907022429/https://yoshiparts.com/parts/mitsubishi-MD303148",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Valve cover gasket",
+      "summary": "The gasket under each rocker cover. One part number covers both banks, and the truck takes the quantity shown above — order the pair even if only one side is weeping, because the second one is the same age and the covers are already off for a spark plug change. The specialist who sells it is blunt about the aftermarket versions: most are not sized correctly and rarely seal. Two warnings worth carrying to the bench: the cover bolts take a very light torque, so look the figure up in the service manual and use a torque wrench, because overtightening bows the cover and no gasket will seal it afterwards; and the spark plug tube seals live under the same cover and are a separate part. The number, the fitment and the count come from the Montero specialist's own catalogue page, cited below — a parts catalogue is good evidence for what a part number is and what it fits, and it is not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification."
+    },
+    "es": {
+      "title": "Empaque de la tapa de válvulas",
+      "summary": "El empaque que va debajo de cada tapa de válvulas. Un solo número de parte sirve para los dos bancos, y el vehículo lleva la cantidad indicada arriba: pida el par aunque solo un lado esté sudando aceite, porque el otro tiene la misma edad y las tapas ya están afuera cuando se cambian las bujías. La casa que lo vende es directa sobre las versiones no originales: la mayoría no trae la medida correcta y rara vez sella. Dos advertencias que conviene llevar al taller: los tornillos de la tapa llevan un torque muy bajo, así que busque la cifra en el manual de taller y use llave de torque, porque apretar de más arquea la tapa y después ningún empaque va a sellar; y los retenedores de los tubos de bujía viven bajo la misma tapa y son un repuesto aparte. El número, la compatibilidad y la cantidad salen de la ficha de catálogo de la casa especializada en Montero que se cita abajo. Un catálogo de repuestos es buena evidencia de qué es un número de parte y en qué encaja, pero no es literatura de fábrica: lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller."
+    }
+  }
+}

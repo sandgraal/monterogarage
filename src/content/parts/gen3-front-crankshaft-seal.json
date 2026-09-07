@@ -1,0 +1,48 @@
+{
+  "id": "gen3-front-crankshaft-seal",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    },
+    "engines": ["6g74-sohc", "6g75"]
+  },
+  "oemNumber": "MD372249",
+  "system": "engine",
+  "quantityPerVehicle": 1,
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen2 & 3, SPORT Crankshaft Oil Seal, FRONT (MD372249): part number, fitment table and quantity per vehicle",
+      "url": "https://lusooverland.com/VP-MMC-MD372249",
+      "archiveUrl": "https://web.archive.org/web/20260907002921/https://lusooverland.com/VP-MMC-MD372249",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    },
+    {
+      "title": "Luso Overland — MONTERO Gen3 OEM Timing Belt Kit: the front crankshaft seal listed among the parts already exposed during a belt service",
+      "url": "https://lusooverland.com/VP-LO-K-TB005",
+      "archiveUrl": "https://web.archive.org/web/20260907004053/https://lusooverland.com/VP-LO-K-TB005",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    },
+    {
+      "title": "YoshiParts — Mitsubishi OEM front crankshaft oil seal MD372249: part number and description, independent of the Montero specialist's catalogue above",
+      "url": "https://yoshiparts.com/parts/mitsubishi-MD372249",
+      "archiveUrl": "https://web.archive.org/web/20260907020516/https://yoshiparts.com/parts/mitsubishi-MD372249",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Front crankshaft oil seal",
+      "summary": "The seal behind the crankshaft sprocket, at the very front of the engine. Getting to it means the crank pulley and the timing covers are already off, which is why it is on every sensible timing-belt parts list and almost never worth a trip of its own. A leak here drips onto the timing belt from below, and oil on a toothed belt is the start of a short story with a bad ending. The number, the fitment and the count come from the Montero specialist's own catalogue page, cited below — a parts catalogue is good evidence for what a part number is and what it fits, and it is not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification."
+    },
+    "es": {
+      "title": "Retenedor delantero del cigüeñal",
+      "summary": "El retenedor que va detrás del engranaje del cigüeñal, en el frente del motor. Llegar hasta él implica que la polea del cigüeñal y las tapas de distribución ya están afuera, y por eso aparece en toda lista sensata de repuestos para la faja de distribución y casi nunca justifica un viaje aparte. Una fuga aquí gotea sobre la faja de distribución desde abajo, y aceite sobre una faja dentada es el comienzo de una historia corta y de mal final. El número, la compatibilidad y la cantidad salen de la ficha de catálogo de la casa especializada en Montero que se cita abajo. Un catálogo de repuestos es buena evidencia de qué es un número de parte y en qué encaja, pero no es literatura de fábrica: lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller."
+    }
+  }
+}

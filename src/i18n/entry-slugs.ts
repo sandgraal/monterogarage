@@ -70,11 +70,11 @@ import { validateSlugRegistry, type SlugRegistry } from "../schemas/slugs.ts";
 /**
  * `{ [collection]: { [entryId]: { en, es } } }`.
  *
- * `parts` is still empty: T501 built the schema and the page templates and
- * T503 authors the entries. An empty table is a valid registry — it maps every
- * one of its zero entries to exactly one slug per locale — and the build checks
+ * `parts` is populated by T503's wave-1 set — the parts the merged Gen 3
+ * problem entries already name in `fixPaths[].parts`. T501 built the schema
+ * and the page templates; the build checks
  * (`src/integrations/validate-parts.ts`, `validate-mods.ts`) turn the first
- * unlisted entry into a named error.
+ * unlisted entry, or the first row naming no entry, into a named error.
  *
  * `mods` is populated by T602's wave-1 set. The ES slugs are a Costa Rican
  * reader's own words rather than the English one transliterated, per the note
@@ -91,8 +91,157 @@ import { validateSlugRegistry, type SlugRegistry } from "../schemas/slugs.ts";
 export const ENTRY_SLUGS: Readonly<
   Record<string, Readonly<Record<string, Readonly<Record<Locale, string>>>>>
 > = {
-  /** PRT-01 — one page per part number. Populated by T503. */
-  parts: {},
+  /**
+   * PRT-01 — one page per part number. Wave 1 (T503) is the set of parts the
+   * merged Gen 3 problem entries already point at through
+   * `fixPaths[].parts`, so every row here closes a reference the gaps report
+   * was naming.
+   *
+   * The ES slug is a Costa Rican reader's own words, not the English one with
+   * an accent — `rotula-inferior-delantera`, `empaque-de-tapa-de-valvulas`,
+   * `arandela-del-tapon-de-la-transmision`. They are unaccented because they
+   * are URLs, which is the same call `problems`, `procedures`, `mods` and
+   * `glossary` already made.
+   *
+   * Three conventions this collection adds, all because a part number is a
+   * thing you shout across a parts counter:
+   *
+   * - **A superseded number gets its own slug, and the slug says so**
+   *   (`thermostat-superseded-number` / `termostato-numero-reemplazado`).
+   *   PRT-02 renders the chain, but the URL is what somebody pastes into a
+   *   message, and a URL that reads like the current part when it is not is
+   *   the one place the chain cannot help.
+   * - **Left and right are separate slugs**, because they are separate part
+   *   numbers (`front-sway-bar-end-link-left` / `-right`). Collapsing them
+   *   would put two numbers behind one URL, which is exactly the ambiguity
+   *   `src/schemas/parts.ts` refuses at the entry level.
+   * - **A slug never reads more general than the number behind it.** The
+   *   transfer case carries five position switches with five different
+   *   Mitsubishi numbers, so `gen3-transfer-case-position-switch` — the id the
+   *   merged problem entry already references, and which cannot be renamed
+   *   without breaking that reference — is slugged
+   *   `transfer-case-position-switch-2wd`, naming the position it actually
+   *   is. A bare `transfer-case-position-switch` URL would promise the answer
+   *   to "which switch" and deliver one of five.
+   */
+  parts: {
+    "gen3-timing-belt-tensioner": {
+      en: "timing-belt-tensioner",
+      es: "tensor-de-faja-de-distribucion",
+    },
+    "gen3-front-camshaft-seal": {
+      en: "front-camshaft-seal",
+      es: "retenedor-delantero-de-arbol-de-levas",
+    },
+    "gen3-front-crankshaft-seal": {
+      en: "front-crankshaft-seal",
+      es: "retenedor-delantero-de-ciguenal",
+    },
+    "gen3-valve-cover-gasket": {
+      en: "valve-cover-gasket",
+      es: "empaque-de-tapa-de-valvulas",
+    },
+    "gen3-thermostat": {
+      en: "thermostat",
+      es: "termostato",
+    },
+    "gen3-thermostat-md351861": {
+      en: "thermostat-superseded-number",
+      es: "termostato-numero-reemplazado",
+    },
+    "gen3-thermostat-larger-v6": {
+      en: "thermostat-larger-v6",
+      es: "termostato-v6-mayor",
+    },
+    "gen3-accessory-drive-belt-idler-pulley": {
+      en: "drive-belt-idler-pulley-smooth",
+      es: "polea-loca-lisa",
+    },
+    "gen3-accessory-drive-belt-idler-pulley-grooved": {
+      en: "drive-belt-idler-pulley-grooved",
+      es: "polea-loca-acanalada",
+    },
+    "gen3-exhaust-manifold-gasket": {
+      en: "exhaust-manifold-gasket",
+      es: "empaque-de-multiple-de-escape",
+    },
+    "gen3-rear-heater-tee-joint-pipe": {
+      en: "rear-heater-tee-pipe",
+      es: "tubo-en-t-del-calefactor-trasero",
+    },
+    "gen3-surge-tank-gasket-set": {
+      en: "surge-tank-gasket",
+      es: "empaque-de-deposito-de-admision",
+    },
+    "gen3-front-lower-ball-joint": {
+      en: "front-lower-ball-joint",
+      es: "rotula-inferior-delantera",
+    },
+    "gen3-front-upper-ball-joint": {
+      en: "front-upper-ball-joint",
+      es: "rotula-superior-delantera",
+    },
+    "gen3-front-sway-bar-end-link": {
+      en: "front-sway-bar-end-link-left",
+      es: "bieleta-delantera-izquierda",
+    },
+    "gen3-front-sway-bar-end-link-right": {
+      en: "front-sway-bar-end-link-right",
+      es: "bieleta-delantera-derecha",
+    },
+    "gen3-front-shock-dust-boot": {
+      en: "front-shock-dust-boot",
+      es: "guardapolvo-de-amortiguador-delantero",
+    },
+    "gen3-brake-booster-accumulator": {
+      en: "brake-booster-accumulator",
+      es: "deposito-de-presion-del-booster",
+    },
+    "gen3-brake-booster-accumulator-without-traction-control": {
+      en: "brake-booster-accumulator-without-traction-control",
+      es: "deposito-de-presion-sin-control-de-traccion",
+    },
+    "gen3-differential-seal": {
+      en: "rear-differential-side-seal",
+      es: "retenedor-lateral-del-diferencial-trasero",
+    },
+    "gen3-transfer-case-position-switch": {
+      en: "transfer-case-position-switch-2wd",
+      es: "interruptor-de-posicion-de-transferencia-2wd",
+    },
+    "gen3-transfer-case-position-switch-2wd-4wd": {
+      en: "transfer-case-position-switch-2wd-4wd",
+      es: "interruptor-de-posicion-de-transferencia-2wd-4wd",
+    },
+    "gen3-transfer-case-position-switch-4h": {
+      en: "transfer-case-position-switch-4h",
+      es: "interruptor-de-posicion-de-transferencia-4h",
+    },
+    "gen3-transfer-case-position-switch-cdl": {
+      en: "transfer-case-position-switch-centre-diff-lock",
+      es: "interruptor-de-posicion-de-transferencia-bloqueo-central",
+    },
+    "gen3-transfer-case-position-switch-4llc": {
+      en: "transfer-case-position-switch-4llc",
+      es: "interruptor-de-posicion-de-transferencia-4llc",
+    },
+    "gen3-transfer-case-switch-crush-washer": {
+      en: "transfer-case-switch-crush-washer",
+      es: "arandela-del-interruptor-de-transferencia",
+    },
+    "gen3-transmission-crossmember-bushing": {
+      en: "transmission-crossmember-bushing",
+      es: "buje-de-travesano-de-transmision",
+    },
+    "gen3-transmission-pan-drain-crush-washer": {
+      en: "transmission-drain-plug-crush-washer",
+      es: "arandela-del-tapon-de-la-transmision",
+    },
+    "gen3-automatic-transmission-fluid-spiii": {
+      en: "automatic-transmission-fluid-sp-iii",
+      es: "aceite-de-transmision-automatica-sp-iii",
+    },
+  },
   /**
    * PRC-01 — one page per job. Populated by T504.
    *
