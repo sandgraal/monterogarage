@@ -556,6 +556,63 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
     table); the 555 ball joints are not, because their numbers appear only
     inside the store's own SKU string and reading a part number out of a SKU
     is inference, not citation.
+  - **Review-round tier fix (2026-09-06): single-vendor sourcing is not
+    `community-consensus`, and the fix is a second independent citation, not
+    a downgrade.** The fact-checker's first-round pass found that 28 of the
+    29 entries claimed `community-consensus` while citing only Luso Overland
+    — including entries citing two Luso Overland pages, which is still one
+    vendor. `src/schemas/entry.ts` calls this legal-but-a-review-question by
+    design ("a `community-consensus` entry cited only by a vendor catalogue
+    is legal, and whether it should be is a question for review"), so this
+    session treated it as exactly that: for every one of the 28, a second,
+    independently-owned vendor catalogue page was located, opened, confirmed
+    to state the same OEM number against Montero/Pajero fitment, and
+    archived — mostly `yoshiparts.com`, plus `stmtuned.com`, `jparauto.com`
+    and `burjauto.com` for the numbers Yoshi doesn't carry. `4010A056`'s
+    Yoshi listing names the wrong generation (its 4th-gen V87W page), so
+    Burj Auto's chassis-code table (V73W–V78W, i.e. this truck) stands in for
+    it instead — a mismatched fitment on a candidate source is a reason to
+    look further, not to cite it anyway. **The policy applied, so a future
+    wave can follow it without re-deriving it**: single-vendor
+    `community-consensus` gets a second independent citation before it ships,
+    not a downgrade to `anecdotal` — `anecdotal` stays reserved for what
+    `gen3-brake-booster-accumulator-without-traction-control` actually is,
+    a number with no catalogue listing of its own. Where a second source
+    could not be found and confirmed, the honest move is the downgrade this
+    branch never had to make. Two entries (`gen3-front-sway-bar-end-link`,
+    `-right`) also picked up the "catalogue lists further OEM interchange
+    numbers, none of them has a page here yet" disclosure their siblings
+    already carried (`MR374521`/`MR374522`, named in this file's earlier
+    dangling-ids note), for the same reason those siblings have it.
+    web.archive.org's Save Page Now endpoint was down for part of this
+    session (`archive.org/wayback/available` and existing snapshots stayed
+    reachable throughout, only new captures failed with a 520/523); it
+    recovered before this round finished and every new citation above was
+    captured and re-verified against its own snapshot, not left pending.
+  - **Review-round terminology fix and a deliberate non-mint (2026-09-06).**
+    `gen3-transfer-case-switch-crush-washer`'s ES prose used two different
+    words for the same part in the same paragraph — "arandela de sello" in
+    its first sentence, "arandela de aplastamiento" in its second — while
+    every one of its five sibling entries (the transfer-case position
+    switches, plus `gen3-transmission-pan-drain-crush-washer`) already say
+    "arandela de aplastamiento" consistently. Fixed by dropping the stray
+    "de sello" so the term is now uniform across all six entries that use it.
+    **A glossary entry for "crush washer" / "arandela de aplastamiento" was
+    considered and deliberately not minted this round.** The English side is
+    solid — every cited Luso Overland and YoshiParts page in this wave calls
+    the part a "crush washer" — but this branch could not open a Spanish-
+    language source that uses the exact ES phrase for this class of part:
+    `lubricantes-online.com` calls the same physical part "arandela de
+    cobre" / "arandela de tapón de cárter" instead, and the Mexican
+    marketplace listings that do use "arandela de aplastamiento" for
+    exactly this kind of washer (Amazon.com.mx, MercadoLibre) returned
+    HTTP 503/403 on every fetch attempt this session, so per AGENTS.md a
+    page that could not be opened is not a source. Filed as a GAP-01
+    glossary follow-up rather than invented: whoever picks it up next needs
+    one opened, archivable, Spanish-language source using this term for a
+    drain-plug or fastener-sealing washer (CR-based preferred, matching the
+    bar the rest of this collection's glossary entries clear) before it can
+    ship at `community-consensus`.
 - [x] **T504a [TEST]** Render graders for the procedures index page
   (`procedures-index.render.test.ts`) — cards render, hrefs resolve, filters
   work, T204's provisional-match indicator shows on a partial fitment match.
