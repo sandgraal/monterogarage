@@ -1506,6 +1506,49 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   reason T2-402's and T2-404's boxes are still unchecked. Check both those
   boxes, not just this line's, once this ships. Depends: T2-404a merged.
   *(SHR-02..04, SHR-09)*
+  <br>**First attempt (2026-09-07) found a real grader defect and stopped
+  correctly, per AGENTS.md's separation rule.**
+  `tests/garage/reviewer-probes.test.ts`'s "the shipped lifecycle RPCs parse
+  to their real signatures" pins `share_read_records`'s argument names to
+  exactly
+  `["p_token"]` — unsatisfiable by any honest world-reader implementation,
+  since a token-less request must name a vehicle by handle + id instead. Not
+  edited by the implementer; routed to an independent test-writer as its own
+  narrow fix (`fix/002-t2-404b-share-read-records-signature-probe`). The
+  implementer otherwise fully wrote and live-verified the RPC half of this
+  task against a real local stack (Tier B green, live anon REST probes
+  against seeded data) — uncommitted only because the pre-commit gate
+  correctly refused to let a red grader through. Recover that work once the
+  probe fix merges; do not re-derive the migration from scratch.
+  <br>**Two owner rulings, 2026-09-07, both from the same blocked-decision
+  round as the probe fix:**
+  <br>— **Cover photo:** the showcase card cannot show T2-306's designated
+  cover photo as-is — `photo_paths` lives in a private, path-derived-
+  ownership bucket no anonymous reader can see. Ruling: a **new public
+  storage bucket**, populated by a **copy-on-designate step** added to the
+  cover-photo flow (T2-306's `clear_departed_vehicle_cover()` trigger path)
+  — when `cover_photo_path` is set, the chosen photo is copied into the
+  public bucket under the same key; when cleared or departed, the public
+  copy is removed. Two copies of one file, deliberately, in exchange for a
+  trivial (bucket-is-public) RLS story instead of a second signer surface.
+  Until this ships, the showcase renders the same no-cover placeholder a
+  photo-less vehicle already gets — that fallback is not itself blocking.
+  <br>— **`[TEST]` pairing for the page-template half:** T2-404a's grader
+  covers the RPC/data half only; the page-template rendering half (the
+  actual showcase/work-log HTML) has none. Per the T502/T504a precedent
+  this file already set (a self-authored render grader on a freshly-written
+  listing page reproduces T601-F2's failure mode), the same discipline
+  applies here: **T2-404c below authors the render grader first; the
+  page-template portion of T2-404b does not merge without it.** The RPC
+  half (world-reader path + the cover-photo bucket work above) is not
+  gated by T2-404c and may land first.
+- [ ] **T2-404c [TEST]** Render graders for T2-404b's showcase/work-log page
+  templates — the page-template half named above, following the T504a
+  pattern (author from the spec's chrome/hreflang requirements and
+  HANDOFF-DESIGN.md, never from T2-404b's own not-yet-written markup). Must
+  be a different agent instance from whoever builds T2-404b's page
+  templates. Depends: T2-404a merged (for the world-reader RPC shape the
+  pages will call), the signature-probe fix above. *(SHR-02..04)*
 
 - [ ] **T2-403 [PLATFORM]** Community evidence surfacing: opt-in per-record
   first-hand evidence on problem pages (001 GAR-04 re-cut). Depends: T2-402,
