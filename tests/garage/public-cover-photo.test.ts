@@ -159,9 +159,41 @@ function jsonbCallStartsContaining(body: string, marker: string): Set<number> {
 }
 
 /**
- * `true` when the text immediately before `position` (whitespace aside) is
- * `when <condition that IMPLIES gateFlag is asserted true> then`, and
- * `condition` is read from the nearest preceding `when`.
+ * `true` when `atom` **asserts** `gateFlag` true, not merely mentions its
+ * name — the leaf test {@link isImmediatelyAfterGatedThen} hands to
+ * {@link impliesAtom}.
+ *
+ * ## CLOSED (code review, second round: PR #160 discussion r3952013889):
+ * mention-vs-assertion, the same gap `impliesTokenAbsent` was already built
+ * to avoid
+ *
+ * The first review round (below) fixed the *disjunction* shape — a wider
+ * `or` no longer passes just because one branch names the flag. It left the
+ * **leaf** itself asking only `/\bis_showcase_public\b/.test(atom)`, which is
+ * true of `v.is_showcase_public is false` exactly as it is true of `v.
+ * is_showcase_public is true`: the name is present in both, and only one of
+ * them is a gate.
+ *
+ * ```sql
+ * -- Mentions the flag. Is not a gate on it — the opposite of one.
+ * when v.is_showcase_public is false then
+ *   jsonb_build_object('cover_photo_path', v.cover_photo_path)
+ * ```
+ *
+ * `impliesTokenAbsent` (`rules.ts`) already drew this line for `p_token is
+ * null` — its leaf is the null test itself, `\b${tokenArgument}\s+is\s+
+ * null\b`, not a bare mention of `tokenArgument` — precisely so `p_token is
+ * not null` cannot match by having the right word in it. `assertsFlagTrue`
+ * below draws the same line for this flag: it requires the name to be
+ * present *and* refuses the atom if the flag is negated in place (`is
+ * false`, `is not true`, `is unknown`, `is null`) right next to its own
+ * mention. A bare boolean reference (`when v.is_showcase_public then …` —
+ * the accepted spelling `share_read_records` uses nowhere but this rule
+ * still has to honour, see the corpus below) has no `is …` suffix at all, so
+ * it is not caught by the refusal and is correctly accepted. A leading
+ * `not` (`when not v.is_showcase_public then …`) is refused one layer up, by
+ * {@link impliesAtom}'s own `/^not\b/` check, before this leaf is ever asked
+ * — unaffected by this fix and reconfirmed in the corpus below.
  *
  * ## CLOSED (code review, HIGH): the OR-gated leak this rule exists to catch
  *
@@ -204,6 +236,13 @@ function jsonbCallStartsContaining(body: string, marker: string): Set<number> {
  * runtime behaviour regardless of which spelling a correct implementation
  * chooses.
  */
+function assertsFlagTrue(atom: string, gateFlag: string): boolean {
+  if (!new RegExp(`\\b${gateFlag}\\b`).test(atom)) return false;
+  return !new RegExp(
+    `\\b${gateFlag}\\s+is\\s+(?:false|not\\s+true|unknown|null)\\b`
+  ).test(atom);
+}
+
 function isImmediatelyAfterGatedThen(
   body: string,
   position: number,
@@ -217,9 +256,7 @@ function isImmediatelyAfterGatedThen(
     whenIndex + "when".length,
     before.length - "then".length
   );
-  return impliesAtom(condition, (atom) =>
-    new RegExp(`\\b${gateFlag}\\b`).test(atom)
-  );
+  return impliesAtom(condition, (atom) => assertsFlagTrue(atom, gateFlag));
 }
 
 /**
@@ -495,6 +532,56 @@ describe("coverExposureIssues — fires on the realistic defect shapes, and only
     expect(
       coverExposureIssues(routineFrom(bareBoolean, "share_read_vehicle"))
     ).toEqual([]);
+  });
+
+  it("MUTATION: gated on `is_showcase_public is false` is flagged — mentioning the flag is not the same as asserting it (PR #160 r3952013889)", () => {
+    // `is_showcase_public` appears in the text — a leaf test that asks only
+    // "does the atom mention the flag" (this rule's own defect before this
+    // fix) accepted this exactly as it accepted the correctly-gated `is
+    // true` branch, and a `case when … is false then jsonb_build_object(…)`
+    // hands the cover to every row where the showcase flag is NOT set: the
+    // inverse of the gate, wearing the gate's own column name. Revert
+    // `assertsFlagTrue`'s negation check and this goes green for the wrong
+    // reason — the exact bite-proof this test exists to pin.
+    const invertedGate = broken(GATED_CORRECTLY, [
+      "when v.is_showcase_public is true then",
+      "when v.is_showcase_public is false then",
+    ]);
+
+    const issues = coverExposureIssues(
+      routineFrom(invertedGate, "share_read_vehicle")
+    );
+    expect(issues).toEqual([
+      expect.stringContaining("without gating it behind its own"),
+    ]);
+  });
+
+  it("MUTATION: gated on `is_showcase_public is not true` is flagged — the explicit three-valued-logic inverse", () => {
+    const notTrueGate = broken(GATED_CORRECTLY, [
+      "when v.is_showcase_public is true then",
+      "when v.is_showcase_public is not true then",
+    ]);
+
+    const issues = coverExposureIssues(
+      routineFrom(notTrueGate, "share_read_vehicle")
+    );
+    expect(issues).toEqual([
+      expect.stringContaining("without gating it behind its own"),
+    ]);
+  });
+
+  it("MUTATION: `when not v.is_showcase_public then` is flagged — the leading-`not` refusal in `impliesAtom`, reconfirmed unaffected by this leaf fix", () => {
+    const negatedBareGate = broken(GATED_CORRECTLY, [
+      "when v.is_showcase_public is true then",
+      "when not v.is_showcase_public then",
+    ]);
+
+    const issues = coverExposureIssues(
+      routineFrom(negatedBareGate, "share_read_vehicle")
+    );
+    expect(issues).toEqual([
+      expect.stringContaining("without gating it behind its own"),
+    ]);
   });
 
   it("reports both findings at once when both defects are present", () => {
