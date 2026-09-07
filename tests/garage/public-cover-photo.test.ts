@@ -163,6 +163,55 @@ function jsonbCallStartsContaining(body: string, marker: string): Set<number> {
  * name — the leaf test {@link isImmediatelyAfterGatedThen} hands to
  * {@link impliesAtom}.
  *
+ * An ALLOWLIST of exactly three affirmative shapes, matched against the
+ * **whole** atom (`^…$`), not a substring search inside it:
+ *
+ * - `<flag> is true` (optionally through a `v.`-style alias)
+ * - `<flag> = true`
+ * - a bare truthy reference — the atom IS the flag and nothing else, no
+ *   trailing comparator at all (`when v.is_showcase_public then …` —
+ *   `share_read_records` never spells its own cost gate this way, but this
+ *   rule still has to honour it, see the corpus below)
+ *
+ * Anything that is not one of those three full-string shapes is refused —
+ * which is what makes this a genuine allowlist rather than "present and not
+ * one of the spellings someone thought to deny": an inverse spelling nobody
+ * has enumerated yet is refused *by construction*, the same way
+ * `impliesTokenAbsent`'s own leaf (`\b${tokenArgument}\s+is\s+null\b`)
+ * refuses every spelling of "token present" without needing to name one.
+ *
+ * ## CLOSED (opus re-review, 2026-09-07, PR #160 further hardening): the
+ * "refuse the negations I thought of" version was still a denylist, and a
+ * denylist leaks every spelling nobody enumerated
+ *
+ * The version this replaces asked "does the atom mention `gateFlag`, and is
+ * it *not* one of `is false` / `is not true` / `is unknown` / `is null`
+ * right next to that mention" — a **denylist**, despite a doc comment here
+ * (see below) that claimed it "draws the same line" as `impliesTokenAbsent`'s
+ * genuine allowlist. It silently accepted every inverse spelling that was not
+ * on its list of four:
+ *
+ * ```sql
+ * -- None of these contains `is false`, `is not true`, `is unknown`, or
+ * -- `is null` verbatim, so the denylist waved all three through — each
+ * -- hands a cover to a showcase-PRIVATE vehicle exactly as `is false` would.
+ * when v.is_showcase_public = false then …
+ * when v.is_showcase_public <> true then …              -- also: != true
+ * when v.is_showcase_public is distinct from true then …
+ * ```
+ *
+ * `is distinct from true` is not a hypothetical: it is the exact idiom
+ * `20260903120100_public_handles.sql` already ships (`new.handle is distinct
+ * from v_previous`) for a different column, so it is a plausible implementer
+ * spelling here, not an exotic case invented to pad the corpus. The fix is
+ * not a fifth denied string — that only restarts the same enumeration game
+ * one spelling later — it is inverting the test's shape: `assertsFlagTrue`
+ * now names the **accepted** shapes and refuses everything else, which is
+ * also the correction to the overstated claim that used to sit here: this
+ * leaf did not yet draw the same line as `impliesTokenAbsent` when that
+ * sentence was written, because it was checking the *complement* of the
+ * accepted set instead of the accepted set itself. It draws that line now.
+ *
  * ## CLOSED (code review, second round: PR #160 discussion r3952013889):
  * mention-vs-assertion, the same gap `impliesTokenAbsent` was already built
  * to avoid
@@ -180,20 +229,10 @@ function jsonbCallStartsContaining(body: string, marker: string): Set<number> {
  *   jsonb_build_object('cover_photo_path', v.cover_photo_path)
  * ```
  *
- * `impliesTokenAbsent` (`rules.ts`) already drew this line for `p_token is
- * null` — its leaf is the null test itself, `\b${tokenArgument}\s+is\s+
- * null\b`, not a bare mention of `tokenArgument` — precisely so `p_token is
- * not null` cannot match by having the right word in it. `assertsFlagTrue`
- * below draws the same line for this flag: it requires the name to be
- * present *and* refuses the atom if the flag is negated in place (`is
- * false`, `is not true`, `is unknown`, `is null`) right next to its own
- * mention. A bare boolean reference (`when v.is_showcase_public then …` —
- * the accepted spelling `share_read_records` uses nowhere but this rule
- * still has to honour, see the corpus below) has no `is …` suffix at all, so
- * it is not caught by the refusal and is correctly accepted. A leading
- * `not` (`when not v.is_showcase_public then …`) is refused one layer up, by
- * {@link impliesAtom}'s own `/^not\b/` check, before this leaf is ever asked
- * — unaffected by this fix and reconfirmed in the corpus below.
+ * A leading `not` (`when not v.is_showcase_public then …`) is refused one
+ * layer up, by {@link impliesAtom}'s own `/^not\b/` check, before this leaf
+ * is ever asked — unaffected by every fix recorded in this comment and
+ * reconfirmed in the corpus below.
  *
  * ## CLOSED (code review, HIGH): the OR-gated leak this rule exists to catch
  *
@@ -217,9 +256,10 @@ function jsonbCallStartsContaining(body: string, marker: string): Set<number> {
  * accepted only when **every** disjunct implies the flag, a top-level `and`
  * needs only one conjunct to, and a negated atom implies nothing. The shape
  * above now fails: its `is_worklog_public` disjunct does not name the
- * showcase flag at all, so `.every()` is false and the condition does not
- * imply the gate. See `coverExposureIssues`'s own corpus for this shape
- * pinned as a mutation.
+ * showcase flag at all — and even a disjunct that DID name it would still
+ * have to satisfy the allowlist leaf above — so `.every()` is false and the
+ * condition does not imply the gate. See `coverExposureIssues`'s own corpus
+ * for this shape pinned as a mutation.
  *
  * ## What is still a named, accepted limit
  *
@@ -237,10 +277,13 @@ function jsonbCallStartsContaining(body: string, marker: string): Set<number> {
  * chooses.
  */
 function assertsFlagTrue(atom: string, gateFlag: string): boolean {
-  if (!new RegExp(`\\b${gateFlag}\\b`).test(atom)) return false;
-  return !new RegExp(
-    `\\b${gateFlag}\\s+is\\s+(?:false|not\\s+true|unknown|null)\\b`
-  ).test(atom);
+  const trimmed = atom.trim();
+  const qualified = `(?:[a-z0-9_]+\\.)?${gateFlag}`;
+  return (
+    new RegExp(`^${qualified}\\s+is\\s+true$`).test(trimmed) ||
+    new RegExp(`^${qualified}\\s*=\\s*true$`).test(trimmed) ||
+    new RegExp(`^${qualified}$`).test(trimmed)
+  );
 }
 
 function isImmediatelyAfterGatedThen(
@@ -582,6 +625,105 @@ describe("coverExposureIssues — fires on the realistic defect shapes, and only
     expect(issues).toEqual([
       expect.stringContaining("without gating it behind its own"),
     ]);
+  });
+
+  it("MUTATION: gated on `is_showcase_public is unknown` is flagged — the third three-valued-logic inverse, pinned so the allowlist rewrite cannot silently drop it", () => {
+    const unknownGate = broken(GATED_CORRECTLY, [
+      "when v.is_showcase_public is true then",
+      "when v.is_showcase_public is unknown then",
+    ]);
+
+    const issues = coverExposureIssues(
+      routineFrom(unknownGate, "share_read_vehicle")
+    );
+    expect(issues).toEqual([
+      expect.stringContaining("without gating it behind its own"),
+    ]);
+  });
+
+  it("MUTATION: gated on `is_showcase_public is null` is flagged — pinned for the same reason as `is unknown` above", () => {
+    const nullGate = broken(GATED_CORRECTLY, [
+      "when v.is_showcase_public is true then",
+      "when v.is_showcase_public is null then",
+    ]);
+
+    const issues = coverExposureIssues(
+      routineFrom(nullGate, "share_read_vehicle")
+    );
+    expect(issues).toEqual([
+      expect.stringContaining("without gating it behind its own"),
+    ]);
+  });
+
+  it("MUTATION: gated on `is_showcase_public = false` is flagged — the equality-operator inverse the negation-denylist leaf used to leak (opus re-review)", () => {
+    // The leak the allowlist rewrite exists to close: `= false` contains none
+    // of the four strings (`is false`, `is not true`, `is unknown`, `is
+    // null`) the old leaf denied, so it went straight through as "present and
+    // not denied" — the exact silent-accept this PR fixes.
+    const eqFalseGate = broken(GATED_CORRECTLY, [
+      "when v.is_showcase_public is true then",
+      "when v.is_showcase_public = false then",
+    ]);
+
+    const issues = coverExposureIssues(
+      routineFrom(eqFalseGate, "share_read_vehicle")
+    );
+    expect(issues).toEqual([
+      expect.stringContaining("without gating it behind its own"),
+    ]);
+  });
+
+  it("MUTATION: gated on `is_showcase_public <> true` is flagged — another equality-operator inverse the old denylist leaked", () => {
+    const neqGate = broken(GATED_CORRECTLY, [
+      "when v.is_showcase_public is true then",
+      "when v.is_showcase_public <> true then",
+    ]);
+
+    const issues = coverExposureIssues(
+      routineFrom(neqGate, "share_read_vehicle")
+    );
+    expect(issues).toEqual([
+      expect.stringContaining("without gating it behind its own"),
+    ]);
+  });
+
+  it("MUTATION: gated on `is_showcase_public != true` is flagged — the ASCII spelling of the same inverse", () => {
+    const bangEqGate = broken(GATED_CORRECTLY, [
+      "when v.is_showcase_public is true then",
+      "when v.is_showcase_public != true then",
+    ]);
+
+    const issues = coverExposureIssues(
+      routineFrom(bangEqGate, "share_read_vehicle")
+    );
+    expect(issues).toEqual([
+      expect.stringContaining("without gating it behind its own"),
+    ]);
+  });
+
+  it("MUTATION: gated on `is_showcase_public is distinct from true` is flagged — the plausible spelling, since `20260903120100_public_handles.sql` already ships this exact idiom for a different column", () => {
+    const distinctGate = broken(GATED_CORRECTLY, [
+      "when v.is_showcase_public is true then",
+      "when v.is_showcase_public is distinct from true then",
+    ]);
+
+    const issues = coverExposureIssues(
+      routineFrom(distinctGate, "share_read_vehicle")
+    );
+    expect(issues).toEqual([
+      expect.stringContaining("without gating it behind its own"),
+    ]);
+  });
+
+  it("accepts the `= true` equality spelling of the gate — the second of the three allowlisted shapes, so tightening the leaf did not also narrow it below what a correct implementation may write", () => {
+    const eqTrue = broken(GATED_CORRECTLY, [
+      "when v.is_showcase_public is true then",
+      "when v.is_showcase_public = true then",
+    ]);
+
+    expect(
+      coverExposureIssues(routineFrom(eqTrue, "share_read_vehicle"))
+    ).toEqual([]);
   });
 
   it("reports both findings at once when both defects are present", () => {
