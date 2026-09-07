@@ -1400,6 +1400,64 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   `requireSigner()`'s signature and added a test case. Independently
   reviewed and found benign both times, but recorded as debt against the
   separation rule — see AGENTS.md for the full entry.
+  <br>**Owner ruling (2026-09-06) on both blocking issues from PR #123's
+  pinned comment — see T2-404a below for the first, and this note for the
+  second.** SHR-09's 2026-09-02 grader ("no anon-reachable routine reads a
+  vehicle's public work-log flag") is to be **narrowed, not left absolute
+  and not duplicated into a second reader.** The rule's real intent —
+  a *token-scoped* reader must never be able to conflate world-visibility
+  with grant-visibility — survives a version that permits exactly the
+  `SHARE_READER_FUNCTIONS` allow-listed readers to read
+  `is_worklog_public`/`is_showcase_public` **only when serving a `null`
+  token (the world, no grant)**, and continues to forbid any function
+  reading those flags while also resolving a token-scoped grant. This
+  preserves "one reviewed reader, reviewed once" and keeps the closed
+  allow-list as the single point of trust. T2-404a below re-derives and
+  narrows this grader from the spec, not from the shipped SQL.
+- [ ] **T2-404a [TEST]** Fixes the two issues PR #123's pinned `⛔ Blocked:`
+  comment raised, per owner ruling (2026-09-06, both Option A):
+  <br>1. **The `functions()` parser defect in `tests/garage/sql.ts`.**
+  `FunctionDefinition.header` is built from
+  `statement.slice(group.close + 1)` — everything *after* the argument
+  list's closing paren — so no argument name can structurally ever appear
+  in it. The two `it.fails` markers in `share-grants.test.ts` asserting
+  "both lifecycle RPCs take the argument names the graders send" are
+  unsatisfiable as written regardless of the migration. Fix `functions()`
+  to also capture the argument-name list (parsed from inside the same
+  parens `header` currently discards), expose it on `FunctionDefinition`,
+  and re-point the two markers at the new field. Verify against the real
+  `create_share_grant`/`revoke_share_grant` signatures in the already-shipped
+  `20260906120100_share_grants.sql` — this is a pure grader fix, no
+  migration change.
+  <br>2. **Narrow the SHR-09 grader per the owner ruling above.** Currently
+  an absolute "no anon-reachable routine reads
+  `is_worklog_public`/`is_showcase_public`" rule in `share-grants.test.ts`.
+  Rewrite it to the narrowed form: an allow-listed (`SHARE_READER_FUNCTIONS`)
+  reader consulting those flags is permitted **only** in a code path that
+  also requires the token to be absent/null (serving the world); the same
+  reader consulting those flags *while also* resolving a real token remains
+  forbidden, and any non-allow-listed function reading those flags remains
+  forbidden outright. Grade both halves explicitly — a reader that reads the
+  flags unconditionally (never checking token-presence first) must still
+  fail this grader, or the narrowing has quietly become the removal T2-401a's
+  own brief warned against. Add the probe-corpus cases (a definer function
+  reading the flags with no token-null check; one reading them correctly
+  gated) per this repo's established grader-defect-fix discipline (see
+  T2-401a, T2-306a for precedent: simulate the activation, mutation-test the
+  new rule, do not just assert it).
+  <br>Depends: T2-404 merged. Activates the two unactivated `it.fails`
+  markers and replaces the absolute SHR-09 grader with its narrowed form.
+  *(SHR-09)*
+- [ ] **T2-404b [PLATFORM]** Implements the T2-404a seam: the actual public
+  showcase/work-log page rendering T2-402/T2-404 both deferred — a
+  world-reader code path added to the existing anon RPCs (`share_read_vehicle`
+  et al.) that serves a `null` token by consulting
+  `is_worklog_public`/`is_showcase_public` per T2-404a's narrowed grader,
+  and the showcase/work-log page templates themselves (stable handle URLs,
+  HANDOFF-DESIGN.md chrome, hreflang) — the last piece of SHR-02..04 and the
+  reason T2-402's and T2-404's boxes are still unchecked. Check both those
+  boxes, not just this line's, once this ships. Depends: T2-404a merged.
+  *(SHR-02..04, SHR-09)*
 
 - [ ] **T2-403 [PLATFORM]** Community evidence surfacing: opt-in per-record
   first-hand evidence on problem pages (001 GAR-04 re-cut). Depends: T2-402,

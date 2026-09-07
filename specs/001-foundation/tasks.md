@@ -277,6 +277,35 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
     - **Deliberately not changed.** `kind: "tsb"` on NHTSA recall records stays: round 1 verified it as correct and consistent with T404, and the fuel-valve entry's documentary tier depends on it. `suiche` vs `interruptor` stays as written — no source arbitrates it, and inventing a canonical without one is what produced the `tensor` finding in round 1; recorded below as a glossary gap instead.
   - **Glossary gaps recorded for GAP-01, not invented here:** clock spring / espiral de contacto, switch (`suiche` vs `interruptor`), companion shaft, crush washer / arandela de sello, detent ball, surge tank / depósito de admisión, strut top hat, `hule` in the spring-pad sense, `palier` vs `eje`.
   - **Dangling ids are deliberate.** Fix paths reference `parts` ids that T503 is scoped to create ("every part referenced by T303/T403/T404"). Verified part numbers found during research and handed to T503: front sway bar end links 4056A106 / 4056A105 (interchange MR374521, MR374522); transfer case position switches MR580151/2/3/4/5 (interchange MR453314–MR453318) plus crush washer MU000393; brake booster accumulator 4630A012 (2003-2006 with traction control) and MR977223 (without); freewheel clutch control solenoid MR430381; front lower ball joint MR496799; front upper ball joint 4010A056; timing belt tensioner MD362861; 3.8L surge tank gaskets MR561581/2/4; differential seals MB393883, MB664285, MR350883, MR580530; exhaust manifold gaskets MR281721, MB687015, MD149764.
+- [ ] **T403a [TEST+CONTENT]** Settle the `acumulador` glossary collision, per
+  owner ruling (2026-09-06): find a real Costa Rican source, then apply the
+  `falseFriend`-style fix — the ruling explicitly chose "get a source, then
+  flag it" over the standing workaround, reversing a second, contradictory
+  bilingual-editor recommendation made on T504 the same day (that pass
+  argued the flag would be an unsourced claim about CR usage; the owner
+  ruled the source requirement is real but findable, not a reason to leave
+  the word permanently blocked). Concretely: (1) find and archive a genuine
+  Costa Rican source (a CR parts-vendor catalogue, a CR mechanic forum, a CR
+  workshop's own material — not a Mexican or generic Spanish-language
+  source, since the alias already correctly covers MX usage) establishing
+  `acumulador` as the everyday Costa Rican term for a hydraulic-brake
+  pressure accumulator, independent of `batería`'s "car battery" sense; (2)
+  add it to `all-electrical-bateria`'s aliases as
+  `{term: "acumulador"/"acumuladores", locale: "es", countries: ["CR"],
+  falseFriend: true}`, following the `es|llanta` precedent named in T403's
+  own note above; (3) confirm `check:glossary` now accepts `acumulador` in
+  a brake-hydraulics sense without breaking its existing `batería` coverage
+  (grade both directions — the word still resolves to `batería` in a
+  battery-sense sentence, and no longer errors in a brake-accumulator-sense
+  one); (4) T403's and T504's existing shipped workaround phrasing
+  ("depósito de presión del booster [de freno]") does NOT need to change —
+  this ticket unblocks the natural word going forward, it does not mandate
+  rewriting already-shipped, already-correct prose. If no genuine CR source
+  can be found after a real search, report that honestly rather than
+  stretching a MX/generic source to fit — the owner's ruling was
+  conditional on a real source existing, not a mandate to manufacture one.
+  *(GLO-02, GLO-03)*
+
 - [x] **T404 [CONTENT]** Gen 2 problem set, wave 1 (~20). Depends: T401. *(PRB-01…PRB-06)*
   - **21 entries, 1991–1999 (gen2 / gen2-5), all bilingual.** Brakes 4, engine 3, transfer case 3, suspension 2, steering 2, body 2, cooling 1, fuel 1, drivetrain 1, transmission 1, interior 1. Deliberately scoped clear of T403's Gen 3 list and T405's Gen 1/Gen 4 list: no transfer-case chain stretch, no GDI, no rear-diff rebuild, no sway-bar links, no HVAC mode door, no 6G74 oil-feed tick.
   - **25 distinct source URLs across the 21 entries, every one opened and every one archived** (count corrected in round 3; the earlier note said 23). **Confidence split: `tsb` 4, `community-consensus` 17.** The four documentary entries are the NHTSA recall campaigns (96V143001 + 00V226001 front brake hoses, 98V220000 front brake line chafing, 00V311001 crankshaft pulley bolt, 20V035000 NADI driver airbag inflator). **Round-2 fix:** those five source records are filed as `kind: "manufacturer"`, not `kind: "tsb"` — a recall is manufacturer primary literature filed with a regulator, but it is not a Technical Service Bulletin, which is what `src/schemas/entry.ts` defines that kind to be. `manufacturer` is in `FACTORY_DOCUMENTED_KINDS`, so the `tsb` entry tier still satisfies the T207 kind→tier rule with no under-claim, and it converges with T405's filing of the same source class.
