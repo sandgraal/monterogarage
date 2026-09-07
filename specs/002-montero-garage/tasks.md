@@ -1414,7 +1414,7 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   preserves "one reviewed reader, reviewed once" and keeps the closed
   allow-list as the single point of trust. T2-404a below re-derives and
   narrows this grader from the spec, not from the shipped SQL.
-- [ ] **T2-404a [TEST]** Fixes the two issues PR #123's pinned `⛔ Blocked:`
+- [x] **T2-404a [TEST]** Fixes the two issues PR #123's pinned `⛔ Blocked:`
   comment raised, per owner ruling (2026-09-06, both Option A):
   <br>1. **The `functions()` parser defect in `tests/garage/sql.ts`.**
   `FunctionDefinition.header` is built from
@@ -1448,6 +1448,54 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   <br>Depends: T2-404 merged. Activates the two unactivated `it.fails`
   markers and replaces the absolute SHR-09 grader with its narrowed form.
   *(SHR-09)*
+  <br>**Shipped 2026-09-06. What the new names are, so T2-404b can be written
+  against them rather than against a diff:**
+  <br>— *Issue 1.* `FunctionDefinition` gains **`argNames: readonly string[]`**
+  — the declared IN/INOUT argument names, in order, parsed by
+  `declaredArgumentNames(group.inner)` from *inside* the same parens `header`
+  discards. `out` and unnamed arguments are dropped rather than held as holes,
+  so `argNames` is deliberately **not index-aligned** with `argTypes`; every
+  caller asks set-membership questions. Name-vs-type ambiguity is resolved by
+  the same `TYPE_FIRST_WORDS` list `canonicalArgumentType` uses, so the two
+  halves of one argument list cannot disagree about where the name stops.
+  Dropping `out` is the safe direction: it stops `returns table (p_share_id
+  uuid)` from satisfying a grader asking whether the routine *takes*
+  `p_share_id`. Both markers in `share-grants.test.ts` are now unmarked and
+  green, and `header`'s inability to hold an argument name is pinned as a
+  standing fact by a reviewer probe so nobody "simplifies" them back onto it.
+  <br>— *Issue 2.* The absolute rule is replaced by
+  **`publicationFlagGateIssues(routine, allowListed, tokenArgument =
+  SHARE_READER_TOKEN_ARGUMENT)`** and the sweep
+  **`publicationFlagIssues(sql, allowed, tokenArgument)`**, driven from
+  `anonExecutableFunctions` (not from the allow-list, so an unrecognised anon
+  routine is judged rather than skipped). Three verdicts, each its own
+  finding: **not allow-listed + reads a flag → forbidden** (unchanged);
+  **allow-listed + a flag read with no token-is-null gate on that read →
+  forbidden**; **allow-listed + every flag read gated on the token being null
+  → permitted**. "Gated" means the occurrence sits either inside an
+  `if`/`elsif` branch whose own condition *implies* the token is absent
+  (`tokenAbsentSpans`, delimited at the chain's next `elsif`/`else` and at its
+  `end if`), or inside the region its statement's top-level `where` predicate
+  actually governs. Implication is decomposed, never matched: every top-level
+  `or` disjunct must imply it, any `and` conjunct suffices, and a negated atom
+  implies nothing — `not (p_token is null)` contains the permitted text and
+  means the forbidden thing. `wherePredicate` returns the predicate **and where
+  its authority stops**, so a `union`'s second arm is not gated by the first
+  arm's predicate. Two over-strictnesses are deliberate and pinned by fixtures
+  (G27s, G27h): the `else` of `if <token> is not null then` is not accepted,
+  and a read after `end if` is not.
+  <br>— *Supporting seam:* `statementRanges()` in `sql.ts` (`statements()` now
+  delegates to it) exposes `{start, end, text}` offsets, because "is this read
+  inside that guard" is a question about positions; and
+  `PUBLIC_VISIBILITY_FLAG_COLUMNS` / `SHARE_READER_TOKEN_ARGUMENT` in
+  `contract.ts` so the rule names nothing by literal.
+  <br>*Corpus and proof:* G27 in `reviewer-probes.test.ts` — 16 fixtures, four
+  of them ACCEPT cases (`G27`, `G27g`, `G27n`, `G27t`), each paired with the
+  reject it controls. Mutation battery of 25 mutations across `sql.ts`,
+  `rules.ts` and `contract.ts`: **0 survivors**. Two fixtures exist only
+  because a mutation survived a first pass — `G27k` (offsets emptied) and
+  `G27u` (an identifier ending in `where`) — which is the discipline working,
+  not decoration.
 - [ ] **T2-404b [PLATFORM]** Implements the T2-404a seam: the actual public
   showcase/work-log page rendering T2-402/T2-404 both deferred — a
   world-reader code path added to the existing anon RPCs (`share_read_vehicle`

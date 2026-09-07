@@ -1093,6 +1093,46 @@ export const SHARE_READER_NAMES = SHARE_READER_FUNCTIONS.map(
 );
 
 /**
+ * The bearer-token argument every share reader takes (SHR-05..08).
+ *
+ * Already pinned as a *value* in three places — `share-fixtures.ts` builds
+ * `{ p_token }` payloads, `share-grants.test.ts`'s `readAsHolder` sends one,
+ * and the shipped readers declare one. Named here because T2-404a's SHR-09
+ * rule has to ask a question *about* it: "is this flag read only where the
+ * token is absent?" is a question about a specific parameter, and a rule that
+ * hard-coded the string would be a rule that silently stopped applying the day
+ * a reader renamed its argument.
+ *
+ * Renegotiable in one line, like every other name in this file. What is not
+ * renegotiable is that a world/no-token request is distinguishable *inside the
+ * routine* from a token request — {@link PUBLIC_VISIBILITY_FLAG_COLUMNS}
+ * explains why.
+ */
+export const SHARE_READER_TOKEN_ARGUMENT = "p_token";
+
+/**
+ * The per-vehicle publication flags of SHR-02 — the columns GAR-04′ keys
+ * community-evidence eligibility off.
+ *
+ * > **SHR-09** A grant SHALL NOT make a record eligible for the community
+ * > evidence surfacing of GAR-04′.
+ *
+ * These are the names on the *other* side of that line from a share token. A
+ * routine that resolves a token and consults one of these in the same breath is
+ * a routine that can conflate "one grantee may see this" with "this is
+ * published", and the conflation puts a private work-log on a public problem
+ * page. Enumerated here rather than matched by shape (`is_%_public`) because a
+ * name-shaped rule is a rule that misses the flag nobody told it about — the
+ * same inversion `OPTIMISTIC_BOOLEAN_DEFAULTS` records. Adding a third
+ * publication flag to `vehicles` means adding it here, and the column contract
+ * above is where a reviewer will see both.
+ */
+export const PUBLIC_VISIBILITY_FLAG_COLUMNS = [
+  "is_showcase_public",
+  "is_worklog_public",
+] as const;
+
+/**
  * The enumerated deny half: routines that exist today and must never become
  * executable by `anon` or `public`.
  *
