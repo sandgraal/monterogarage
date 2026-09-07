@@ -1576,6 +1576,30 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   templates. Depends: T2-404a merged (for the world-reader RPC shape the
   pages will call), the signature-probe fix above. *(SHR-02..04)*
 
+- [x] **T2-404d [PLATFORM+TEST]** Public showcase **cover photo** display — the
+  display half T2-404b's storage side (public `vehicle-cover-photos` bucket +
+  copy trigger) left as an unbuilt seam. Direct owner request 2026-09-07, after
+  the deployed showcase always rendered the no-cover placeholder even for a
+  vehicle with a designated cover. Shipped: the T2-404d render/RPC graders
+  (#160, `0a33393`) — including a hardened **allowlist** cover-exposure gate
+  closing three distinct privacy-leak spellings review found in the grader
+  itself (the `is_showcase_public OR is_worklog_public` disjunction, `is false`,
+  and the `= false`/`<> true`/`is distinct from true` family); then the RPC +
+  page (#161, `1248709`): `share_read_vehicle`'s world path now projects
+  `cover_photo_path` **gated on `is_showcase_public` alone** (never the
+  row-admitting OR — GAR-01′/SHR-09), the `publicCoverPhotoUrl` seam, and the
+  page wiring filling the `[data-showcase-cover]` img. Migration
+  `20260907140000_public_showcase_cover` deployed to the hosted project and
+  **verified live on Gitana's page** (cover renders, correct src/localized alt,
+  no console errors). *(GAR-01′, SHR-02, SHR-09)*
+  <br>**Two non-blocking follow-ups, recorded so they aren't lost:** (1) the
+  render grader no longer directly asserts the cover img ships `hidden` by
+  default — the retired "TODAY" canary bundled that property, so a one-line
+  render-grader assertion (a test-writer's, per the ledger) should re-pin the
+  placeholder-when-null invariant; (2) the hosted `sync_vehicle_cover_public_copy`
+  still carries the 2026-09-07 prod-only fallback-URL override (see T2-404b's
+  closure note) that a future migration must reconcile.
+
 - [ ] **T2-403 [PLATFORM]** Community evidence surfacing: opt-in per-record
   first-hand evidence on problem pages (001 GAR-04 re-cut). Depends: T2-402,
   001-T401. *(GAR-04′, SHR-09)*
