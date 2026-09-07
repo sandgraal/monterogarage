@@ -1,0 +1,514 @@
+---
+/**
+ * A vehicle's public **showcase** page (T2-404b, SHR-02, SHR-04).
+ *
+ * > **SHR-02** A user SHALL be able to publish, per vehicle: a showcase page
+ * > and/or a work-log page, each at a **stable public URL under their handle**,
+ * > bilingual chrome, user content in whatever language the user wrote.
+ * > **SHR-04** Public pages SHALL carry the reference site's chrome and design
+ * > (HANDOFF-DESIGN.md) and hreflang per 001 I18N-04.
+ *
+ * ## Built once per locale at a placeholder, reached through a rewrite
+ *
+ * The handle and the vehicle id are unknown at build time and 001 SCF-01
+ * forbids SSR, so this page is built once per locale at
+ * `/{garage}/{SHOWCASE_PLACEHOLDER_HANDLE}/{SHOWCASE_PLACEHOLDER_VEHICLE}/` and
+ * reached in production through the `vercel.json` rewrite for
+ * `/{garage}/:handle/:vehicleId/`. The browser's address is the real one; the
+ * server only ever saw the placeholder. The client reads the two path
+ * parameters off `location.pathname` (`showcaseUrlParams`), asks the
+ * world-reader RPC for the vehicle, and — because `BaseLayout` emitted the
+ * canonical/hreflang tags and `LocaleSwitcher` its anchors from the *placeholder*
+ * route — rewrites all of them to the resolved address with
+ * `applyResolvedShowcaseLinks`, so a crawler is never told every owner's page is
+ * a duplicate of one URL and a reader who switches language crosses to *this*
+ * truck's page in the other locale.
+ *
+ * ## The page renders nothing it was not given, and decides nothing itself
+ *
+ * Every access decision is in the database (SHR-01 names three enforcement
+ * modes and page code is none of them). The world reader returns a vehicle only
+ * when its owner published *some* page of it; which page — showcase or work-log
+ * — is `resolveShowcasePage`'s per-flag decision, delegated to
+ * `src/lib/garage/showcase-view.ts` rather than re-derived here. A handle nobody
+ * holds, a retired handle, or a truck the owner never published all arrive as
+ * one refusal, rendered as one generic "not published" state — a handle is not
+ * a secret, so this is not SHR-08's oracle case, it is simply that a reader has
+ * one thing to do about any of them.
+ *
+ * ## The cover photo is the no-cover placeholder, on purpose (for now)
+ *
+ * The public-cover-photo bucket is a separate branch; the world reader does not
+ * return a cover URL yet, so this renders the same placeholder a photo-less
+ * vehicle gets (GAR-01′). The `[data-showcase-cover]` image is the seam a public
+ * cover URL slots into later with no rewrite here, and `data-string-cover-alt`
+ * (`publicCoverAltTemplate`) is the alt-text half of that same forward seam:
+ * plumbed to the DOM now, read by the client only once that branch fills the
+ * image, so it lands adding no markup here.
+ *
+ * refs specs/002-montero-garage (SHR-02, SHR-04, SHR-01, GAR-01′, MIG-03),
+ * specs/001-foundation (SCF-01, I18N-01, I18N-04, I18N-08),
+ * specs/001-foundation/design/HANDOFF-DESIGN.md
+ */
+import BaseLayout from "../../../../layouts/BaseLayout.astro";
+import {
+  LOCALE_BCP47,
+  LOCALES,
+  isLocale,
+  type Locale,
+} from "../../../../i18n/routing";
+import { COLLECTION_ROUTE_SEGMENTS } from "../../../../i18n/routes";
+import { generationLabel, t } from "../../../../i18n/ui";
+import { SITE_NAME } from "../../../../site";
+import { SUPABASE_BROWSER_CONFIG } from "../../../../lib/supabase/config";
+import {
+  SHOWCASE_PLACEHOLDER_HANDLE,
+  SHOWCASE_PLACEHOLDER_VEHICLE,
+  showcaseRoutePaths,
+} from "../../../../lib/garage/showcase-view";
+import {
+  GENERATION_IDS,
+  type GenerationId,
+} from "../../../../schemas/vehicles";
+
+export function getStaticPaths() {
+  return LOCALES.map((locale) => ({
+    params: {
+      locale,
+      garageSegment: COLLECTION_ROUTE_SEGMENTS.garage[locale],
+      handle: SHOWCASE_PLACEHOLDER_HANDLE,
+      vehicle: SHOWCASE_PLACEHOLDER_VEHICLE,
+    },
+  }));
+}
+
+const { locale: param } = Astro.params;
+if (!isLocale(param)) {
+  throw new Error(`Unknown locale segment: ${String(param)}`);
+}
+const locale: Locale = param;
+const strings = t(locale);
+
+/**
+ * The placeholder route this page is *built* at, in each locale — what
+ * `BaseLayout` and the switcher render their links from, and exactly what the
+ * client rewrites to the resolved address once the handle and vehicle id are
+ * known.
+ */
+const placeholderRoutes = showcaseRoutePaths(
+  SHOWCASE_PLACEHOLDER_HANDLE,
+  SHOWCASE_PLACEHOLDER_VEHICLE
+);
+
+const configured = SUPABASE_BROWSER_CONFIG !== null;
+
+/**
+ * The generation id → localized short label map, server-built so the client
+ * can render "Gen 3" / "Generación 3" without shipping the whole taxonomy or a
+ * second copy of `generationLabel`. One JSON object, `<` escaped so no value
+ * can close the `<script>` early (the defence `VehicleSelector.astro` documents).
+ */
+const generationLabels = Object.fromEntries(
+  GENERATION_IDS.map((id) => [id, generationLabel(strings, id as GenerationId)])
+);
+const generationLabelsJson = JSON.stringify(generationLabels).replaceAll(
+  "<",
+  "\\u003c"
+);
+---
+
+<BaseLayout
+  locale={locale}
+  routePathByLocale={placeholderRoutes}
+  title={`${strings.showcasePageTitle} — ${SITE_NAME}`}
+  description={strings.showcasePageIntro}
+>
+  <section
+    class="showcase"
+    data-showcase
+    data-generation-labels={generationLabelsJson}
+    data-locale={LOCALE_BCP47[locale]}
+    data-string-loading={strings.showcasePageLoading}
+    data-string-not-found={strings.publicPageNotFound}
+    data-string-error={strings.sharePageError}
+    data-string-worklog-link={strings.showcasePageWorklogLink}
+    data-string-cover-alt={strings.publicCoverAltTemplate}
+    data-string-testimony={strings.publicPageTestimonyNote}
+  >
+    <div class="showcase__intro">
+      <h1>{strings.showcasePageTitle}</h1>
+      <p>{strings.showcasePageIntro}</p>
+    </div>
+
+    {
+      configured ? (
+        <div class="showcase__panel">
+          <p
+            class="showcase__message"
+            data-showcase-message
+            role="status"
+            aria-live="polite"
+          >
+            {strings.showcasePageLoading}
+          </p>
+
+          <article class="showcase__card" data-showcase-body hidden>
+            <div class="showcase__cover">
+              {/*
+               * The cover, once a public cover URL exists to fill it. Until
+               * then the placeholder below is what shows — the same fallback a
+               * photo-less vehicle gets (GAR-01′). `hidden` rather than absent
+               * so the seam is here to reveal, not to build.
+               */}
+              <img
+                class="showcase__cover-image"
+                data-showcase-cover
+                alt=""
+                hidden
+              />
+              <span class="showcase__cover-empty" aria-hidden="true" />
+            </div>
+
+            <div class="showcase__head">
+              {/*
+               * The vehicle's name is the user's own word and cannot be
+               * server-rendered; it ships as a paragraph and becomes a heading
+               * the moment it has something to head, the same convention
+               * `[shareSegment].astro` uses (WCAG2AA H42.2).
+               */}
+              <p class="showcase__name" data-showcase-name />
+              <p class="showcase__identity" data-showcase-identity />
+            </div>
+
+            <p class="showcase__fineprint">{strings.publicPageTestimonyNote}</p>
+
+            <p class="showcase__actions">
+              <a class="showcase__link" data-showcase-worklog-link hidden>
+                {strings.showcasePageWorklogLink}
+              </a>
+            </p>
+          </article>
+
+          <noscript>
+            <p class="showcase__notice">{strings.publicPageScriptRequired}</p>
+          </noscript>
+        </div>
+      ) : (
+        <p class="showcase__notice">{strings.publicPageUnavailable}</p>
+      )
+    }
+  </section>
+</BaseLayout>
+
+<script>
+  import { isLocale, localeHref, type Locale } from "../../../../i18n/routing";
+  import { SITE_NAME } from "../../../../site";
+  import { readPublicVehicle } from "../../../../lib/supabase/shares";
+  import {
+    applyResolvedShowcaseLinks,
+    resolveShowcasePage,
+    showcaseRoutePaths,
+    worklogRoutePath,
+    showcaseUrlParams,
+    type PublicProfileDirectory,
+  } from "../../../../lib/garage/showcase-view";
+  import type { VehicleRow } from "../../../../lib/garage/vehicle";
+
+  /**
+   * DOM wiring only. Every decision worth testing is in the database, in
+   * `src/lib/garage/showcase-view.ts`, or in `src/lib/garage/visibility.ts`,
+   * and every string comes from the markup the server already localized
+   * (I18N-08) — this script composes no prose.
+   */
+  function enhance(root: HTMLElement): void {
+    const message = root.querySelector<HTMLElement>("[data-showcase-message]");
+    const body = root.querySelector<HTMLElement>("[data-showcase-body]");
+    const name = root.querySelector<HTMLElement>("[data-showcase-name]");
+    const identity = root.querySelector<HTMLElement>(
+      "[data-showcase-identity]"
+    );
+    const worklogLink = root.querySelector<HTMLAnchorElement>(
+      "[data-showcase-worklog-link]"
+    );
+    if (!message || !body || !name || !identity || !worklogLink) return;
+
+    const text = { ...root.dataset };
+    const localeTag = text.locale || "en";
+    const locale: Locale = isLocale(localeTag.slice(0, 2))
+      ? (localeTag.slice(0, 2) as Locale)
+      : "en";
+
+    const generationLabels: Record<string, string> = (() => {
+      try {
+        return JSON.parse(text.generationLabels ?? "{}") as Record<
+          string,
+          string
+        >;
+      } catch {
+        return {};
+      }
+    })();
+
+    function say(value: string): void {
+      message!.textContent = value;
+      message!.hidden = value === "";
+    }
+
+    /** Add or remove a `noindex` robots meta — a refused page is not indexable. */
+    function setNoindex(on: boolean): void {
+      const existing = document.head.querySelector<HTMLMetaElement>(
+        'meta[name="robots"]'
+      );
+      if (on) {
+        const meta = existing ?? document.createElement("meta");
+        meta.setAttribute("name", "robots");
+        meta.setAttribute("content", "noindex, nofollow");
+        if (!existing) document.head.append(meta);
+      } else if (existing) {
+        existing.remove();
+      }
+    }
+
+    function identityLabel(vehicle: {
+      readonly generation_id: string;
+      readonly market_id: string | null;
+      readonly model_year: number | null;
+      readonly engine_id: string | null;
+    }): string {
+      // The separators are punctuation, not prose. Raw taxonomy codes for
+      // market and engine, upper-cased, is the same presentation the
+      // accountless share page uses for a reader who arrived from a link.
+      return [
+        generationLabels[vehicle.generation_id] ?? vehicle.generation_id,
+        vehicle.market_id ? vehicle.market_id.toUpperCase() : "",
+        vehicle.model_year === null ? "" : String(vehicle.model_year),
+        vehicle.engine_id ? vehicle.engine_id.toUpperCase() : "",
+      ]
+        .filter((part) => part !== "")
+        .join(" · ");
+    }
+
+    async function open(): Promise<void> {
+      const params = showcaseUrlParams(window.location.pathname);
+      if (params === null) {
+        setNoindex(true);
+        say(text.stringNotFound ?? "");
+        return;
+      }
+      say(text.stringLoading ?? "");
+
+      const result = await readPublicVehicle(params);
+      if (!result.ok) {
+        // A failed fetch is not a "not published" (AGENTS.md): the outage is
+        // said as an outage, and only a database refusal is the not-found line.
+        if (result.reason === "refused") setNoindex(true);
+        say(
+          result.reason === "refused"
+            ? (text.stringNotFound ?? "")
+            : (text.stringError ?? "")
+        );
+        return;
+      }
+      if (result.value === null) {
+        setNoindex(true);
+        say(text.stringNotFound ?? "");
+        return;
+      }
+
+      // A full row for the decision function. The world reader hands back
+      // identity and the two publication flags; the fields it never returns —
+      // owner id, photos, cover — are filled with the world's own view of them
+      // (`visibility.ts` reads none of them for the world principal).
+      const vehicle: VehicleRow = {
+        ...result.value,
+        owner_id: "",
+        photo_paths: [],
+        cover_photo_path: null,
+      };
+      const profile: PublicProfileDirectory = {
+        handle: params.handle,
+        retiredHandles: [],
+        vehicles: [vehicle],
+      };
+      const resolution = resolveShowcasePage({
+        profiles: [profile],
+        records: [],
+        handle: params.handle,
+        vehicleId: params.vehicleId,
+        page: "showcase",
+      });
+      if (!resolution.ok || resolution.page !== "showcase") {
+        setNoindex(true);
+        say(text.stringNotFound ?? "");
+        return;
+      }
+
+      setNoindex(false);
+      const resolved = resolution.vehicle;
+
+      name!.textContent = resolved.display_name;
+      name!.setAttribute("role", "heading");
+      name!.setAttribute("aria-level", "2");
+      identity!.textContent = identityLabel(resolved);
+      // The client override of the server-rendered `<title>` uses the same
+      // single brand source `src/site.ts` owns (002 MIG-01), so a rename lands
+      // here too and never diverges from the `${...} — ${SITE_NAME}` the
+      // frontmatter emitted.
+      document.title = `${resolved.display_name} — ${SITE_NAME}`;
+
+      // The work-log link, only when the owner published that page too — the
+      // two switches are independent (SHR-02).
+      if (resolved.is_worklog_public) {
+        worklogLink!.href = localeHref(
+          locale,
+          worklogRoutePath(params.handle, params.vehicleId, locale)
+        );
+        worklogLink!.hidden = false;
+      } else {
+        worklogLink!.hidden = true;
+      }
+
+      // Rewrite the placeholder canonical/hreflang/switcher to this vehicle's
+      // real address (see the page's own doc comment).
+      applyResolvedShowcaseLinks({
+        doc: document,
+        routes: showcaseRoutePaths(params.handle, params.vehicleId),
+        locale,
+      });
+
+      body!.hidden = false;
+      say("");
+    }
+
+    void open().catch(() => say(text.stringError ?? ""));
+  }
+
+  const root = document.querySelector<HTMLElement>("[data-showcase]");
+  if (root) enhance(root);
+</script>
+
+<style>
+  /*
+   * The same local palette every page in this repo declares on its own root
+   * element (HANDOFF-DESIGN.md; `[shareSegment].astro` is the nearest sibling).
+   * Scoped, not `is:global`.
+   */
+  .showcase {
+    --paper: #f7f4ee;
+    --panel: #ffffff;
+    --ink: #2b2620;
+    --muted: #6e6559;
+    --line: #e4ddd1;
+    --chip: #efe9dd;
+    --rust: #b0532a;
+    --rust-deep: #93441f;
+
+    font-family: Archivo, "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-width: 42rem;
+  }
+
+  /*
+   * The `[hidden]` guard every interactive page on this site carries: an
+   * author-origin `display: flex` beats the user-agent `[hidden]` rule, so a
+   * panel that ships `hidden` renders anyway without this. Graded by
+   * `tests/e2e/hidden-guard.spec.ts`.
+   */
+  .showcase [hidden] {
+    display: none !important;
+  }
+
+  .showcase__intro,
+  .showcase__panel,
+  .showcase__card,
+  .showcase__head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .showcase__intro h1 {
+    margin: 0;
+    font-size: 1.875rem;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+  }
+
+  .showcase__intro p,
+  .showcase__head p {
+    margin: 0;
+  }
+
+  .showcase__card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+    padding: 1.25rem;
+  }
+
+  .showcase__cover {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    border-radius: 0.375rem;
+    overflow: hidden;
+    background: var(--chip);
+  }
+
+  .showcase__cover-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* The no-cover placeholder — a warm-paper panel, no image, no text. */
+  .showcase__cover-empty {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(
+      135deg,
+      var(--chip),
+      var(--chip) 12px,
+      #e7e0d2 12px,
+      #e7e0d2 24px
+    );
+  }
+
+  .showcase__name {
+    font-size: 1.375rem;
+    font-weight: 800;
+    letter-spacing: -0.2px;
+  }
+
+  .showcase__identity {
+    color: var(--muted);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.9375rem;
+  }
+
+  .showcase__notice,
+  .showcase__fineprint,
+  .showcase__message {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.9375rem;
+  }
+
+  .showcase__actions {
+    margin: 0;
+  }
+
+  .showcase__link {
+    color: var(--rust);
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .showcase__link:hover {
+    color: var(--rust-deep);
+    text-decoration: underline;
+  }
+</style>

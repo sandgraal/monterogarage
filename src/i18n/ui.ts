@@ -620,6 +620,45 @@ export interface UiStrings
   readonly sharePageReceiptOpening: string;
   readonly sharePageReceiptFailed: string;
   readonly sharePageReceiptsClosed: string;
+  /* The public showcase / work-log pages — T2-404b, SHR-02..04 */
+  /**
+   * Not switched on: this build has no Supabase project, so there is nothing
+   * to read a published truck out of. The same honest "off here" the sign-in
+   * and share pages render, never a control that cannot work.
+   */
+  readonly publicPageUnavailable: string;
+  readonly publicPageScriptRequired: string;
+  /**
+   * The one refusal, for every reason (SHR-02's stable-URL promise, kept
+   * gently). A handle nobody holds, a handle its owner retired, a truck the
+   * owner has not published, a vehicle id under a different handle — all render
+   * this single sentence, the way `[shareSegment].astro` folds its own reasons
+   * into one. A handle is not a secret, so this is not SHR-08's oracle rule; it
+   * is simply that a reader has one thing to do about any of them.
+   */
+  readonly publicPageNotFound: string;
+  /**
+   * The line framing a published truck's records as the owner's own account of
+   * their own truck — third person, because the reader is not the owner.
+   * AGENTS.md: user records are testimony, never presented as site-verified
+   * reference facts, and a stranger who arrived from a link is likelier to
+   * mistake one for the other.
+   */
+  readonly publicPageTestimonyNote: string;
+  /** Alt text for the cover image. `{name}` is the vehicle's own display name. */
+  readonly publicCoverAltTemplate: string;
+  readonly showcasePageTitle: string;
+  readonly showcasePageIntro: string;
+  readonly showcasePageLoading: string;
+  /** Link from the showcase to this truck's work-log, shown only when it is public. */
+  readonly showcasePageWorklogLink: string;
+  readonly worklogPageTitle: string;
+  readonly worklogPageIntro: string;
+  readonly worklogPageLoading: string;
+  readonly worklogPageHistoryHeading: string;
+  readonly worklogPageHistoryEmpty: string;
+  /** Link from the work-log back to this truck's showcase, shown only when it is public. */
+  readonly worklogPageShowcaseLink: string;
   /* Records and receipts — T2-302, GAR-02′ / GAR-05′ */
   /**
    * The line that frames every record on the page as the owner's own account
@@ -1426,6 +1465,28 @@ const en: UiStrings = {
   sharePageReceiptFailed:
     "That receipt would not open. Try again in a moment; if it keeps failing, ask the owner.",
   sharePageReceiptsClosed: "This link does not include the receipts.",
+  publicPageUnavailable:
+    "Published pages are not switched on yet on this deployment. The reference side of the site works without them.",
+  publicPageScriptRequired:
+    "This page needs JavaScript to load the truck it points at. Everything else on this site works without it.",
+  publicPageNotFound:
+    "This page is not published. The owner may have taken it down, or the address may have changed.",
+  publicPageTestimonyNote:
+    "These are the owner's own notes about their own truck, kept as they wrote them. The site does not check them and never presents them as reference facts.",
+  publicCoverAltTemplate: "Cover photo of {name}",
+  showcasePageTitle: "A published truck",
+  showcasePageIntro:
+    "The owner made this truck's page public. The notes are theirs, in whatever language they wrote them.",
+  showcasePageLoading: "Opening this truck's page…",
+  showcasePageWorklogLink: "See this truck's work log",
+  worklogPageTitle: "A published work log",
+  worklogPageIntro:
+    "The owner made this truck's work log public. Costs stay private unless the owner opened them on a record; receipts are never shown here.",
+  worklogPageLoading: "Opening this work log…",
+  worklogPageHistoryHeading: "What has been done",
+  worklogPageHistoryEmpty:
+    "The owner has not published any work on this truck yet.",
+  worklogPageShowcaseLink: "See this truck's page",
   garageRecordsTestimonyNote:
     "These are your own notes about your own truck, kept as you wrote them. The site does not check them and never presents them as reference facts.",
   garageRecordAdd: "Add a record",
@@ -2109,6 +2170,28 @@ const es: UiStrings = {
   sharePageReceiptFailed:
     "Esa factura no se pudo abrir. Inténtelo de nuevo en un momento; si sigue fallando, avísele a la persona dueña.",
   sharePageReceiptsClosed: "Este enlace no incluye las facturas.",
+  publicPageUnavailable:
+    "Las páginas publicadas todavía no están activas en este despliegue. La parte de referencia del sitio funciona sin ellas.",
+  publicPageScriptRequired:
+    "Esta página necesita JavaScript para cargar el carro al que apunta. Todo lo demás en este sitio funciona sin él.",
+  publicPageNotFound:
+    "Esta página no está publicada. Puede que la persona dueña la haya quitado, o que la dirección haya cambiado.",
+  publicPageTestimonyNote:
+    "Estas son las anotaciones de la persona dueña sobre su propio carro, tal como ella las escribió. El sitio no las verifica ni las presenta nunca como datos de referencia.",
+  publicCoverAltTemplate: "Foto de portada de {name}",
+  showcasePageTitle: "Un carro publicado",
+  showcasePageIntro:
+    "La persona dueña hizo pública la página de este carro. Las anotaciones son de ella, en el idioma en que las escribió.",
+  showcasePageLoading: "Abriendo la página de este carro…",
+  showcasePageWorklogLink: "Ver el historial de este carro",
+  worklogPageTitle: "Un historial publicado",
+  worklogPageIntro:
+    "La persona dueña hizo público el historial de este carro. Los costos quedan privados a menos que ella los haya abierto en una ficha; las facturas nunca se muestran aquí.",
+  worklogPageLoading: "Abriendo este historial…",
+  worklogPageHistoryHeading: "Lo que se le ha hecho",
+  worklogPageHistoryEmpty:
+    "La persona dueña todavía no ha publicado ningún trabajo en este carro.",
+  worklogPageShowcaseLink: "Ver la página de este carro",
   garageRecordsTestimonyNote:
     "Estas son sus propias anotaciones sobre su propio carro, tal como usted las escribió. El sitio no las verifica ni las presenta nunca como datos de referencia.",
   garageRecordAdd: "Agregar una ficha",

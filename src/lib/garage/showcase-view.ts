@@ -65,30 +65,80 @@
  *     must call, once the handle and vehicle id are known, to rewrite both
  *     the `<head>` tags and the switcher's anchors to the real address.
  *
- * ## Expected-failure convention
+ * ## Expected-failure convention (now discharged)
  *
- * Every export below throws {@link SHOWCASE_SEAM_NOT_IMPLEMENTED}. T2-404b
- * replaces the throw with the real logic and, in `tests/pages/
- * showcase-worklog.render.test.ts`, deletes exactly the `.fails` marker on
- * each grader that logic satisfies — never edits an assertion (AGENTS.md's
- * activation convention; T801's `computeSyncPlan` is the precedent this
- * module follows).
+ * Every export below used to throw {@link SHOWCASE_SEAM_NOT_IMPLEMENTED}. T2-404b
+ * replaced the throws with the real logic and, in `tests/pages/
+ * showcase-worklog.render.test.ts`, deleted exactly the `.fails` marker on each
+ * grader that logic satisfies — never editing an assertion (AGENTS.md's
+ * activation convention; T801/T802's `computeSyncPlan` is the precedent this
+ * module follows). The one unmarked seam canary that proved those `.fails`
+ * markers failed for the seam and nothing else went in the same change: a
+ * canary watching a function that no longer throws has nothing left to prove
+ * (T802's `sync-plan.test.ts` records the identical retirement).
+ *
+ * {@link SHOWCASE_SEAM_NOT_IMPLEMENTED} is left exported, unused by the code
+ * below, for the reason `./cover.ts` keeps `COVER_SEAM` after T2-306: the
+ * message names its task for provenance, and a future seam in this module is
+ * free to reuse the pattern.
  *
  * refs specs/002-montero-garage (SHR-02, SHR-03, SHR-04, SHR-09),
  * specs/001-foundation (SCF-01, I18N-04),
  * specs/001-foundation/design/HANDOFF-DESIGN.md
  */
-import type { Locale, LocalizedRoutePaths } from "../../i18n/routing.ts";
+import {
+  DEFAULT_LOCALE,
+  LOCALES,
+  LOCALE_HREFLANG,
+  isLocale,
+  localeHref,
+  type Locale,
+  type LocalizedRoutePaths,
+} from "../../i18n/routing.ts";
+import { handleRoutePath, normalizeHandle } from "./handles.ts";
 import type { RecordRow } from "./record.ts";
 import type { VehicleRow } from "./vehicle.ts";
-import type { VisibleRecord } from "./visibility.ts";
+import { maskRecordsForPrincipal, type VisibleRecord } from "./visibility.ts";
 
-/** Thrown by every export in this module until T2-404b fills the seam. */
+/**
+ * The seam message this module's functions threw while T2-404b was unbuilt.
+ *
+ * Left in place, unused by the functions below — see the module note.
+ */
 export const SHOWCASE_SEAM_NOT_IMPLEMENTED = "not implemented: T2-404b";
 
-function notImplemented(): never {
-  throw new Error(SHOWCASE_SEAM_NOT_IMPLEMENTED);
-}
+/**
+ * The work-log page's own path segment, per locale (`log` / `historial`).
+ *
+ * Locale-independent *data*, not prose: the word a reader sees is the same
+ * word the URL is built from, and it exists once here rather than once per
+ * locale record (AGENTS.md — a figure or a fixed segment is stored once). It
+ * is a leaf under the vehicle, not a collection, so it lives here rather than
+ * in `src/i18n/routes.ts`'s `COLLECTION_ROUTE_SEGMENTS`; T2-404b's task brief
+ * names these two exact segments, and `tests/pages/showcase-worklog.render.
+ * test.ts` restates them as its own independent copy.
+ */
+export const WORKLOG_ROUTE_SEGMENTS = {
+  en: "log",
+  es: "historial",
+} as const satisfies Readonly<Record<Locale, string>>;
+
+/**
+ * The handle and vehicle-id segments the showcase/work-log pages are *built*
+ * at, one page per locale, and the `vercel.json` rewrite maps the real
+ * `/{garage}/:handle/:vehicleId/` URLs onto (see the page templates' own doc
+ * comments and the module note's point 4).
+ *
+ * Both are deliberately un-claimable so a built placeholder can never shadow a
+ * real page: the double underscores fail {@link HANDLE_PATTERN}, so no handle
+ * can ever equal {@link SHOWCASE_PLACEHOLDER_HANDLE}, and a vehicle id is a
+ * UUID, which {@link SHOWCASE_PLACEHOLDER_VEHICLE} is not. A crawler that
+ * reached the literal placeholder URL finds no resolvable handle there and the
+ * page `noindex`es itself at runtime, the same belt the templates apply to
+ * every refusal.
+ */
+export const SHOWCASE_PLACEHOLDER_HANDLE = "__pending__";
+export const SHOWCASE_PLACEHOLDER_VEHICLE = "__vehicle__";
 
 /** Which of the two published surfaces SHR-02 names is being resolved. */
 export type ShowcasePageKind = "showcase" | "worklog";
@@ -182,8 +232,70 @@ export function resolveShowcasePage(input: {
   readonly vehicleId: string;
   readonly page: ShowcasePageKind;
 }): ShowcaseResolution {
-  void input;
-  return notImplemented();
+  const { profiles, records, vehicleId, page } = input;
+  const wanted = normalizeHandle(input.handle);
+
+  // A *current* handle names a page; a retired one never does, not even for the
+  // profile that once held it (the migration's own column comment). So the live
+  // handles are matched first, and only a miss falls through to the
+  // retired/unknown distinction below.
+  const profile = profiles.find(
+    (candidate) => normalizeHandle(candidate.handle) === wanted
+  );
+  if (profile === undefined) {
+    const retiredSomewhere = profiles.some((candidate) =>
+      candidate.retiredHandles.some(
+        (retired) => normalizeHandle(retired) === wanted
+      )
+    );
+    // Distinct internally (a reviewer debugging a dead link needs to tell them
+    // apart), even though a page renders one generic "not published" state for
+    // both — a handle is not a secret, so this is not SHR-08's oracle case.
+    return {
+      ok: false,
+      reason: retiredSomewhere ? "handle-retired" : "handle-unknown",
+    };
+  }
+
+  // Only *this* handle's own vehicles. A vehicle id that exists under some
+  // other profile is not found here — the showcase analogue of `visibility.ts`'s
+  // "a grant on another vehicle shows nothing of this one".
+  const vehicle = profile.vehicles.find((each) => each.id === vehicleId);
+  if (vehicle === undefined) {
+    return { ok: false, reason: "vehicle-unknown" };
+  }
+
+  // The per-vehicle publication gate, per page kind. The two switches are
+  // independent (SHR-02): one page being public never opens the other. On
+  // refusal the branch returns *only* the reason — never the vehicle, never a
+  // partial payload — so "this word does not name a public page" and "here is
+  // what it names" are never the same shape to render against.
+  if (page === "showcase") {
+    if (!vehicle.is_showcase_public) {
+      return { ok: false, reason: "showcase-private" };
+    }
+    // The showcase carries no records at all, published or not: SHR-02 draws
+    // the line between the two pages, not between "some records" and "all".
+    return { ok: true, page: "showcase", vehicle };
+  }
+
+  if (!vehicle.is_worklog_public) {
+    return { ok: false, reason: "worklog-private" };
+  }
+  // The world's masking is `visibility.ts`'s single answer, not a second copy:
+  // this delegates rather than re-deriving cost omission or row visibility, so
+  // the work-log and the accountless share link cannot drift on one edge
+  // (SHR-03, SHR-06, SHR-09; `maskRecordsForPrincipal` is the authority).
+  return {
+    ok: true,
+    page: "worklog",
+    vehicle,
+    records: maskRecordsForPrincipal({
+      records,
+      vehicle,
+      principal: { kind: "world" },
+    }),
+  };
 }
 
 /**
@@ -197,10 +309,11 @@ export function showcaseRoutePath(
   vehicleId: string,
   locale: Locale
 ): string {
-  void handle;
-  void vehicleId;
-  void locale;
-  return notImplemented();
+  // One level under the handle's own index route, the same way every route
+  // builder here composes with the registry it extends. `handleRoutePath`
+  // already opens with `/`, folds the handle and closes with `/`, so the vehicle
+  // id and its trailing slash append without doubling one.
+  return `${handleRoutePath(handle, locale)}${vehicleId}/`;
 }
 
 /** Every locale's showcase route for one vehicle, for hreflang and the switcher. */
@@ -208,9 +321,12 @@ export function showcaseRoutePaths(
   handle: string,
   vehicleId: string
 ): LocalizedRoutePaths {
-  void handle;
-  void vehicleId;
-  return notImplemented();
+  return Object.fromEntries(
+    LOCALES.map((locale) => [
+      locale,
+      showcaseRoutePath(handle, vehicleId, locale),
+    ])
+  ) as LocalizedRoutePaths;
 }
 
 /**
@@ -223,10 +339,8 @@ export function worklogRoutePath(
   vehicleId: string,
   locale: Locale
 ): string {
-  void handle;
-  void vehicleId;
-  void locale;
-  return notImplemented();
+  // One level under the showcase route, in that locale's own word for it.
+  return `${showcaseRoutePath(handle, vehicleId, locale)}${WORKLOG_ROUTE_SEGMENTS[locale]}/`;
 }
 
 /** Every locale's work-log route for one vehicle. */
@@ -234,9 +348,12 @@ export function worklogRoutePaths(
   handle: string,
   vehicleId: string
 ): LocalizedRoutePaths {
-  void handle;
-  void vehicleId;
-  return notImplemented();
+  return Object.fromEntries(
+    LOCALES.map((locale) => [
+      locale,
+      worklogRoutePath(handle, vehicleId, locale),
+    ])
+  ) as LocalizedRoutePaths;
 }
 
 /**
@@ -268,6 +385,98 @@ export function applyResolvedShowcaseLinks(input: {
   readonly routes: LocalizedRoutePaths;
   readonly locale: Locale;
 }): void {
-  void input;
-  notImplemented();
+  const { doc, routes, locale } = input;
+
+  // The canonical is this page's own locale's resolved route.
+  rewriteHref(
+    doc.querySelector('link[rel="canonical"]'),
+    localeHref(locale, routes[locale])
+  );
+
+  // One hreflang alternate per locale, each to that locale's resolved route…
+  for (const each of LOCALES) {
+    rewriteHref(
+      doc.querySelector(
+        `link[rel="alternate"][hreflang="${LOCALE_HREFLANG[each]}"]`
+      ),
+      localeHref(each, routes[each])
+    );
+  }
+  // …and x-default to the default locale's route (`localizedAlternateLinks`'s
+  // own rule — the two agree by construction).
+  rewriteHref(
+    doc.querySelector('link[rel="alternate"][hreflang="x-default"]'),
+    localeHref(DEFAULT_LOCALE, routes[DEFAULT_LOCALE])
+  );
+
+  // The switcher's own anchors, not only the `<head>` tags: a reader who clicks
+  // "Español" on a live showcase page must cross to *this vehicle's* page in the
+  // other locale, not back to the shared placeholder every locale's build shares.
+  for (const anchor of doc.querySelectorAll("[data-locale-choice]")) {
+    const choice = anchor.getAttribute("data-locale-choice");
+    if (choice !== null && isLocale(choice)) {
+      rewriteHref(anchor, localeHref(choice, routes[choice]));
+    }
+  }
+}
+
+/**
+ * Point one element's `href` at `resolvedPath`, preserving the origin the tag
+ * was rendered with when it had one.
+ *
+ * `BaseLayout` emits the canonical and hreflang tags as **absolute** URLs
+ * (`absoluteUrl(…, Astro.site)`); `LocaleSwitcher`'s anchors are
+ * **root-relative** (`localeHref`). Both are handled the same way: parse the
+ * current value, and if it is absolute keep its scheme and host while replacing
+ * the path — so a rewrite of a crawler-visible canonical stays absolute — and
+ * if it is not (or there is nothing there yet), write the root-relative path
+ * straight in.
+ *
+ * Idempotent by construction: it mutates the one element in place rather than
+ * appending, and re-parsing an already-resolved absolute URL and re-setting the
+ * same path yields the identical string. A second run — a client re-running
+ * this on navigation — therefore changes nothing and never leaves two
+ * `<link rel="canonical">` tags.
+ */
+function rewriteHref(element: Element | null, resolvedPath: string): void {
+  if (element === null) return;
+  const current = element.getAttribute("href");
+  if (current === null || current === "") {
+    element.setAttribute("href", resolvedPath);
+    return;
+  }
+  try {
+    const url = new URL(current);
+    url.pathname = resolvedPath;
+    url.search = "";
+    url.hash = "";
+    element.setAttribute("href", url.toString());
+  } catch {
+    // A root-relative href (`LocaleSwitcher`'s shape) — `new URL` with no base
+    // rejects it, and the resolved path is already the value we want.
+    element.setAttribute("href", resolvedPath);
+  }
+}
+
+/**
+ * The handle and vehicle id a live showcase/work-log URL carries, or `null`
+ * when the path is not shaped like one.
+ *
+ * The pages are built once per locale at a placeholder and reached through a
+ * `vercel.json` rewrite, so the browser's address is the real one while the
+ * server only ever saw the placeholder — this reads the two path parameters a
+ * client script needs off `location.pathname`, after the `/{locale}/{garage
+ * segment}/` prefix the URL always carries. Not graded by the render suite (it
+ * has no page to drive); kept beside the route builders so the parse and the
+ * build of the same URL live in one file.
+ */
+export function showcaseUrlParams(
+  pathname: string
+): { readonly handle: string; readonly vehicleId: string } | null {
+  const segments = pathname.split("/").filter((segment) => segment !== "");
+  // [locale, garage segment, handle, vehicle id, (work-log segment)?]
+  const handle = segments[2];
+  const vehicleId = segments[3];
+  if (handle === undefined || vehicleId === undefined) return null;
+  return { handle, vehicleId };
 }
