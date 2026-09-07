@@ -1,0 +1,55 @@
+{
+  "id": "gen3-accessory-drive-belt-idler-pulley-grooved",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    },
+    "engines": ["6g74-sohc", "6g75"]
+  },
+  "oemNumber": "MD368210",
+  "system": "engine",
+  "quantityPerVehicle": 1,
+  "crossReferences": [
+    {
+      "ref": "koyo-grooved",
+      "brand": "Koyo",
+      "partNumber": "PU157025BRR1XY",
+      "quality": "oem-supplier"
+    }
+  ],
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen3 Accessory Drive Belt Idler Pulleys: the table pairing each Mitsubishi number with the Koyo number, description and quantity per vehicle",
+      "url": "https://lusooverland.com/VP-KOY-MD3682XX",
+      "archiveUrl": "https://web.archive.org/web/20260907003158/https://lusooverland.com/VP-KOY-MD3682XX",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    },
+    {
+      "title": "YoshiParts — Mitsubishi OEM idler pulley MD368210: part number, description and Pajero/Montero V73W (3rd Gen, 1999-2006) fitment, independent of the Montero specialist's catalogue above",
+      "url": "https://yoshiparts.com/parts/mitsubishi-MD368210",
+      "archiveUrl": "https://web.archive.org/web/20260907020906/https://yoshiparts.com/parts/mitsubishi-MD368210",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Accessory drive belt idler pulley, grooved",
+      "summary": "The grooved idler — the black one — which runs on the ribbed face of the accessory belt. It is the other of the two idlers on the front of this engine, and it is not interchangeable with the smooth one however similar the bearing feels in your hand. Both idlers are cheap next to the belt and next to the labour of getting a belt back on, so when one is being changed the other is usually worth doing with it. The number, the fitment and the count come from the Montero specialist's own catalogue page, cited below — a parts catalogue is good evidence for what a part number is and what it fits, and it is not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification.",
+      "crossReferenceNotes": {
+        "koyo-grooved": "The catalogue states that Koyo makes the drive belt pulleys for Mitsubishi, and sells this one in Koyo's own box at a lower price than the Mitsubishi-labelled packaging. Same part, cheaper label."
+      }
+    },
+    "es": {
+      "title": "Polea loca acanalada de la faja de accesorios",
+      "summary": "La polea loca acanalada — la negra — que corre sobre la cara estriada de la faja de accesorios. Es la otra de las dos poleas locas del frente de este motor y no es intercambiable con la lisa, por más parecido que se sienta el rodamiento en la mano. Las dos poleas son baratas al lado de la faja y al lado de la mano de obra de volver a montarla, así que cuando se cambia una normalmente vale la pena hacer la otra de una vez. El número, la compatibilidad y la cantidad salen de la ficha de catálogo de la casa especializada en Montero que se cita abajo. Un catálogo de repuestos es buena evidencia de qué es un número de parte y en qué encaja, pero no es literatura de fábrica: lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller.",
+      "crossReferenceNotes": {
+        "koyo-grooved": "El catálogo indica que Koyo fabrica las poleas de la faja de accesorios para Mitsubishi y vende esta en la caja del propio Koyo, más barata que el empaque con etiqueta Mitsubishi. La misma pieza con otra etiqueta."
+      }
+    }
+  }
+}

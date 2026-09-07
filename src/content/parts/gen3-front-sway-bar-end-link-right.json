@@ -1,0 +1,62 @@
+{
+  "id": "gen3-front-sway-bar-end-link-right",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    },
+    "engines": ["6g74-sohc", "6g75"]
+  },
+  "oemNumber": "4056A105",
+  "system": "suspension",
+  "quantityPerVehicle": 1,
+  "crossReferences": [
+    {
+      "ref": "sankei-555-right",
+      "brand": "Sankei 555",
+      "partNumber": "SL7840R",
+      "quality": "lower-grade"
+    }
+  ],
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen3 Front Sway Bar End Link: the left and right Genuine Mitsubishi part numbers and the fitment table",
+      "url": "https://lusooverland.com/VP-MMC-4056A10X",
+      "archiveUrl": "https://web.archive.org/web/20260907003428/https://lusooverland.com/VP-MMC-4056A10X",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    },
+    {
+      "title": "Luso Overland — MONTERO Gen 3 Sway Bar End Link, FRONT (Sankei 555): the left and right 555 part numbers, the fitment table, and the seller's own note on the coating",
+      "url": "https://lusooverland.com/VP-555-SL7840",
+      "archiveUrl": "https://web.archive.org/web/20260907013107/https://lusooverland.com/VP-555-SL7840",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    },
+    {
+      "title": "YoshiParts — Mitsubishi OEM front stabilizer link, right, 4056A105: part number and description, independent of the Montero specialist's catalogue above",
+      "url": "https://yoshiparts.com/parts/mitsubishi-4056A105",
+      "archiveUrl": "https://web.archive.org/web/20260907021507/https://yoshiparts.com/parts/mitsubishi-4056A105",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Front sway bar end link, right",
+      "summary": "The right front link between the anti-roll bar and the suspension, and a different part number from the left one — which is the whole reason this page exists separately. Everything else is the same story: they knock when they are worn, they are cheap, and they are worth doing as a pair on the same afternoon. If you are ordering by phone, give the counter the side as well as the number; \"front sway bar link\" alone will get you a fifty-fifty guess. The catalogue lists further OEM interchange numbers alongside this one; none of them has a page here yet, so let the parts counter cross-reference rather than insisting on a single number. The number, the fitment and the count come from the Montero specialist's own catalogue page, cited below — a parts catalogue is good evidence for what a part number is and what it fits, and it is not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification.",
+      "crossReferenceNotes": {
+        "sankei-555-right": "Sankei 555 is a Japanese steering and suspension maker the seller rates highly, but the seller places it explicitly second to Genuine Mitsubishi on strength and recommends it for trucks that live on asphalt and light trails or for a budget build — which is why it is filed here as lower-grade rather than as an equivalent. The same page warns that 555 parts carry no rust-proof coating and will surface-rust quickly, so plan on coating them before they go on."
+      }
+    },
+    "es": {
+      "title": "Bieleta delantera derecha",
+      "summary": "La bieleta delantera derecha, entre la barra estabilizadora y la suspensión, y un número de parte distinto al de la izquierda — que es toda la razón por la que esta página existe aparte. Lo demás es la misma historia: suenan cuando están gastadas, son baratas y conviene hacerlas de a pares la misma tarde. Si va a pedir por teléfono, dele al mostrador el lado además del número; con \"bieleta delantera\" a secas le van a acertar la mitad de las veces. El catálogo enumera otros números originales intercambiables junto a este; ninguno tiene página aquí todavía, así que deje que el mostrador haga la referencia cruzada en vez de insistir en un solo número. El número, la compatibilidad y la cantidad salen de la ficha de catálogo de la casa especializada en Montero que se cita abajo. Un catálogo de repuestos es buena evidencia de qué es un número de parte y en qué encaja, pero no es literatura de fábrica: lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller.",
+      "crossReferenceNotes": {
+        "sankei-555-right": "Sankei 555 es una fábrica japonesa de piezas de dirección y suspensión que el vendedor valora bien, pero él mismo la coloca explícitamente en segundo lugar frente a lo original Mitsubishi en resistencia y la recomienda para vehículos que andan en asfalto y trochas suaves o para una armada económica: por eso aquí queda registrada como de menor grado y no como equivalente. La misma ficha advierte que las piezas 555 no traen tratamiento anticorrosivo y se oxidan por fuera muy rápido, así que cuente con pintarlas antes de montarlas."
+      }
+    }
+  }
+}

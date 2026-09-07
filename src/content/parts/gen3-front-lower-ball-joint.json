@@ -1,0 +1,41 @@
+{
+  "id": "gen3-front-lower-ball-joint",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    },
+    "engines": ["6g74-sohc", "6g75"]
+  },
+  "oemNumber": "MR496799",
+  "system": "suspension",
+  "quantityPerVehicle": 2,
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen3 Ball Joint, Front / Lower (MR496799): part number, fitment table, quantity per vehicle, and the note that a new castle nut and cotter pin are included",
+      "url": "https://lusooverland.com/VP-MMC-MR496799",
+      "archiveUrl": "https://web.archive.org/web/20260907003337/https://lusooverland.com/VP-MMC-MR496799",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    },
+    {
+      "title": "YoshiParts — Mitsubishi OEM front lower ball joint kit MR496799: part number, description and Pajero/Montero V64W (3rd Gen, 1999-2006) fitment, independent of the Montero specialist's catalogue above",
+      "url": "https://yoshiparts.com/parts/mitsubishi-MR496799",
+      "archiveUrl": "https://web.archive.org/web/20260907021239/https://yoshiparts.com/parts/mitsubishi-MR496799",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Front lower ball joint",
+      "summary": "The lower ball joint in each front corner. The truck takes the quantity above, one per side, and the genuine part is supplied with a new castle nut and cotter pin — do not reuse the old pin, and do not let anyone talk you into reusing the nut. The specialist selling it recommends OEM here specifically on the grounds that aftermarket joints do not stand up to larger tyres and off-road use, which is exactly the load a Costa Rican truck that works past the end of the pavement puts on them. A worn lower ball joint is not a noise problem, it is a separation risk: if there is play here, the wheel can leave the truck. The number, the fitment and the count come from the Montero specialist's own catalogue page, cited below — a parts catalogue is good evidence for what a part number is and what it fits, and it is not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification."
+    },
+    "es": {
+      "title": "Rótula inferior delantera",
+      "summary": "La rótula inferior de cada esquina delantera. El vehículo lleva la cantidad indicada arriba, una por lado, y la pieza original viene con tuerca de castillo y chaveta nuevas: no reutilice la chaveta vieja ni deje que lo convenzan de reutilizar la tuerca. La casa que la vende recomienda original precisamente porque las rótulas no originales no aguantan llantas más grandes ni uso fuera de carretera, que es exactamente la carga que le mete un vehículo costarricense que trabaja donde se acaba el asfalto. Una rótula inferior gastada no es un problema de ruido, es un riesgo de separación: si hay juego aquí, la rueda se le puede salir. El número, la compatibilidad y la cantidad salen de la ficha de catálogo de la casa especializada en Montero que se cita abajo. Un catálogo de repuestos es buena evidencia de qué es un número de parte y en qué encaja, pero no es literatura de fábrica: lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller."
+    }
+  }
+}
