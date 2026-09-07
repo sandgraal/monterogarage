@@ -2573,7 +2573,9 @@ describe("declaredArgumentNames — PostgREST resolves by NAME (T2-404a)", () =>
     // prove without it — `revoke_share_grant(p_share_id uuid)` is the same
     // single-arg, single-line, no-default, no-keyword shape, read from the
     // same real migration, so the parser's ability to read a one-argument
-    // reader's real signature off shipped SQL is still exercised end-to-end.
+    // routine's real signature off shipped SQL is still exercised end-to-end
+    // — `revoke_share_grant` is a lifecycle RPC, not a reader, but the parser
+    // doesn't know the difference; it only sees argument syntax.
     // Removed 2026-09-06 (grader-defect fix, refs specs/002-montero-garage
     // T2-404b) rather than widened to a guessed future signature, since this
     // test's job is proving the parser against what already shipped, not
