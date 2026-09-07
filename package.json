@@ -26,6 +26,7 @@
     "check:glossary": "node scripts/check-glossary.mjs",
     "check:links": "node scripts/check-links.mjs",
     "check:es-register": "node scripts/check-es-register.mjs",
+    "gaps": "node scripts/gaps.mjs",
     "verify": "astro check && eslint . && prettier --check . && vitest run && npm run check:locales && npm run check:citations && npm run check:glossary && npm run check:es-register && astro build && npm run check:hreflang"
   },
   "dependencies": {

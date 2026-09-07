@@ -560,6 +560,64 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
 
+  # ── Content gaps — advisory, T703 (GAP-01) ──────────────────────────────
+  #
+  # `npm run gaps` is a report, never a gate (see `scripts/gaps.mjs`'s module
+  # docstring): a category with findings is expected, ordinary, and often
+  # exactly the state a young corpus should be in. This job never fails on
+  # what it finds — only on the script itself erroring — and it is
+  # deliberately not one of the three required contexts this file's header
+  # names (same "new gate that should not block merges gets its own advisory
+  # job" reasoning as `tier-b` above).
+  #
+  # No network here: `scripts/gaps.mjs` skips the dead-source-link category
+  # by default (marks it "not checked this run") specifically so `gaps` stays
+  # fast enough to run on every PR without reintroducing the archive.org cost
+  # the 2026-08-30 ruling took off this path (see `link-check.yml`, which
+  # already pays that cost weekly and runs `gaps --link-audit` against its
+  # own `check:links --json` output for the fully-checked report).
+  content-gaps:
+    name: Content gaps (report, non-blocking)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # `findStaleAnecdotalEntries` reads each file's last commit date
+          # via `git log`; a shallow checkout would make every entry look
+          # like it was "last touched" on the clone commit, not its real
+          # history.
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Content gaps report
+        run: npm run gaps
+
+      - name: Add report to the job summary
+        if: always()
+        run: |
+          {
+            echo "## Content gaps report (GAP-01)"
+            echo ""
+            echo "Non-blocking — see \`scripts/gaps.mjs\` for what each"
+            echo "category means and \`gaps-report.json\` below for the full,"
+            echo "machine-readable list."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload report (JSON)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: gaps-report
+          path: gaps-report.json
+          retention-days: 30
+          if-no-files-found: warn
+
   # ── Where the deploy job went (T2-102, 002 MIG-02) ──────────────────────
   #
   # A `deploy` job used to live here: on a push to `main`, after all three
