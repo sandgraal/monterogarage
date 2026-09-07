@@ -1,11 +1,16 @@
 name: CI
 
 # ──────────────────────────────────────────────────────────────────────────
-# SCF-03  every `verify` step plus a11y, merge-blocking. The external link
-#         check no longer runs here — owner ruling 2026-08-30 moved it to a
-#         weekly scheduled job (`link-check.yml`) because it was taking
-#         30 minutes to 2.6+ hours on every PR at current content scale. See
-#         that workflow for the schedule and the failure-tracking-issue flow.
+# SCF-03  every `verify` step, merge-blocking. Neither external link checking
+#         nor accessibility/Lighthouse/e2e run here any more. Owner ruling
+#         2026-08-30 moved link checking to a weekly scheduled job
+#         (`link-check.yml`) because it was taking 30 minutes to 2.6+ hours on
+#         every PR at current content scale; owner ruling 2026-09-07 moved
+#         a11y (Pa11y), Lighthouse budgets, and the Playwright e2e suite the
+#         same way, to `a11y-lighthouse-e2e.yml` — the owner's stated reason
+#         was that these tests are too much for every PR, not worth that much
+#         testing on the merge path. See those workflows for the schedules
+#         and the failure-tracking-issue flow.
 # SCF-05  (as amended by 002 MIG-02, T2-102) — this workflow no longer
 #         deploys anything. Hosting is Vercel, connected to this repository
 #         through Vercel's Git integration: Vercel builds `main` to production
@@ -13,30 +18,37 @@ name: CI
 #         CI stays the merge gate; Vercel is only the deployer. The built site
 #         is still uploaded as a downloadable artifact so a run summary carries
 #         the exact bytes the gates passed on.
-# SCF-06  Lighthouse accessibility ≥ 95 / performance ≥ 90 as a CI budget.
+# SCF-06  Lighthouse accessibility ≥ 95 / performance ≥ 90. Since 2026-09-07
+#         this budget is enforced by the weekly `a11y-lighthouse-e2e.yml`
+#         job, not as a CI merge gate — see the SCF-03 note above.
 #
 # ## The job *names* below are load-bearing — do not rename them
 #
-# `main`'s branch protection requires these three status checks by their
+# `main`'s branch protection requires these two status checks by their
 # display name:
 #
 #   • "Harness validation"
 #   • "Verify (check · lint · test · locales · citations · glossary · build)"
-#   • "Links + a11y"
+#
+# (Until 2026-09-07 there was a third, "Links + a11y" — see the SCF-03 note
+# above for where that work went. Its removal from `main`'s required contexts
+# was made directly in repo settings, not in this file; nothing in this file
+# can grant or revoke required-status standing.)
 #
 # A required context that never reports does not fail a PR, it *hangs* it
 # forever, which is worse than a red run because nothing points at the cause.
-# So a new gate goes inside one of these three jobs unless whoever adds it
-# also updates the required contexts on `main` (repo settings → branches).
-# That is why the Lighthouse budgets live in "Links + a11y" rather than in a
-# job of their own: they are merge-blocking today, with no settings change.
+# So a new gate goes inside one of these two jobs unless whoever adds it also
+# updates the required contexts on `main` (repo settings → branches). That
+# rule does not get looser just because the required set got smaller — a
+# third job added here today would be exactly as unreported-and-hanging as
+# the fourth would have been before this change.
 #
-# ## The fourth job is a narrow, time-boxed exception — not a precedent
+# ## The third job below is a narrow, time-boxed exception — not a precedent
 #
 # "Tier-B RLS graders (live stack)" is advisory on purpose. **This is not a
 # general licence to add advisory jobs**, and the rule above still governs
 # every other gate: if you are adding a check that should block merges, it goes
-# inside one of the three jobs named above. The exception is granted here only
+# inside one of the two jobs named above. The exception is granted here only
 # because all four of these are true at once, and it expires when they stop
 # being true:
 #
@@ -56,7 +68,7 @@ name: CI
 # Stage 2 — the owner adding this to `main`'s required contexts in repo
 # settings — is a settings change nobody should make from this file. Nothing in
 # this file marks any job required; required-status configuration lives only in
-# repo settings, and the three names above are documentation of that setting,
+# repo settings, and the two names above are documentation of that setting,
 # not a declaration of it.
 # ──────────────────────────────────────────────────────────────────────────
 
@@ -146,192 +158,6 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
-  # The display name is unchanged on purpose — it is one of the three contexts
-  # `main`'s branch protection requires, and renaming it would leave a required
-  # check that never reports. T204 added the Playwright step inside it; see the
-  # note on that step.
-  links-a11y:
-    name: Links + a11y
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-
-      - name: Install
-        run: npm ci
-
-      # The external link check used to run here (SCF-02/SCF-03 split: outside
-      # `verify` because it reaches the network). Owner ruling 2026-08-30 took
-      # it off the merge path entirely — at current content scale (~190
-      # sources) the archive.org throttle (#41) made it take 30 minutes to
-      # 2.6+ hours on every PR and main push, mostly re-checking unchanged
-      # URLs. It now runs weekly (and on demand) in `link-check.yml`, which
-      # opens/updates a tracking issue on failure instead of blocking merges.
-      # GAP-01 policy is unchanged and still lives only in
-      # `scripts/check-links.mjs`: a source fails only when **both** its `url`
-      # and its `archiveUrl` are unreachable — a dead original with a live
-      # archive is a gaps-report item, never a blocker.
-      #
-      # The a11y gate is two independent checks against the same built site:
-      # Pa11y for WCAG 2.1 AA rule violations, Lighthouse for SCF-06's score
-      # budgets. Both need `dist/`, so this job builds it — `astro build`
-      # rather than `npm run build`, because `astro check` already ran (and
-      # will run again) in the `verify` job and repeating it here buys nothing
-      # but a slower gate.
-      - name: Build site for audits
-        run: npx astro build
-
-      # 002 MIG-03 review finding: CI's only build was always the env-less one
-      # above — `PUBLIC_SUPABASE_URL`/`PUBLIC_SUPABASE_ANON_KEY` unset — because
-      # no project exists to hand it real credentials (`src/lib/supabase/config.ts`'s
-      # "absent is a supported state" note). Vercel's production and preview
-      # builds are *not* env-less; they carry the real project's credentials, so
-      # what ships is the configured page: the garage app, the sign-in form, the
-      # whole `SUPABASE_BROWSER_CONFIG !== null` branch of every page that
-      # branches on it. A gate that only ever audits the degraded "accounts are
-      # not switched on here" notice audits ~0% of that surface — which is
-      # exactly the gap that let the boot-stall regression this same review found
-      # (`tests/e2e/garage-unreachable.spec.ts`) reach review instead of CI.
-      #
-      # So this build gets real-shaped, throwaway credentials: a syntactically
-      # valid JWT (decodes to `{"role":"anon",…}`, so `isSecretKey()` accepts it)
-      # and an `https://` URL in Supabase's own project-subdomain shape. Neither
-      # is a secret — the anon key is *designed* to be public (row-level
-      # security is what protects data, not keeping this key hidden;
-      # `config.ts`'s own doc comment), and `example.supabase.co` resolves to
-      # nothing. They live here in the open on purpose, not in a repository or
-      # environment secret, because they are not one.
-      - name: Build site for audits (configured — dummy Supabase credentials)
-        env:
-          PUBLIC_SUPABASE_URL: https://example.supabase.co
-          # A throwaway, syntactically-valid anon-shaped JWT. Not a real key —
-          # `example.supabase.co` does not exist — and not a secret-key shape
-          # either: `readSupabaseConfig()` (`src/lib/supabase/config.ts`) throws
-          # the build if it ever is, so this is also a passing assertion that
-          # the guard accepts a legitimate anon key rather than rejecting every
-          # key regardless of shape.
-          PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlLWRlbW8iLCJyZWYiOiJleGFtcGxlIiwiZXhwIjoyMDAwMDAwMDAwfQ.dummy-signature-not-a-real-key-do-not-use
-        run: npx astro build --outDir dist-configured
-
-      - name: Accessibility (Pa11y, WCAG2AA)
-        run: npm run test:a11y
-
-      - name: Accessibility, configured build (Pa11y, WCAG2AA)
-        run: npm run test:a11y -- --dist dist-configured
-
-      - name: Lighthouse budgets (a11y ≥ 95, performance ≥ 90)
-        run: npm run test:lighthouse
-
-      # SCF-06's budget on the pages that only exist once a project is
-      # configured — the garage and sign-in pages score 94/90 and 100/95-100
-      # respectively as of this writing (see the PR that added this step for
-      # the exact numbers this CI runner measured). If a runner ever lands
-      # under budget here, that is a real regression or a slower runner to
-      # investigate — never a reason to lower `BUDGETS` in
-      # `scripts/check-lighthouse.mjs`.
-      - name: Lighthouse budgets, configured build (a11y ≥ 95, performance ≥ 90)
-        run: npm run test:lighthouse -- --dist dist-configured
-
-      # T204 fills the constitution's e2e slot. It runs *here* rather than in a
-      # job of its own for the reason spelled out at the top of this file: a
-      # required status check is required by display name, and a new job would
-      # not be in `main`'s required contexts — so it would be advisory at best
-      # and would hang PRs at worst. This job already has the two things the
-      # suite needs and the `verify` job does not: a built `dist/` and an
-      # installed Chrome.
-      #
-      # Which Chrome, precisely, because the two environments differ and the
-      # T204 review asked for this to be written down rather than implied:
-      # `playwright.config.ts` calls `resolveChromePath()`, the same resolver
-      # the two audits above use. In *this* workflow it returns the
-      # workflow-level `env.CHROME_PATH` set near the top of the file
-      # (`/usr/bin/google-chrome`, the path the ubuntu runner image ships). On
-      # a developer machine nothing sets that variable and the resolver's
-      # candidate list finds the locally installed browser instead — including
-      # the macOS `/Applications/Google Chrome.app` path. Either way nothing
-      # downloads a browser: Playwright's own bundled build is never installed,
-      # for the same reason `.puppeteerrc.cjs` turns Puppeteer's download off.
-      #
-      # `playwright test` rather than `npm run test:e2e`, which would rebuild
-      # `dist/` a second time in this job for nothing — the same reasoning as
-      # the `npx astro build` above.
-      - name: End-to-end (Playwright, vehicle selector + locale switcher)
-        run: npx playwright test
-
-      # `tests/e2e/garage-unreachable.spec.ts` needs the *configured* build:
-      # `[garageSegment].astro`'s closing script is a no-op when
-      # `SUPABASE_BROWSER_CONFIG` is `null`
-      # (`if (root && SUPABASE_BROWSER_CONFIG) enhance(root)`), so on an
-      # unconfigured build the garage app never renders and its Supabase
-      # client chunk is never fetched — nothing for the spec to abort, and the
-      # page's `data-garage-state` never leaves "boot" either way. That spec
-      # would be green against plain `dist/` whether or not the fix it grades
-      # (T2-301 review F1's boot `.catch`) existed, so it needs the configured
-      # build for real (see the spec's own header for why chunk *existence* is
-      # not what tells the two builds apart). The step above already ran every
-      # other spec against plain `dist/`; this one points
-      # `playwright.config.ts`'s `E2E_DIST`/`E2E_PORT` at `dist-configured/`
-      # and a different port, and runs only the one spec that needs it.
-      #
-      # `E2E_EXPECT_CONFIGURED=1` is a second, independent claim (review F1):
-      # the spec's own markup-sniffing detector (`data-garage-gate` in the
-      # built HTML) could silently stop matching — an attribute rename in
-      # `[garageSegment].astro` that nobody re-synced with the test — and
-      # without this variable that reads as "this must be the plain build",
-      # so the suite would skip-green and quietly stop catching the
-      # regression it exists for. With it set, "detector says unconfigured"
-      # on a run CI declared configured fails the file outright instead. The
-      # step above (plain `dist/`, no `E2E_EXPECT_CONFIGURED`) still skips
-      # cleanly, and so does `npm run test:e2e` locally.
-      #
-      - name: End-to-end (Playwright, garage unreachable — configured build)
-        env:
-          E2E_DIST: dist-configured
-          E2E_PORT: 4323
-          E2E_EXPECT_CONFIGURED: "1"
-        run: npx playwright test tests/e2e/garage-unreachable.spec.ts
-
-      # `tests/e2e/hidden-guard.spec.ts` (T2-303 review F10): only its garage-
-      # and sign-in-page cases (`test.describe` titles ending `(configured)`)
-      # need this build — same reasoning as the step above, since those two
-      # pages only render their real, `[hidden]`-carrying markup once
-      # `SUPABASE_BROWSER_CONFIG` is set. Its other cases (glossary,
-      # community, problems) do not branch on that flag at all and already
-      # ran, for real, in the plain-`dist/` step above (`npx playwright test`
-      # with no filter runs every spec file, this one included).
-      #
-      # `--grep '\(configured\)'` is load-bearing, not decoration: without it
-      # this step would re-run the *whole* file — including the six
-      # glossary/community/problems cases that already ran once, for real,
-      # against plain `dist/` above. That is redundant CI time rather than a
-      # correctness bug (those six cases are just as true against either
-      # build, so running them twice never hides anything) — but it directly
-      # contradicts what this step is documented as doing, so a stale filter
-      # here would be exactly the kind of drift this file's other comments
-      # warn about elsewhere. Scoped to the one describe-title substring only
-      # `CONFIGURED_ONLY_PAGES` cases carry, so a page added to
-      # `UNCONDITIONAL_PAGES` never accidentally starts matching here.
-      #
-      # `E2E_EXPECT_CONFIGURED=1` is the same second, independent claim as the
-      # garage-unreachable step above (review F1): the spec's own
-      # markup-sniffing detectors (`data-garage-gate`, `data-signin-signed-in`
-      # in the built HTML) could silently stop matching, and without this
-      # variable that reads as "this must be the plain build" — skip-green,
-      # regression coverage gone dark. With it set, "detector says
-      # unconfigured" on a run CI declared configured fails the file outright
-      # instead. The plain-`dist/` step above still skips those four cases
-      # cleanly with no `E2E_EXPECT_CONFIGURED` set, and so does
-      # `npm run test:e2e` locally.
-      - name: End-to-end (Playwright, hidden-guard configured-only cases — configured build)
-        env:
-          E2E_DIST: dist-configured
-          E2E_PORT: 4323
-          E2E_EXPECT_CONFIGURED: "1"
-        run: npx playwright test tests/e2e/hidden-guard.spec.ts --grep '\(configured\)'
-
   # ── Tier-B RLS graders — advisory, Stage 1 of a staged promotion ────────
   #
   # 002 MIG-03's user data lives behind row-level security, and AGENTS.md's
@@ -354,13 +180,16 @@ jobs:
   # probe and the cost analysis, is in
   # `specs/001-foundation/audits/T901-tier-b-ci-investigation.md`.
   #
-  # Cost to the merge gate: zero seconds. This job takes ~2 m 05 s in parallel
-  # with "Links + a11y", which sets the pace at ~5 m 28 s.
+  # Cost to the merge gate: zero seconds. This job takes ~2 m 05 s (measured
+  # when it ran alongside "Links + a11y", the job whose removal on 2026-09-07
+  # — see the SCF-03 note at the top of this file — left "Verify" as the
+  # longest-running required job; this job still runs in parallel with it and
+  # is advisory regardless of which one sets the pace).
   #
   # ## Why its own job, and why advisory
   #
   # The header of this file argues that a new gate belongs *inside* one of the
-  # three required jobs, because a new job is not a required context. Here that
+  # two required jobs, because a new job is not a required context. Here that
   # is the feature, not the cost:
   #
   #  • The staging is the point. Folding Tier B into "Verify" would make it
@@ -566,7 +395,7 @@ jobs:
   # docstring): a category with findings is expected, ordinary, and often
   # exactly the state a young corpus should be in. This job never fails on
   # what it finds — only on the script itself erroring — and it is
-  # deliberately not one of the three required contexts this file's header
+  # deliberately not one of the two required contexts this file's header
   # names (same "new gate that should not block merges gets its own advisory
   # job" reasoning as `tier-b` above).
   #
@@ -629,10 +458,10 @@ jobs:
   #
   # What that means for the merge gate, precisely: **CI is still the gate and
   # Vercel is only the deployer.** Vercel's own build status is not a required
-  # check and must not become one; the three jobs above are what branch
-  # protection requires, and a red one blocks the merge that would otherwise
-  # reach production. Vercel builds a merge commit that has already passed
-  # them.
+  # check and must not become one; the two jobs named at the top of this file
+  # are what branch protection requires, and a red one blocks the merge that
+  # would otherwise reach production. Vercel builds a merge commit that has
+  # already passed them.
   #
   # Two consequences worth writing down, because both have bitten people:
   #
