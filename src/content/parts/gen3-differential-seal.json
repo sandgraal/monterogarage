@@ -1,0 +1,41 @@
+{
+  "id": "gen3-differential-seal",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    },
+    "engines": ["6g74-sohc", "6g75"]
+  },
+  "oemNumber": "MR350883",
+  "system": "drivetrain",
+  "quantityPerVehicle": 2,
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen3 Differential Seal: the table naming each Genuine Mitsubishi seal by its location in the front or rear differential, with quantity per vehicle",
+      "url": "https://lusooverland.com/VP-MMC-M3-DS",
+      "archiveUrl": "https://web.archive.org/web/20260907003548/https://lusooverland.com/VP-MMC-M3-DS",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    },
+    {
+      "title": "YoshiParts — Mitsubishi OEM differential seal MR350883: part number, description and Pajero/Montero V64W (3rd Gen, 1999-2006) fitment, independent of the Montero specialist's catalogue above",
+      "url": "https://yoshiparts.com/parts/mitsubishi-MR350883",
+      "archiveUrl": "https://web.archive.org/web/20260907021112/https://yoshiparts.com/parts/mitsubishi-MR350883",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Rear differential side seal",
+      "summary": "The side seal at each end of the rear differential, where the axle shaft passes through the housing — the quantity above is the pair. This is the seal that matters when a rear side shaft has been creeping outward: the shaft moving takes the seal's sealing lip with it, and gear oil follows. Read the catalogue page before ordering, because the differentials use four different seals in total — front side, front pinion, rear side, rear pinion — each with its own Mitsubishi number, and only this one has a page here so far. Ordering \"a differential seal\" without saying which will get you the wrong one three times out of four. The number, the fitment and the count come from the Montero specialist's own catalogue page, cited below — a parts catalogue is good evidence for what a part number is and what it fits, and it is not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification."
+    },
+    "es": {
+      "title": "Retenedor lateral del diferencial trasero",
+      "summary": "El retenedor lateral de cada extremo del diferencial trasero, por donde el palier atraviesa la carcasa — la cantidad de arriba es el par. Es el retenedor que importa cuando un palier trasero se ha venido saliendo: el movimiento del eje se lleva el labio del retenedor y detrás se va el aceite de engranajes. Lea la ficha del catálogo antes de pedir, porque los diferenciales usan cuatro retenedores distintos en total — lateral delantero, piñón delantero, lateral trasero y piñón trasero —, cada uno con su propio número Mitsubishi, y hasta ahora solo este tiene página aquí. Pedir \"un retenedor de diferencial\" sin decir cuál le va a traer el equivocado tres de cada cuatro veces. El número, la compatibilidad y la cantidad salen de la ficha de catálogo de la casa especializada en Montero que se cita abajo. Un catálogo de repuestos es buena evidencia de qué es un número de parte y en qué encaja, pero no es literatura de fábrica: lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller."
+    }
+  }
+}
