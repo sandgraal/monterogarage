@@ -5,6 +5,24 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "trailingSlash": true,
+  "rewrites": [
+    {
+      "source": "/en/garage/:handle/:vehicleId([0-9a-fA-F-]{36})/log",
+      "destination": "/en/garage/__pending__/__vehicle__/log"
+    },
+    {
+      "source": "/es/taller/:handle/:vehicleId([0-9a-fA-F-]{36})/historial",
+      "destination": "/es/taller/__pending__/__vehicle__/historial"
+    },
+    {
+      "source": "/en/garage/:handle/:vehicleId([0-9a-fA-F-]{36})",
+      "destination": "/en/garage/__pending__/__vehicle__"
+    },
+    {
+      "source": "/es/taller/:handle/:vehicleId([0-9a-fA-F-]{36})",
+      "destination": "/es/taller/__pending__/__vehicle__"
+    }
+  ],
   "headers": [
     {
       "source": "/(en|es)/(share|compartir)(/.*)?",

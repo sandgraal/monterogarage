@@ -148,6 +148,23 @@ export interface SharedVehicle {
   readonly odometer_km: number | null;
 }
 
+/**
+ * A published vehicle's identity, as the world reader returns it (SHR-02).
+ *
+ * `SharedVehicle` plus the two per-vehicle publication flags — and those two
+ * are the whole difference. `share_read_vehicle`'s **null-token** path projects
+ * `is_showcase_public`/`is_worklog_public` (its token path does not, because a
+ * grant holder's answer never depended on them), so a public index can tell
+ * which of a truck's two pages exist. They are the owner's *published*
+ * decision, never a private one; `20260907120000_public_pages.sql` and
+ * T2-404a's per-occurrence rule are what keep any other reader from consulting
+ * them.
+ */
+export interface PublicVehicle extends SharedVehicle {
+  readonly is_showcase_public: boolean;
+  readonly is_worklog_public: boolean;
+}
+
 function failed<T>(): ShareResult<T> {
   return { ok: false, reason: "failed" };
 }
@@ -430,4 +447,88 @@ export async function signSharedReceipt(input: {
   }
   if (typeof payload.url !== "string" || payload.url === "") return failed();
   return { ok: true, value: payload.url };
+}
+
+/* -------------------------------------------------------------------------
+ * The world's end (SHR-02, SHR-03) — no token, no session
+ * ---------------------------------------------------------------------- */
+
+/**
+ * Call one anon reader with a handle and a vehicle id, and **no token**.
+ *
+ * The world path of the same two `security definer` readers a grant holder
+ * reaches (`20260907120000_public_pages.sql`) — one anon-granted reader serves
+ * both audiences, reviewed once (the 2026-09-05 owner amendment). `p_token` is
+ * left off entirely: the reader keys its world branch on `p_token is null`, and
+ * every publication flag it consults sits inside that branch, so a request that
+ * named a token could never reach a published row (T2-404a's narrowed SHR-09
+ * rule).
+ *
+ * The failure line is drawn exactly as `readAsHolder` draws it, and for the
+ * same reasons (AGENTS.md: a failure is not a zero; a dropped connection is not
+ * a "no"): the database answering `insufficient_privilege` — a truck that is
+ * not published, a handle nobody holds — is `refused`; a request that never
+ * reached Postgres is `failed`; and a reader that answered with something that
+ * is not an array is a failure, never rendered as "no history".
+ */
+async function readAsWorld<T>(
+  reader: string,
+  handle: string,
+  vehicleId: string
+): Promise<ShareResult<T[]>> {
+  const client = await getSupabaseClient();
+  if (!client) return { ok: false, reason: "unconfigured" };
+  const { data, error } = await client.rpc(reader, {
+    p_handle: handle,
+    p_vehicle_id: vehicleId,
+  });
+  if (error) return serverAnswered(error) ? refused() : failed();
+  if (!Array.isArray(data)) return failed();
+  return { ok: true, value: data as T[] };
+}
+
+/**
+ * One published vehicle's identity, or a refusal (SHR-02).
+ *
+ * The world reader filters by handle and by "either page is public", so a row
+ * comes back only when *some* page of this truck exists — which page is then
+ * `resolveShowcasePage`'s per-flag decision, not this fetch's. A handle nobody
+ * holds, a retired handle (never consulted on the world path — the old link
+ * goes quiet), or a truck published by nobody all arrive here as an empty list,
+ * which is the honest `null` a page renders as its one generic "not published"
+ * state.
+ */
+export async function readPublicVehicle(input: {
+  readonly handle: string;
+  readonly vehicleId: string;
+}): Promise<ShareResult<PublicVehicle | null>> {
+  const rows = await readAsWorld<PublicVehicle>(
+    "share_read_vehicle",
+    input.handle,
+    input.vehicleId
+  );
+  if (!rows.ok) return rows;
+  return { ok: true, value: rows.value[0] ?? null };
+}
+
+/**
+ * A published work-log's records, already world-masked by the database.
+ *
+ * `VisibleRecord`, the same shape every other audience receives: the reader
+ * omits the cost keys from a record whose `is_cost_public` is closed (SHR-03,
+ * appended not blanked — SHR-06's shape), so "you were not shown the cost" is
+ * the absence of the key rather than a `null`. Row visibility (`is_worklog_public`
+ * on the truck, `is_public` on the row) and receipt denial are the database's,
+ * mirrored in `src/lib/garage/visibility.ts`'s `world` principal — the page
+ * renders what it is handed and derives none of it (SHR-01).
+ */
+export function readPublicRecords(input: {
+  readonly handle: string;
+  readonly vehicleId: string;
+}): Promise<ShareResult<VisibleRecord[]>> {
+  return readAsWorld<VisibleRecord>(
+    "share_read_records",
+    input.handle,
+    input.vehicleId
+  );
 }

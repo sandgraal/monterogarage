@@ -100,7 +100,6 @@ import {
   showcaseRoutePaths,
   worklogRoutePath,
   worklogRoutePaths,
-  SHOWCASE_SEAM_NOT_IMPLEMENTED,
   type PublicProfileDirectory,
   type ShowcasePageKind,
 } from "../../src/lib/garage/showcase-view.ts";
@@ -190,132 +189,93 @@ function resolve(input: {
   });
 }
 
-/* -------------------------------------------------------------------------
- * The seam canary
- * ---------------------------------------------------------------------- */
-
-describe("the showcase-view seam is honest about not existing yet", () => {
-  // Unmarked — proves the `.fails` markers below fail because T2-404b has
-  // not shipped, not because of a typo in this file. The reason canary
-  // `tests/sync/sync-plan.test.ts` and `procedures-index.render.test.ts`
-  // both carry, one file over.
-  it("every export throws the named seam error", () => {
-    expect(() => resolve({ profiles: [profile()], page: "showcase" })).toThrow(
-      SHOWCASE_SEAM_NOT_IMPLEMENTED
-    );
-    expect(() => showcaseRoutePath(HANDLE, VEHICLE_ID, "en")).toThrow(
-      SHOWCASE_SEAM_NOT_IMPLEMENTED
-    );
-    expect(() => worklogRoutePath(HANDLE, VEHICLE_ID, "en")).toThrow(
-      SHOWCASE_SEAM_NOT_IMPLEMENTED
-    );
-    expect(() =>
-      applyResolvedShowcaseLinks({
-        doc: new JSDOM("<!doctype html><html><head></head></html>").window
-          .document,
-        routes: { en: "/garage/x/y/", es: "/taller/x/y/" },
-        locale: "en",
-      })
-    ).toThrow(SHOWCASE_SEAM_NOT_IMPLEMENTED);
-  });
-});
+/*
+ * The seam canary that used to live here — `it("every export throws the named
+ * seam error")`, unmarked — is gone now that T2-404b has filled the seam and
+ * the exports no longer throw. A canary proving "the `.fails` markers below
+ * fail for the seam and nothing else" has nothing left to prove once the
+ * function it watched stops throwing; `tests/sync/sync-plan.test.ts` (T802)
+ * records the identical retirement, in the same words, one file over.
+ */
 
 /* =========================================================================
  * 1. Route construction — nested under `handles.ts`'s existing index route
  * ====================================================================== */
 
 describe("the showcase route nests under the handle's own route (SHR-02)", () => {
-  it.fails(
-    "the showcase route is the handle's route plus the vehicle id",
-    () => {
-      for (const locale of LOCALES) {
-        const expected = `${handleRoutePath(HANDLE, locale)}${VEHICLE_ID}/`;
-        expect(showcaseRoutePath(HANDLE, VEHICLE_ID, locale)).toBe(expected);
+  it("the showcase route is the handle's route plus the vehicle id", () => {
+    for (const locale of LOCALES) {
+      const expected = `${handleRoutePath(HANDLE, locale)}${VEHICLE_ID}/`;
+      expect(showcaseRoutePath(HANDLE, VEHICLE_ID, locale)).toBe(expected);
+    }
+  });
+
+  it("the work-log route is the showcase route plus the locale's own word", () => {
+    // `log` / `historial` — T2-404b's own task brief names these exact
+    // segments; this is not this file inventing a third guess.
+    const WORKLOG_SEGMENT: Record<Locale, string> = {
+      en: "log",
+      es: "historial",
+    };
+    for (const locale of LOCALES) {
+      const expected =
+        `${handleRoutePath(HANDLE, locale)}${VEHICLE_ID}/` +
+        `${WORKLOG_SEGMENT[locale]}/`;
+      expect(worklogRoutePath(HANDLE, VEHICLE_ID, locale)).toBe(expected);
+    }
+  });
+
+  it("every route starts with a `/`, ends with a `/`, and never doubles a slash", () => {
+    // A cheap but real defect class: string concatenation across three
+    // levels (handle segment, vehicle id, log segment) is exactly where an
+    // extra or missing slash creeps in.
+    for (const locale of LOCALES) {
+      for (const path of [
+        showcaseRoutePath(HANDLE, VEHICLE_ID, locale),
+        worklogRoutePath(HANDLE, VEHICLE_ID, locale),
+      ]) {
+        expect(path.startsWith("/")).toBe(true);
+        expect(path.endsWith("/")).toBe(true);
+        expect(path).not.toMatch(/\/\//);
       }
     }
-  );
+  });
 
-  it.fails(
-    "the work-log route is the showcase route plus the locale's own word",
-    () => {
-      // `log` / `historial` — T2-404b's own task brief names these exact
-      // segments; this is not this file inventing a third guess.
-      const WORKLOG_SEGMENT: Record<Locale, string> = {
-        en: "log",
-        es: "historial",
-      };
-      for (const locale of LOCALES) {
-        const expected =
-          `${handleRoutePath(HANDLE, locale)}${VEHICLE_ID}/` +
-          `${WORKLOG_SEGMENT[locale]}/`;
-        expect(worklogRoutePath(HANDLE, VEHICLE_ID, locale)).toBe(expected);
-      }
+  it("emits a symmetric hreflang set with x-default for the showcase route", () => {
+    const routes = showcaseRoutePaths(HANDLE, VEHICLE_ID);
+    const alternates = localizedAlternateLinks(routes);
+    expect(alternates.map((link) => link.hreflang).sort()).toEqual(
+      ["en", "es", "x-default"].sort()
+    );
+    for (const locale of LOCALES) {
+      const link = alternates.find((each) => each.hreflang === locale);
+      expect(link?.href).toBe(localeHref(locale, routes[locale]));
     }
-  );
+    const xDefault = alternates.find((each) => each.hreflang === "x-default");
+    expect(xDefault?.href).toBe(
+      localeHref(DEFAULT_LOCALE, routes[DEFAULT_LOCALE])
+    );
+  });
 
-  it.fails(
-    "every route starts with a `/`, ends with a `/`, and never doubles a slash",
-    () => {
-      // A cheap but real defect class: string concatenation across three
-      // levels (handle segment, vehicle id, log segment) is exactly where an
-      // extra or missing slash creeps in.
-      for (const locale of LOCALES) {
-        for (const path of [
-          showcaseRoutePath(HANDLE, VEHICLE_ID, locale),
-          worklogRoutePath(HANDLE, VEHICLE_ID, locale),
-        ]) {
-          expect(path.startsWith("/")).toBe(true);
-          expect(path.endsWith("/")).toBe(true);
-          expect(path).not.toMatch(/\/\//);
-        }
-      }
+  it("emits a symmetric hreflang set with x-default for the work-log route", () => {
+    const routes = worklogRoutePaths(HANDLE, VEHICLE_ID);
+    const alternates = localizedAlternateLinks(routes);
+    expect(alternates.map((link) => link.hreflang).sort()).toEqual(
+      ["en", "es", "x-default"].sort()
+    );
+    for (const locale of LOCALES) {
+      const link = alternates.find((each) => each.hreflang === locale);
+      expect(link?.href).toBe(localeHref(locale, routes[locale]));
     }
-  );
+  });
 
-  it.fails(
-    "emits a symmetric hreflang set with x-default for the showcase route",
-    () => {
-      const routes = showcaseRoutePaths(HANDLE, VEHICLE_ID);
-      const alternates = localizedAlternateLinks(routes);
-      expect(alternates.map((link) => link.hreflang).sort()).toEqual(
-        ["en", "es", "x-default"].sort()
+  it("the work-log route is never mistaken for the showcase route (I18N-05 shape)", () => {
+    for (const locale of LOCALES) {
+      expect(worklogRoutePath(HANDLE, VEHICLE_ID, locale)).not.toBe(
+        showcaseRoutePath(HANDLE, VEHICLE_ID, locale)
       );
-      for (const locale of LOCALES) {
-        const link = alternates.find((each) => each.hreflang === locale);
-        expect(link?.href).toBe(localeHref(locale, routes[locale]));
-      }
-      const xDefault = alternates.find((each) => each.hreflang === "x-default");
-      expect(xDefault?.href).toBe(
-        localeHref(DEFAULT_LOCALE, routes[DEFAULT_LOCALE])
-      );
     }
-  );
-
-  it.fails(
-    "emits a symmetric hreflang set with x-default for the work-log route",
-    () => {
-      const routes = worklogRoutePaths(HANDLE, VEHICLE_ID);
-      const alternates = localizedAlternateLinks(routes);
-      expect(alternates.map((link) => link.hreflang).sort()).toEqual(
-        ["en", "es", "x-default"].sort()
-      );
-      for (const locale of LOCALES) {
-        const link = alternates.find((each) => each.hreflang === locale);
-        expect(link?.href).toBe(localeHref(locale, routes[locale]));
-      }
-    }
-  );
-
-  it.fails(
-    "the work-log route is never mistaken for the showcase route (I18N-05 shape)",
-    () => {
-      for (const locale of LOCALES) {
-        expect(worklogRoutePath(HANDLE, VEHICLE_ID, locale)).not.toBe(
-          showcaseRoutePath(HANDLE, VEHICLE_ID, locale)
-        );
-      }
-    }
-  );
+  });
 });
 
 /* =========================================================================
@@ -323,7 +283,7 @@ describe("the showcase route nests under the handle's own route (SHR-02)", () =>
  * ====================================================================== */
 
 describe("handle resolution (SHR-02's stable-URL promise)", () => {
-  it.fails("an unknown handle resolves as unknown, on either page kind", () => {
+  it("an unknown handle resolves as unknown, on either page kind", () => {
     for (const page of ["showcase", "worklog"] as const) {
       const resolution = resolve({
         profiles: [profile()],
@@ -335,93 +295,81 @@ describe("handle resolution (SHR-02's stable-URL promise)", () => {
     }
   });
 
-  it.fails(
-    "a live handle resolves — POSITIVE CONTROL for the unknown-handle refusal",
-    () => {
-      // Without this, "an unknown handle refuses" could be satisfied by a
-      // function that refuses every handle, including real ones.
-      const resolution = resolve({
-        profiles: [profile()],
-        handle: HANDLE,
-        page: "showcase",
-      });
-      expect(resolution.ok).toBe(true);
-    }
-  );
+  it("a live handle resolves — POSITIVE CONTROL for the unknown-handle refusal", () => {
+    // Without this, "an unknown handle refuses" could be satisfied by a
+    // function that refuses every handle, including real ones.
+    const resolution = resolve({
+      profiles: [profile()],
+      handle: HANDLE,
+      page: "showcase",
+    });
+    expect(resolution.ok).toBe(true);
+  });
 
-  it.fails(
-    "a retired handle goes quiet — it never resolves to the profile that once held it",
-    () => {
-      // `20260903120100_public_handles.sql`'s own column comment: "Nobody
-      // else may claim one; the original owner may take it back." So the
-      // *only* way `test-t2-404c-viejo` can appear in `retiredHandles` here
-      // is that this exact profile once held it and has since moved on to
-      // `HANDLE` — and the URL built from the old word is still dead. A
-      // resolver that fell through "not an active handle" to "well, it is
-      // in *someone's* retired list, close enough" would hand this profile's
-      // current garage to a stale link nobody chose to keep working.
-      const withHistory = profile({ retiredHandles: [RETIRED_HANDLE] });
-      const resolution = resolve({
-        profiles: [withHistory],
-        handle: RETIRED_HANDLE,
-        page: "showcase",
-      });
-      expect(resolution.ok).toBe(false);
-      if (!resolution.ok) expect(resolution.reason).toBe("handle-retired");
-    }
-  );
+  it("a retired handle goes quiet — it never resolves to the profile that once held it", () => {
+    // `20260903120100_public_handles.sql`'s own column comment: "Nobody
+    // else may claim one; the original owner may take it back." So the
+    // *only* way `test-t2-404c-viejo` can appear in `retiredHandles` here
+    // is that this exact profile once held it and has since moved on to
+    // `HANDLE` — and the URL built from the old word is still dead. A
+    // resolver that fell through "not an active handle" to "well, it is
+    // in *someone's* retired list, close enough" would hand this profile's
+    // current garage to a stale link nobody chose to keep working.
+    const withHistory = profile({ retiredHandles: [RETIRED_HANDLE] });
+    const resolution = resolve({
+      profiles: [withHistory],
+      handle: RETIRED_HANDLE,
+      page: "showcase",
+    });
+    expect(resolution.ok).toBe(false);
+    if (!resolution.ok) expect(resolution.reason).toBe("handle-retired");
+  });
 
-  it.fails(
-    "a retired handle is reported distinctly from a handle nobody ever held",
-    () => {
-      // Both refuse, and a page is free to render one sentence for both (the
-      // way `[shareSegment].astro` folds unknown/expired/revoked into one
-      // sentence) — but the *resolver* must be able to tell them apart, or
-      // this and the "handle nobody ever held" grader above could both be
-      // satisfied by a function that always returns "handle-unknown", which
-      // is a resolver that also cannot express "handle-retired" at all.
-      const withHistory = profile({ retiredHandles: [RETIRED_HANDLE] });
-      const retired = resolve({
-        profiles: [withHistory],
-        handle: RETIRED_HANDLE,
-        page: "showcase",
-      });
-      const neverHeld = resolve({
-        profiles: [withHistory],
-        handle: UNKNOWN_HANDLE,
-        page: "showcase",
-      });
-      expect(retired.ok).toBe(false);
-      expect(neverHeld.ok).toBe(false);
-      if (!retired.ok && !neverHeld.ok) {
-        expect(retired.reason).not.toBe(neverHeld.reason);
-      }
+  it("a retired handle is reported distinctly from a handle nobody ever held", () => {
+    // Both refuse, and a page is free to render one sentence for both (the
+    // way `[shareSegment].astro` folds unknown/expired/revoked into one
+    // sentence) — but the *resolver* must be able to tell them apart, or
+    // this and the "handle nobody ever held" grader above could both be
+    // satisfied by a function that always returns "handle-unknown", which
+    // is a resolver that also cannot express "handle-retired" at all.
+    const withHistory = profile({ retiredHandles: [RETIRED_HANDLE] });
+    const retired = resolve({
+      profiles: [withHistory],
+      handle: RETIRED_HANDLE,
+      page: "showcase",
+    });
+    const neverHeld = resolve({
+      profiles: [withHistory],
+      handle: UNKNOWN_HANDLE,
+      page: "showcase",
+    });
+    expect(retired.ok).toBe(false);
+    expect(neverHeld.ok).toBe(false);
+    if (!retired.ok && !neverHeld.ok) {
+      expect(retired.reason).not.toBe(neverHeld.reason);
     }
-  );
+  });
 
-  it.fails(
-    "a vehicle id that belongs to a DIFFERENT profile is not found under this handle",
-    () => {
-      // The showcase-page equivalent of `visibility.ts`'s "a grant on
-      // another vehicle shows nothing of this one": the failure mode is a
-      // resolver that finds *a* vehicle with the requested id anywhere in
-      // the directory rather than checking it belongs to *this* handle's
-      // profile.
-      const mine = profile({ handle: HANDLE, vehicles: [vehicle()] });
-      const someoneElses = profile({
-        handle: OTHER_HANDLE,
-        vehicles: [vehicle({ id: OTHER_VEHICLE_ID, owner_id: OTHER_OWNER_ID })],
-      });
-      const resolution = resolve({
-        profiles: [mine, someoneElses],
-        handle: HANDLE,
-        vehicleId: OTHER_VEHICLE_ID,
-        page: "showcase",
-      });
-      expect(resolution.ok).toBe(false);
-      if (!resolution.ok) expect(resolution.reason).toBe("vehicle-unknown");
-    }
-  );
+  it("a vehicle id that belongs to a DIFFERENT profile is not found under this handle", () => {
+    // The showcase-page equivalent of `visibility.ts`'s "a grant on
+    // another vehicle shows nothing of this one": the failure mode is a
+    // resolver that finds *a* vehicle with the requested id anywhere in
+    // the directory rather than checking it belongs to *this* handle's
+    // profile.
+    const mine = profile({ handle: HANDLE, vehicles: [vehicle()] });
+    const someoneElses = profile({
+      handle: OTHER_HANDLE,
+      vehicles: [vehicle({ id: OTHER_VEHICLE_ID, owner_id: OTHER_OWNER_ID })],
+    });
+    const resolution = resolve({
+      profiles: [mine, someoneElses],
+      handle: HANDLE,
+      vehicleId: OTHER_VEHICLE_ID,
+      page: "showcase",
+    });
+    expect(resolution.ok).toBe(false);
+    if (!resolution.ok) expect(resolution.reason).toBe("vehicle-unknown");
+  });
 });
 
 /* =========================================================================
@@ -450,7 +398,7 @@ const PUBLICATION_GATES: readonly {
 describe.each(PUBLICATION_GATES)(
   "the $page page's own publication flag (SHR-02)",
   ({ page, openFlag, reason }) => {
-    it.fails(`closed → refused as "${reason}", never a vehicle`, () => {
+    it(`closed → refused as "${reason}", never a vehicle`, () => {
       const closed = vehicle({ [openFlag]: false } as Partial<VehicleRow>);
       const resolution = resolve({
         profiles: [profile({ vehicles: [closed] })],
@@ -465,45 +413,39 @@ describe.each(PUBLICATION_GATES)(
       expect(Object.hasOwn(resolution, "records")).toBe(false);
     });
 
-    it.fails(
-      `open → POSITIVE CONTROL, the ${page} page actually resolves`,
-      () => {
-        // Without this, "closed refuses" above could be satisfied by a
-        // resolver that refuses every vehicle regardless of the flag.
-        const open = vehicle({ [openFlag]: true } as Partial<VehicleRow>);
-        const resolution = resolve({
-          profiles: [profile({ vehicles: [open] })],
-          page,
-        });
-        expect(resolution.ok).toBe(true);
-        if (resolution.ok) expect(resolution.page).toBe(page);
-      }
-    );
+    it(`open → POSITIVE CONTROL, the ${page} page actually resolves`, () => {
+      // Without this, "closed refuses" above could be satisfied by a
+      // resolver that refuses every vehicle regardless of the flag.
+      const open = vehicle({ [openFlag]: true } as Partial<VehicleRow>);
+      const resolution = resolve({
+        profiles: [profile({ vehicles: [open] })],
+        page,
+      });
+      expect(resolution.ok).toBe(true);
+      if (resolution.ok) expect(resolution.page).toBe(page);
+    });
 
-    it.fails(
-      `the OTHER page kind's flag does not open the ${page} page (SHR-02's two switches are independent)`,
-      () => {
-        // `is_showcase_public: true, is_worklog_public: false` must not leak
-        // the work-log, and the reverse must not leak the showcase — the two
-        // are separate owner decisions (`VehiclePublication`'s own doc
-        // comment) and a resolver that treats either as implying the other
-        // collapses them into one.
-        const otherFlag: "is_showcase_public" | "is_worklog_public" =
-          openFlag === "is_showcase_public"
-            ? "is_worklog_public"
-            : "is_showcase_public";
-        const onlyOtherOpen = vehicle({
-          [openFlag]: false,
-          [otherFlag]: true,
-        } as Partial<VehicleRow>);
-        const resolution = resolve({
-          profiles: [profile({ vehicles: [onlyOtherOpen] })],
-          page,
-        });
-        expect(resolution.ok).toBe(false);
-        if (!resolution.ok) expect(resolution.reason).toBe(reason);
-      }
-    );
+    it(`the OTHER page kind's flag does not open the ${page} page (SHR-02's two switches are independent)`, () => {
+      // `is_showcase_public: true, is_worklog_public: false` must not leak
+      // the work-log, and the reverse must not leak the showcase — the two
+      // are separate owner decisions (`VehiclePublication`'s own doc
+      // comment) and a resolver that treats either as implying the other
+      // collapses them into one.
+      const otherFlag: "is_showcase_public" | "is_worklog_public" =
+        openFlag === "is_showcase_public"
+          ? "is_worklog_public"
+          : "is_showcase_public";
+      const onlyOtherOpen = vehicle({
+        [openFlag]: false,
+        [otherFlag]: true,
+      } as Partial<VehicleRow>);
+      const resolution = resolve({
+        profiles: [profile({ vehicles: [onlyOtherOpen] })],
+        page,
+      });
+      expect(resolution.ok).toBe(false);
+      if (!resolution.ok) expect(resolution.reason).toBe(reason);
+    });
   }
 );
 
@@ -512,117 +454,102 @@ describe.each(PUBLICATION_GATES)(
  * ====================================================================== */
 
 describe("the work-log page's records are visibility.ts's own answer, not a second copy", () => {
-  it.fails(
-    "resolves to exactly maskRecordsForPrincipal's output for the world",
-    () => {
-      const open = vehicle({ is_worklog_public: true });
-      const records: RecordRow[] = [
-        record({ id: "c410", is_public: true, is_cost_public: true }),
-        record({ id: "c411", is_public: true, is_cost_public: false }),
-        record({ id: "c412", is_public: false }),
-      ];
-      const resolution = resolve({
-        profiles: [profile({ vehicles: [open] })],
-        records,
-        page: "worklog",
-      });
-      expect(resolution.ok).toBe(true);
-      if (!resolution.ok || resolution.page !== "worklog") return;
+  it("resolves to exactly maskRecordsForPrincipal's output for the world", () => {
+    const open = vehicle({ is_worklog_public: true });
+    const records: RecordRow[] = [
+      record({ id: "c410", is_public: true, is_cost_public: true }),
+      record({ id: "c411", is_public: true, is_cost_public: false }),
+      record({ id: "c412", is_public: false }),
+    ];
+    const resolution = resolve({
+      profiles: [profile({ vehicles: [open] })],
+      records,
+      page: "worklog",
+    });
+    expect(resolution.ok).toBe(true);
+    if (!resolution.ok || resolution.page !== "worklog") return;
 
-      const expected = maskRecordsForPrincipal({
-        records,
-        vehicle: open,
-        principal: { kind: "world" },
-      });
-      expect(resolution.records).toEqual(expected);
-      // The private record must be the one thing dropped, not merely
-      // somewhere in the diff — pinned by id so a masking bug that dropped
-      // the wrong record would still be caught.
-      expect(resolution.records.map((row) => row.id)).not.toContain("c412");
-      expect(resolution.records).toHaveLength(2);
-    }
-  );
+    const expected = maskRecordsForPrincipal({
+      records,
+      vehicle: open,
+      principal: { kind: "world" },
+    });
+    expect(resolution.records).toEqual(expected);
+    // The private record must be the one thing dropped, not merely
+    // somewhere in the diff — pinned by id so a masking bug that dropped
+    // the wrong record would still be caught.
+    expect(resolution.records.map((row) => row.id)).not.toContain("c412");
+    expect(resolution.records).toHaveLength(2);
+  });
 
-  it.fails(
-    "omits the cost keys entirely on a record whose own cost flag is closed (SHR-03)",
-    () => {
-      const open = vehicle({ is_worklog_public: true });
-      const records: RecordRow[] = [
-        record({ id: "c413", is_public: true, is_cost_public: false }),
-      ];
-      const resolution = resolve({
-        profiles: [profile({ vehicles: [open] })],
-        records,
-        page: "worklog",
-      });
-      expect(resolution.ok).toBe(true);
-      if (!resolution.ok || resolution.page !== "worklog") return;
-      const row = resolution.records.find((each) => each.id === "c413");
-      expect(row).toBeDefined();
-      expect(Object.hasOwn(row as VisibleRecord, "cost_amount")).toBe(false);
-      expect(Object.hasOwn(row as VisibleRecord, "cost_currency")).toBe(false);
-    }
-  );
+  it("omits the cost keys entirely on a record whose own cost flag is closed (SHR-03)", () => {
+    const open = vehicle({ is_worklog_public: true });
+    const records: RecordRow[] = [
+      record({ id: "c413", is_public: true, is_cost_public: false }),
+    ];
+    const resolution = resolve({
+      profiles: [profile({ vehicles: [open] })],
+      records,
+      page: "worklog",
+    });
+    expect(resolution.ok).toBe(true);
+    if (!resolution.ok || resolution.page !== "worklog") return;
+    const row = resolution.records.find((each) => each.id === "c413");
+    expect(row).toBeDefined();
+    expect(Object.hasOwn(row as VisibleRecord, "cost_amount")).toBe(false);
+    expect(Object.hasOwn(row as VisibleRecord, "cost_currency")).toBe(false);
+  });
 
-  it.fails(
-    "shows the cost once the record's own cost flag is open — POSITIVE CONTROL",
-    () => {
-      const open = vehicle({ is_worklog_public: true });
-      const records: RecordRow[] = [
-        record({ id: "c414", is_public: true, is_cost_public: true }),
-      ];
-      const resolution = resolve({
-        profiles: [profile({ vehicles: [open] })],
-        records,
-        page: "worklog",
-      });
-      expect(resolution.ok).toBe(true);
-      if (!resolution.ok || resolution.page !== "worklog") return;
-      const row = resolution.records.find((each) => each.id === "c414");
-      expect(Object.hasOwn(row as VisibleRecord, "cost_amount")).toBe(true);
-      expect(row?.cost_amount).toBe(245_000);
-    }
-  );
+  it("shows the cost once the record's own cost flag is open — POSITIVE CONTROL", () => {
+    const open = vehicle({ is_worklog_public: true });
+    const records: RecordRow[] = [
+      record({ id: "c414", is_public: true, is_cost_public: true }),
+    ];
+    const resolution = resolve({
+      profiles: [profile({ vehicles: [open] })],
+      records,
+      page: "worklog",
+    });
+    expect(resolution.ok).toBe(true);
+    if (!resolution.ok || resolution.page !== "worklog") return;
+    const row = resolution.records.find((each) => each.id === "c414");
+    expect(Object.hasOwn(row as VisibleRecord, "cost_amount")).toBe(true);
+    expect(row?.cost_amount).toBe(245_000);
+  });
 
-  it.fails(
-    "never carries a receipts field of any kind (SHR-03, GAR-05′)",
-    () => {
-      // The world never sees receipts under any capability — there is no
-      // capability to open them with, unlike a share grant's
-      // `includes_receipts`. `WorklogFound`'s type has no `receipts` key at
-      // all; this is the runtime half of that same guarantee, so a
-      // real implementation adding one "for convenience" is a red build.
-      const open = vehicle({ is_worklog_public: true });
-      const resolution = resolve({
-        profiles: [profile({ vehicles: [open] })],
-        records: [record({ is_public: true, is_cost_public: true })],
-        page: "worklog",
-      });
-      expect(resolution.ok).toBe(true);
-      expect(Object.hasOwn(resolution, "receipts")).toBe(false);
-    }
-  );
+  it("never carries a receipts field of any kind (SHR-03, GAR-05′)", () => {
+    // The world never sees receipts under any capability — there is no
+    // capability to open them with, unlike a share grant's
+    // `includes_receipts`. `WorklogFound`'s type has no `receipts` key at
+    // all; this is the runtime half of that same guarantee, so a
+    // real implementation adding one "for convenience" is a red build.
+    const open = vehicle({ is_worklog_public: true });
+    const resolution = resolve({
+      profiles: [profile({ vehicles: [open] })],
+      records: [record({ is_public: true, is_cost_public: true })],
+      page: "worklog",
+    });
+    expect(resolution.ok).toBe(true);
+    expect(Object.hasOwn(resolution, "receipts")).toBe(false);
+  });
 
-  it.fails(
-    "the showcase page never carries records at all, published or not (SHR-02's two pages)",
-    () => {
-      // A showcase-only vehicle (worklog closed) must not leak record data
-      // through the *showcase* resolution as some kind of preview — SHR-02
-      // draws the line between the two pages, not between "some records" and
-      // "all records".
-      const showcaseOnly = vehicle({
-        is_showcase_public: true,
-        is_worklog_public: false,
-      });
-      const resolution = resolve({
-        profiles: [profile({ vehicles: [showcaseOnly] })],
-        records: [record({ is_public: true, is_cost_public: true })],
-        page: "showcase",
-      });
-      expect(resolution.ok).toBe(true);
-      expect(Object.hasOwn(resolution, "records")).toBe(false);
-    }
-  );
+  it("the showcase page never carries records at all, published or not (SHR-02's two pages)", () => {
+    // A showcase-only vehicle (worklog closed) must not leak record data
+    // through the *showcase* resolution as some kind of preview — SHR-02
+    // draws the line between the two pages, not between "some records" and
+    // "all records".
+    const showcaseOnly = vehicle({
+      is_showcase_public: true,
+      is_worklog_public: false,
+    });
+    const resolution = resolve({
+      profiles: [profile({ vehicles: [showcaseOnly] })],
+      records: [record({ is_public: true, is_cost_public: true })],
+      page: "showcase",
+    });
+    expect(resolution.ok).toBe(true);
+    expect(Object.hasOwn(resolution, "records")).toBe(false);
+  });
 });
 
 /* =========================================================================
@@ -659,74 +586,62 @@ describe("the placeholder route never leaks into the resolved page's chrome", ()
     return dom.window.document;
   }
 
-  it.fails(
-    "rewrites the canonical link to the resolved handle/vehicle route",
-    () => {
-      const doc = placeholderDocument();
-      const routes = { en: "/garage/gitana/veh1/", es: "/taller/gitana/veh1/" };
-      applyResolvedShowcaseLinks({ doc, routes, locale: "en" });
+  it("rewrites the canonical link to the resolved handle/vehicle route", () => {
+    const doc = placeholderDocument();
+    const routes = { en: "/garage/gitana/veh1/", es: "/taller/gitana/veh1/" };
+    applyResolvedShowcaseLinks({ doc, routes, locale: "en" });
 
-      const canonical = doc.querySelector('link[rel="canonical"]');
-      expect(canonical?.getAttribute("href")).toContain(routes.en);
-      expect(canonical?.getAttribute("href")).not.toContain("__pending__");
-    }
-  );
+    const canonical = doc.querySelector('link[rel="canonical"]');
+    expect(canonical?.getAttribute("href")).toContain(routes.en);
+    expect(canonical?.getAttribute("href")).not.toContain("__pending__");
+  });
 
-  it.fails(
-    "rewrites every hreflang alternate, including x-default, to the resolved routes",
-    () => {
-      const doc = placeholderDocument();
-      const routes = { en: "/garage/gitana/veh1/", es: "/taller/gitana/veh1/" };
-      applyResolvedShowcaseLinks({ doc, routes, locale: "en" });
+  it("rewrites every hreflang alternate, including x-default, to the resolved routes", () => {
+    const doc = placeholderDocument();
+    const routes = { en: "/garage/gitana/veh1/", es: "/taller/gitana/veh1/" };
+    applyResolvedShowcaseLinks({ doc, routes, locale: "en" });
 
-      const en = doc.querySelector('link[hreflang="en"]');
-      const es = doc.querySelector('link[hreflang="es"]');
-      const xDefault = doc.querySelector('link[hreflang="x-default"]');
-      expect(en?.getAttribute("href")).toContain(routes.en);
-      expect(es?.getAttribute("href")).toContain(routes.es);
-      expect(xDefault?.getAttribute("href")).toContain(routes.en);
-      expect(doc.documentElement.outerHTML).not.toContain("__pending__");
-      expect(doc.documentElement.outerHTML).not.toContain("__pendiente__");
-    }
-  );
+    const en = doc.querySelector('link[hreflang="en"]');
+    const es = doc.querySelector('link[hreflang="es"]');
+    const xDefault = doc.querySelector('link[hreflang="x-default"]');
+    expect(en?.getAttribute("href")).toContain(routes.en);
+    expect(es?.getAttribute("href")).toContain(routes.es);
+    expect(xDefault?.getAttribute("href")).toContain(routes.en);
+    expect(doc.documentElement.outerHTML).not.toContain("__pending__");
+    expect(doc.documentElement.outerHTML).not.toContain("__pendiente__");
+  });
 
-  it.fails(
-    "rewrites the locale switcher's own anchors, not only the <head> tags",
-    () => {
-      // The defect this test exists to catch: a fix that only touches
-      // `BaseLayout`'s own `<link>` tags leaves `LocaleSwitcher.astro`'s
-      // anchors pointing at the shared placeholder, so a reader who clicks
-      // "Español" on a live showcase page lands on whatever vehicle happens
-      // to have been last resolved at that placeholder path — a stranger's
-      // garage, from the reader's point of view.
-      const doc = placeholderDocument();
-      const routes = { en: "/garage/gitana/veh1/", es: "/taller/gitana/veh1/" };
-      applyResolvedShowcaseLinks({ doc, routes, locale: "en" });
+  it("rewrites the locale switcher's own anchors, not only the <head> tags", () => {
+    // The defect this test exists to catch: a fix that only touches
+    // `BaseLayout`'s own `<link>` tags leaves `LocaleSwitcher.astro`'s
+    // anchors pointing at the shared placeholder, so a reader who clicks
+    // "Español" on a live showcase page lands on whatever vehicle happens
+    // to have been last resolved at that placeholder path — a stranger's
+    // garage, from the reader's point of view.
+    const doc = placeholderDocument();
+    const routes = { en: "/garage/gitana/veh1/", es: "/taller/gitana/veh1/" };
+    applyResolvedShowcaseLinks({ doc, routes, locale: "en" });
 
-      const enChoice = doc.querySelector('[data-locale-choice="en"]');
-      const esChoice = doc.querySelector('[data-locale-choice="es"]');
-      expect(enChoice?.getAttribute("href")).toContain(routes.en);
-      expect(esChoice?.getAttribute("href")).toContain(routes.es);
-      expect(enChoice?.getAttribute("href")).not.toContain("__pending__");
-      expect(esChoice?.getAttribute("href")).not.toContain("__pendiente__");
-    }
-  );
+    const enChoice = doc.querySelector('[data-locale-choice="en"]');
+    const esChoice = doc.querySelector('[data-locale-choice="es"]');
+    expect(enChoice?.getAttribute("href")).toContain(routes.en);
+    expect(esChoice?.getAttribute("href")).toContain(routes.es);
+    expect(enChoice?.getAttribute("href")).not.toContain("__pending__");
+    expect(esChoice?.getAttribute("href")).not.toContain("__pendiente__");
+  });
 
-  it.fails(
-    "is idempotent — applying it twice with the same routes changes nothing further",
-    () => {
-      // A client script may re-run this on navigation; a version that
-      // appended a second canonical link instead of replacing the one that
-      // is there would pass every test above and still ship two conflicting
-      // `<link rel="canonical">` tags — a real SEO defect neither of the
-      // single-application tests can see.
-      const doc = placeholderDocument();
-      const routes = { en: "/garage/gitana/veh1/", es: "/taller/gitana/veh1/" };
-      applyResolvedShowcaseLinks({ doc, routes, locale: "en" });
-      const once = doc.documentElement.outerHTML;
-      applyResolvedShowcaseLinks({ doc, routes, locale: "en" });
-      expect(doc.documentElement.outerHTML).toBe(once);
-      expect(doc.querySelectorAll('link[rel="canonical"]')).toHaveLength(1);
-    }
-  );
+  it("is idempotent — applying it twice with the same routes changes nothing further", () => {
+    // A client script may re-run this on navigation; a version that
+    // appended a second canonical link instead of replacing the one that
+    // is there would pass every test above and still ship two conflicting
+    // `<link rel="canonical">` tags — a real SEO defect neither of the
+    // single-application tests can see.
+    const doc = placeholderDocument();
+    const routes = { en: "/garage/gitana/veh1/", es: "/taller/gitana/veh1/" };
+    applyResolvedShowcaseLinks({ doc, routes, locale: "en" });
+    const once = doc.documentElement.outerHTML;
+    applyResolvedShowcaseLinks({ doc, routes, locale: "en" });
+    expect(doc.documentElement.outerHTML).toBe(once);
+    expect(doc.querySelectorAll('link[rel="canonical"]')).toHaveLength(1);
+  });
 });
