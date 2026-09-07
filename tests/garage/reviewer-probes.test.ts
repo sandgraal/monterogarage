@@ -46,7 +46,11 @@
  * refs specs/002-montero-garage (SHR-01, SHR-03, GAR-02′, GAR-05′, ACC-03)
  */
 import { describe, expect, it } from "vitest";
-import { RECEIPTS_BUCKET, USER_TABLE_NAMES } from "./contract.ts";
+import {
+  RECEIPTS_BUCKET,
+  SHARE_READER_NAMES,
+  USER_TABLE_NAMES,
+} from "./contract.ts";
 import {
   anonExecutableFunctions,
   anonFunctionAllowListIssues,
@@ -70,6 +74,8 @@ import {
   plaintextTokenColumnIssues,
   presetBranchIssues,
   projectionIssues,
+  publicationFlagGateIssues,
+  publicationFlagIssues,
   refusalShapeIssues,
   revocationCheckIssues,
   revocationGatingIssues,
@@ -90,6 +96,7 @@ import {
   columnDefinition,
   createTableBody,
   createdTables,
+  declaredArgumentNames,
   dollarTagAt,
   enablesRls,
   foreignKeyFor,
@@ -103,6 +110,7 @@ import {
   privilegeVerdict,
   representsAbsence,
   rolePrivileges,
+  statementRanges,
   statements,
   type FunctionDefinition,
 } from "./sql.ts";
@@ -2490,6 +2498,150 @@ describe("canonicalArgumentTypes — a signature is the ACL key", () => {
   });
 });
 
+describe("declaredArgumentNames — PostgREST resolves by NAME (T2-404a)", () => {
+  // ## The defect this closes, recorded verbatim
+  //
+  // `share-grants.test.ts` asserted argument names against
+  // `FunctionDefinition.header`, and `functions()` builds `header` from the
+  // text **after** the argument list's closing paren — so no argument name
+  // could ever appear in it. Verified against the shipped migration:
+  // `create.statement.includes("p_vehicle_id")` is `true` and
+  // `create.header.includes("p_vehicle_id")` is `false`. Two graders were
+  // unsatisfiable as written and were left marked with the defect recorded
+  // rather than worked around (T2-404's "Grader defect found, not worked
+  // around"). This is the parser that makes them askable.
+  //
+  // The rules are deliberately the *same* rules `canonicalArgumentType` uses to
+  // decide where the name stops and the type starts, so the two halves of one
+  // argument list cannot disagree about it.
+
+  it.each<[string, string[]]>([
+    ["p_now timestamptz default now()", ["p_now"]],
+    ["timestamp with time zone", []],
+    ["p_when timestamp with time zone", ["p_when"]],
+    ["event jsonb", ["event"]],
+    ["jsonb", []],
+    ["p_token text, p_id uuid", ["p_token", "p_id"]],
+    ["in p_token text", ["p_token"]],
+    ["inout p_total numeric", ["p_total"]],
+    ["variadic p_ids uuid[]", ["p_ids"]],
+    ["p_n integer = 5", ["p_n"]],
+    ['"p_token" text', ["p_token"]],
+    ["", []],
+  ])("reads `%s` as %j", (args, expected) => {
+    expect(declaredArgumentNames(args)).toEqual(expected);
+  });
+
+  it("drops OUT parameters — a caller cannot name one", () => {
+    // The unsafe direction, closed. `returns table (share_id uuid, token text)`
+    // desugars to OUT parameters, so accepting them would let a routine satisfy
+    // "does it TAKE `share_id`?" by *returning* one.
+    expect(declaredArgumentNames("p_token text, out p_found bool")).toEqual([
+      "p_token",
+    ]);
+  });
+
+  it("a multi-word type is not mistaken for a name", () => {
+    // `timestamp` is a type keyword, not somebody's parameter. The shared
+    // `TYPE_FIRST_WORDS` list is what tells them apart, and getting this wrong
+    // in the *name* direction would report a routine as taking an argument
+    // called `timestamp`.
+    expect(
+      declaredArgumentNames("timestamp with time zone, character varying")
+    ).toEqual([]);
+  });
+
+  it("the shipped lifecycle RPCs parse to their real signatures", () => {
+    // The end-to-end half. Read off the migration that actually shipped, so a
+    // parser that produced plausible-looking nonsense for synthetic input would
+    // still be caught.
+    const declared = functions(migrationSql());
+    const named = (name: string) =>
+      declared.find((routine) => routine.name === name)?.argNames;
+
+    expect(named("create_share_grant")).toEqual([
+      "p_vehicle_id",
+      "p_kind",
+      "p_includes_costs",
+      "p_includes_receipts",
+      "p_expires_in_hours",
+    ]);
+    expect(named("revoke_share_grant")).toEqual(["p_share_id"]);
+    expect(named("share_read_records")).toEqual(["p_token"]);
+  });
+
+  it("`header` still contains NO argument name — the defect, pinned", () => {
+    // Recorded the way G9 records the revoke-then-grant false pass. `header` is
+    // not broken; it was the wrong field to ask, and this line is what stops
+    // somebody "simplifying" the graders back onto it.
+    const [create] = functions(migrationSql()).filter(
+      (routine) => routine.name === "create_share_grant"
+    );
+
+    expect(create.statement).toContain("p_vehicle_id");
+    expect(create.header).not.toContain("p_vehicle_id");
+    expect(create.argNames).toContain("p_vehicle_id");
+  });
+});
+
+describe("statementRanges — one scan, two shapes (T2-404a)", () => {
+  it("agrees with statements() text for text", () => {
+    // The de-duplication guard. `statements()` now delegates here, so a
+    // mutation in one is a mutation in both — the `aclKnownFor` lesson.
+    const fixture = sql(`
+      create table public.a (id uuid);
+      alter table public.a enable row level security;
+      grant select on public.a to authenticated;
+    `);
+
+    expect(statementRanges(fixture).map((range) => range.text)).toEqual(
+      statements(fixture)
+    );
+  });
+
+  it("every range slices back to its own text — the offsets are real", () => {
+    // The assertion that pins the offsets rather than merely reading them. A
+    // range spanning the whole input still carries the right `text`, so a
+    // weaker check (`start <= at < end`) is satisfied by offsets that have
+    // stopped meaning anything — verified by mutation, which is how this test
+    // came to be written this way.
+    const fixture = sql(`
+      select 1;
+      select is_worklog_public from public.vehicles;
+      select 3;
+    `);
+
+    for (const range of statementRanges(fixture)) {
+      expect(fixture.slice(range.start, range.end).trim()).toBe(range.text);
+    }
+  });
+
+  it("the ranges are disjoint and in order", () => {
+    const fixture = sql(`select 1; select 2; select 3;`);
+    const ranges = statementRanges(fixture);
+
+    expect(ranges).toHaveLength(3);
+    for (let index = 1; index < ranges.length; index += 1) {
+      expect(ranges[index].start).toBeGreaterThanOrEqual(ranges[index - 1].end);
+    }
+  });
+
+  it("a dollar-quoted body stays one range", () => {
+    // The `;` inside a plpgsql body is not a statement boundary. `statements()`
+    // has always known that; the offsets have to agree, or a rule reading them
+    // would attribute a function's internals to the statement after it.
+    const fixture = sql(`
+      create function public.f() returns void language plpgsql as $body$
+      begin perform 1; perform 2; end;
+      $body$;
+      select 9;
+    `);
+
+    expect(statementRanges(fixture)).toHaveLength(2);
+    expect(statementRanges(fixture)[0].text).toContain("perform 2");
+  });
+});
+
 describe("functions() replays create / replace / drop", () => {
   it("keeps the LAST definition, as Postgres does", () => {
     const replaced = sql(`
@@ -2908,6 +3060,519 @@ const G24C_FLIPPED_LATER = sql(`
     includes_costs boolean not null default false
   );
   alter table public.shares alter column includes_costs set default true;
+`);
+
+/* -------------------------------------------------------------------------
+ * G27 — T2-404a: SHR-09's publication flags, and the one path allowed to
+ * read them.
+ *
+ * The rule this corpus grades was **narrowed** by an owner ruling on
+ * 2026-09-06, and a narrowing is the most dangerous edit a security rule can
+ * receive: the easy mistake is to widen it into "a declared reader may read the
+ * flags", which is a blanket exemption wearing a narrowing's clothes. So both
+ * halves are pinned here — the correctly-gated reader must be **accepted**, and
+ * the same reader with the gate removed must still be **rejected**. Neither
+ * assertion means anything without the other.
+ *
+ * Every fixture below is one declared share reader, spelled the way T2-404's
+ * public-page reader will have to be spelled, differing from its sibling in
+ * exactly the property under test.
+ * ---------------------------------------------------------------------- */
+
+/** A `share_read_records` fixture with `body`, granted to `anon`. */
+const flagReader = (body: string, language = "plpgsql"): string =>
+  sql(`
+    create function public.share_read_records(p_token text, p_handle text)
+    returns setof jsonb
+    language ${language} stable security definer set search_path = ''
+    as $share$
+    ${body}
+    $share$;
+
+    revoke all on function public.share_read_records(text, text) from public;
+    grant execute on function public.share_read_records(text, text) to anon;
+  `);
+
+/**
+ * G27 — the ACCEPT case: the world path reads the flags, the token path does
+ * not, and the two are separated by `if p_token is null then`.
+ *
+ * This is the shape the 2026-09-05 amendment asks for — one anon reader serving
+ * both the world and a token holder — and before the narrowing it was a
+ * finding. It carries a `case … when … then … else … end` **expression** after
+ * the chain closes, on purpose: that is the construct the span scanner has to
+ * not mistake for an `if`-chain's `else`, and `share_read_records` already uses
+ * one for its cost pair.
+ */
+const G27_GATED_WORLD_PATH = flagReader(`
+  declare
+    v_vehicle_id uuid;
+    v_includes_costs boolean := false;
+  begin
+    if p_token is null then
+      select v.id into v_vehicle_id
+        from public.vehicles v
+        join public.profiles p on p.id = v.owner_id
+       where p.handle = p_handle
+         and v.is_worklog_public is true;
+    elsif p_token is not null then
+      select s.vehicle_id, s.includes_costs into v_vehicle_id, v_includes_costs
+        from public.shares s
+       where s.token_hash = extensions.digest(p_token, 'sha256')
+         and s.revoked_at is null
+         and s.expires_at > now();
+    end if;
+
+    if not found then
+      raise insufficient_privilege using message = 'share unavailable';
+    end if;
+
+    return query
+      select jsonb_build_object('id', r.id, 'title', r.title)
+             || case when v_includes_costs is true
+                     then jsonb_build_object('cost_amount', r.cost_amount)
+                     else '{}'::jsonb end
+        from public.records r
+       where r.vehicle_id = v_vehicle_id;
+  end;
+`);
+
+/**
+ * G27b — the REJECT case that makes the narrowing safe: the identical reader
+ * with **no token test at all** on the flag read.
+ *
+ * "It is a declared reader, so the flags are fine" is the reading that would
+ * pass this, and it is exactly the reading the owner's ruling forbids. If this
+ * ever goes green, the rule has become a blanket exemption.
+ */
+const G27B_UNGATED_FLAG_READ = flagReader(`
+  declare
+    v_vehicle_id uuid;
+  begin
+    select v.id into v_vehicle_id
+      from public.vehicles v
+      join public.profiles p on p.id = v.owner_id
+     where p.handle = p_handle
+       and v.is_worklog_public is true;
+
+    if not found then
+      select s.vehicle_id into v_vehicle_id
+        from public.shares s
+       where s.token_hash = extensions.digest(p_token, 'sha256')
+         and s.revoked_at is null
+         and s.expires_at > now();
+    end if;
+
+    return query select jsonb_build_object('id', r.id)
+      from public.records r where r.vehicle_id = v_vehicle_id;
+  end;
+`);
+
+/**
+ * G27c — the flags consulted **while resolving a real token**.
+ *
+ * The half the ruling names explicitly and the one a "does the body contain a
+ * null test anywhere?" rule would wave through: this body *does* contain
+ * `p_token is null`, one branch up. The flag read is in the other branch.
+ */
+const G27C_FLAG_ON_TOKEN_PATH = flagReader(`
+  declare
+    v_vehicle_id uuid;
+  begin
+    if p_token is null then
+      select v.id into v_vehicle_id
+        from public.vehicles v
+        join public.profiles p on p.id = v.owner_id
+       where p.handle = p_handle;
+    else
+      select s.vehicle_id into v_vehicle_id
+        from public.shares s
+        join public.vehicles v on v.id = s.vehicle_id
+       where s.token_hash = extensions.digest(p_token, 'sha256')
+         and s.revoked_at is null
+         and s.expires_at > now()
+         and v.is_worklog_public is true;
+    end if;
+
+    return query select jsonb_build_object('id', r.id)
+      from public.records r where r.vehicle_id = v_vehicle_id;
+  end;
+`);
+
+/**
+ * G27e — the guard widened by an `or` nobody reads to the end of.
+ *
+ * `if p_token is null or p_token = 'x' then` guarantees nothing about the
+ * token, and a rule that matched `p_token is null` as a substring would call
+ * this gated. Same defect shape as P3 and N11 at the top of this file, on a
+ * different predicate — which is why the guard is decided by
+ * `impliesTokenAbsent` and not by a regex.
+ */
+const G27E_WIDENED_GUARD = flagReader(`
+  begin
+    if p_token is null or p_token = 'x' then
+      return query select jsonb_build_object('id', v.id)
+        from public.vehicles v where v.is_worklog_public is true;
+    end if;
+  end;
+`);
+
+/** G27f — the same widening inside a single predicate, no `if` at all. */
+const G27F_OR_PREDICATE = flagReader(
+  `select jsonb_build_object('id', v.id)
+     from public.vehicles v
+    where (p_token is null or v.is_worklog_public is true);`,
+  "sql"
+);
+
+/**
+ * G27g — the single-predicate ACCEPT case: a `language sql` reader whose world
+ * branch carries the null test as a conjunct and whose token branch does not
+ * touch the flags.
+ *
+ * Here so the rule is not silently plpgsql-only. Without it, a tightening that
+ * required an `if` statement would reject a legitimate reader and nothing
+ * would say so — the direction that gets a security rule deleted rather than
+ * fixed.
+ */
+const G27G_CONJUNCT_ACCEPT = flagReader(
+  `select jsonb_build_object('id', r.id)
+     from public.records r
+     join public.vehicles v on v.id = r.vehicle_id
+     join public.profiles p on p.id = v.owner_id
+    where (p_token is null and p.handle = p_handle and v.is_worklog_public is true)
+       or (exists (select 1 from public.shares s
+                    where s.token_hash = extensions.digest(p_token, 'sha256')
+                      and s.revoked_at is null
+                      and s.expires_at > now()
+                      and s.vehicle_id = r.vehicle_id));`,
+  "sql"
+);
+
+/** G27h — the flag read after the guarded chain has already closed. */
+const G27H_AFTER_END_IF = flagReader(`
+  begin
+    if p_token is null then
+      return query select jsonb_build_object('id', 1);
+    end if;
+    return query select jsonb_build_object('id', v.id)
+      from public.vehicles v where v.is_worklog_public is true;
+  end;
+`);
+
+/**
+ * G27i — a routine that is **not** a declared share reader, correctly gated,
+ * and still forbidden.
+ *
+ * Verdict 1 of the three, and the half of SHR-09 that did not change. The
+ * narrowing is for the allow-list and for nothing else; a fourth anon-granted
+ * routine reading the flags is the allow-list widening T2-402 already ruled is
+ * not an implementer's edit.
+ */
+const G27I_NOT_ALLOW_LISTED = sql(`
+  create function public.community_evidence(p_token text, p_handle text)
+  returns setof jsonb
+  language plpgsql stable security definer set search_path = ''
+  as $share$
+  begin
+    if p_token is null then
+      return query select jsonb_build_object('id', r.id)
+        from public.records r
+        join public.vehicles v on v.id = r.vehicle_id
+       where v.is_worklog_public is true;
+    end if;
+  end;
+  $share$;
+
+  revoke all on function public.community_evidence(text, text) from public;
+  grant execute on function public.community_evidence(text, text) to anon;
+`);
+
+/**
+ * G27k — the flag read in a **later** statement than the one carrying the null
+ * test.
+ *
+ * This exists because a mutation survived the first pass: emptying
+ * `statementRanges`' offsets (every range spanning the whole body) left the
+ * whole corpus green, since every other fixture either resolves inside a
+ * branch span or has exactly one statement. With the offsets broken, the flag
+ * occurrence here is attributed to the *first* statement — whose predicate is
+ * `p_token is null` — and an ungated read is reported as gated. Nothing else in
+ * this file can tell those two apart.
+ */
+const G27K_LATER_STATEMENT = flagReader(`
+  begin
+    perform 1 from public.profiles p where p_token is null;
+    return query select jsonb_build_object('id', v.id)
+      from public.vehicles v where v.is_worklog_public is true;
+  end;
+`);
+
+/**
+ * G27l — the flags read behind `if p_token is NOT null then`.
+ *
+ * The inversion, and the one spelling that must never be mistaken for a gate:
+ * this is the forbidden half of the owner's ruling written as plainly as it can
+ * be written — flags consulted precisely *because* a token was presented. It
+ * exists because `\bp_token is null\b` and `\bp_token is not null\b` are one
+ * relaxed quantifier apart, and a rule that accepted the second would report
+ * the exact conflation SHR-09 forbids as correctly gated.
+ */
+const G27L_INVERTED_GUARD = flagReader(`
+  begin
+    if p_token is not null then
+      return query select jsonb_build_object('id', v.id)
+        from public.vehicles v where v.is_worklog_public is true;
+    end if;
+  end;
+`);
+
+/** G27j — one flag gated and a second one not. The finding names the second. */
+const G27J_ONE_OF_TWO = flagReader(`
+  begin
+    if p_token is null then
+      return query select jsonb_build_object('id', v.id)
+        from public.vehicles v where v.is_worklog_public is true;
+    end if;
+    return query select jsonb_build_object('id', v.id)
+      from public.vehicles v where v.is_showcase_public is true;
+  end;
+`);
+
+/**
+ * G27m — the flags on the token path, reached by `elsif` rather than `else`.
+ *
+ * G27c is the same finding spelled with `else`, and the two take different
+ * branches of the span scanner: `else` ends a branch and opens nothing, while
+ * `elsif` ends one branch and evaluates a fresh condition. A corpus that tested
+ * only the `else` spelling would leave the `elsif` half of that scanner free to
+ * be mutated into "an `elsif` does not end the branch before it", and the
+ * guarded span would then swallow the token path.
+ */
+const G27M_ELSIF_TOKEN_PATH = flagReader(`
+  declare
+    v_vehicle_id uuid;
+  begin
+    if p_token is null then
+      select v.id into v_vehicle_id from public.vehicles v
+        join public.profiles p on p.id = v.owner_id where p.handle = p_handle;
+    elsif p_token is not null then
+      select s.vehicle_id into v_vehicle_id
+        from public.shares s
+        join public.vehicles v on v.id = s.vehicle_id
+       where s.token_hash = extensions.digest(p_token, 'sha256')
+         and v.is_worklog_public is true;
+    end if;
+
+    return query select jsonb_build_object('id', r.id)
+      from public.records r where r.vehicle_id = v_vehicle_id;
+  end;
+`);
+
+/**
+ * G27n ACCEPT — the gate expressed as an `elsif`, not as the opening `if`.
+ *
+ * The positive control G27m needs, and the one that keeps the `elsif` half of
+ * the scanner from being deleted instead of fixed: a reader may perfectly well
+ * dispatch on something else first and reach its world path second. Without
+ * this fixture, "an `elsif` never opens a guarded span" is a mutation the whole
+ * corpus survives, and the rule would quietly reject a legitimate reader.
+ */
+const G27N_ELSIF_GATED = flagReader(`
+  begin
+    if p_handle is null then
+      raise insufficient_privilege using message = 'share unavailable';
+    elsif p_token is null then
+      return query select jsonb_build_object('id', v.id)
+        from public.vehicles v where v.is_worklog_public is true;
+    else
+      return query select jsonb_build_object('id', s.vehicle_id)
+        from public.shares s
+       where s.token_hash = extensions.digest(p_token, 'sha256');
+    end if;
+  end;
+`);
+
+/**
+ * G27o — the guard negated: `if not (p_token is null) then`.
+ *
+ * The most dangerous fixture in this corpus, because the body **contains
+ * `p_token is null` verbatim** and means its exact opposite. This is G27l's
+ * finding wearing the accept case's text: the flags are read precisely because
+ * a token was presented. It is here because the rule's atom test is ultimately
+ * a regex, and a regex cannot see a `not` three characters to its left — so
+ * `impliesTokenAbsent` refuses a negated atom outright, and this fixture is
+ * what fails if that refusal is ever removed as redundant.
+ */
+const G27O_NEGATED_GUARD = flagReader(`
+  begin
+    if not (p_token is null) then
+      return query select jsonb_build_object('id', v.id)
+        from public.vehicles v where v.is_worklog_public is true;
+    end if;
+  end;
+`);
+
+/** G27p — the same negation inside a single predicate, no `if` at all. */
+const G27P_NEGATED_PREDICATE = flagReader(
+  `select jsonb_build_object('id', v.id)
+     from public.vehicles v
+    where not (p_token is null) and v.is_worklog_public is true;`,
+  "sql"
+);
+
+/**
+ * G27q — a gated first arm and an **ungated second arm of a `union`**.
+ *
+ * One `;`-delimited statement with two predicates. The first says the token is
+ * absent; the second says nothing at all, and it is the one that reads the
+ * flag. A rule that asked "does this statement's top-level predicate imply the
+ * token is absent?" and stopped there accepts this — the predicate it found is
+ * real, it is top-level, and it governs the *other* arm. This is why
+ * `wherePredicate` reports where its authority stops.
+ */
+const G27Q_UNION_SECOND_ARM = flagReader(
+  `select jsonb_build_object('id', v.id)
+     from public.vehicles v
+     join public.profiles p on p.id = v.owner_id
+    where p_token is null and p.handle = p_handle
+   union
+   select jsonb_build_object('id', v2.id)
+     from public.vehicles v2
+    where v2.is_worklog_public is true;`,
+  "sql"
+);
+
+/**
+ * G27r — the flag read into a local with no predicate on the read at all.
+ *
+ * The simplest spelling of the forbidden thing, and the one a predicate-shaped
+ * rule is most likely to be silent about: there is no `where` here to analyse,
+ * so "no predicate" must mean ungated. Reading it as "nothing to object to" is
+ * the failure mode `wherePredicate`'s doc comment names.
+ */
+const G27R_BARE_ASSIGNMENT = flagReader(`
+  declare
+    v_public boolean;
+  begin
+    select v.is_worklog_public into v_public
+      from public.vehicles v
+      join public.profiles p on p.id = v.owner_id
+     where p.handle = p_handle;
+    return query select jsonb_build_object('public', v_public);
+  end;
+`);
+
+/**
+ * G27s — the flags in the `else` branch of `if <token> is not null then`.
+ *
+ * Semantically this *is* the world path, and the rule rejects it anyway. That
+ * is the over-strictness the section header in `rules.ts` declares on purpose,
+ * pinned here so it is visibly a decision rather than an undiscovered bug: the
+ * guarded path has to name its condition positively, which is what stops a
+ * `case … when … then … else … end` expression from being read as an
+ * `if`-chain's `else` and marking a region guarded that nothing guards.
+ *
+ * If a later task decides the cost is not worth paying, this is the fixture
+ * whose expectation flips — and flipping it is a deliberate edit to a
+ * trust-boundary rule, which is the point.
+ */
+const G27S_NEGATIVE_ELSE = flagReader(`
+  begin
+    if p_token is not null then
+      return query select jsonb_build_object('id', s.vehicle_id)
+        from public.shares s
+       where s.token_hash = extensions.digest(p_token, 'sha256');
+    else
+      return query select jsonb_build_object('id', v.id)
+        from public.vehicles v where v.is_worklog_public is true;
+    end if;
+  end;
+`);
+
+/**
+ * G27t ACCEPT — the flag in a join's `on` clause, gated by the statement's own
+ * `where`.
+ *
+ * A publication flag is a join condition at least as often as it is a `where`
+ * conjunct, and the gate still governs it: the predicate is top-level and the
+ * flag sits inside the region it governs. Without this fixture, tightening the
+ * rule to "the flag must appear inside the predicate text" would reject a
+ * legitimate reader and no assertion would object.
+ */
+const G27T_ON_CLAUSE = flagReader(`
+  begin
+    return query select jsonb_build_object('id', r.id)
+      from public.records r
+      join public.vehicles v
+        on v.id = r.vehicle_id and v.is_worklog_public is true
+     where p_token is null;
+  end;
+`);
+
+/**
+ * G27u — an identifier that **ends in `where`**, with the real predicate ungated.
+ *
+ * `serviced_elsewhere` contains the keyword the predicate scanner looks for, and
+ * the text that follows it inside the `on` clause happens to assert the token is
+ * null. A scanner that matched `where` without checking what precedes it finds
+ * its predicate eight characters early, reads `… and p_token is null where
+ * v.is_worklog_public is true` as the statement's gate, and **accepts an
+ * ungated flag read**. The real `where` is two lines down and says nothing about
+ * the token.
+ *
+ * Written because the left-boundary check survived the first mutation round: no
+ * other fixture could tell it from a no-op, and a clause no fixture can kill is
+ * a clause that is not being graded (`.claude/GRADER-PRINCIPLES.md`, "mutation-
+ * test each clause of the rule separately").
+ */
+const G27U_KEYWORD_SUFFIX_IDENTIFIER = flagReader(`
+  begin
+    return query select jsonb_build_object('id', v.id)
+      from public.vehicles v
+      join public.records r
+        on r.vehicle_id = v.id and r.serviced_elsewhere and p_token is null
+     where v.is_worklog_public is true;
+  end;
+`);
+
+/**
+ * G27v ACCEPT — a genuinely-gated flag read as a **non-first** top-level
+ * statement of the body (PR #141 bot-review, `at`/`predicate.end` coordinate
+ * mismatch).
+ *
+ * `wherePredicate` is called with `range.text` — the statement *trimmed* —
+ * but the caller compared its `end` offset against `at - range.start`, an
+ * offset into the *untrimmed* statement. `range.start` and the point
+ * `range.text` actually starts from disagree by exactly the untrimmed
+ * statement's own leading whitespace, and every statement but the first in a
+ * body carries one such leading space once `normalizeSql` has collapsed its
+ * original indentation down to a single character — which is what the
+ * `v_noop := 1;` line before the real read manufactures here.
+ *
+ * Pinned as a regression for the *coordinate-consistent* formula rather than
+ * as a fail-before/pass-after demonstration of the reported defect: the
+ * reported mismatch is bounded by one collapsed-whitespace character, and the
+ * shortest distance a legitimately-gated occurrence of either publication
+ * flag can sit from `predicate.end` is bounded below by the flag's own
+ * column-name length (18 characters, `is_worklog_public`) — an order of
+ * magnitude past the one-character error, so no fixture built from this
+ * project's actual `PUBLIC_VISIBILITY_FLAG_COLUMNS` names can flip between
+ * the pre-fix and post-fix formula. It still earns its place: a cruder
+ * regression of the same defect class — comparing the raw, un-adjusted `at`
+ * against `predicate.end` — pushes the flag's occurrence *past* `predicate.end`
+ * in this fixture's numbers and this fixture catches it, where none of the
+ * other G27 fixtures (all first-statement bodies) would.
+ */
+const G27V_LEADING_WHITESPACE_GATED = flagReader(`
+  declare
+    v_noop int;
+  begin
+    v_noop := 1;
+    return query select jsonb_build_object('id', v.id)
+      from public.vehicles v
+     where p_token is null and v.is_worklog_public is true;
+  end;
 `);
 
 describe("T2-401 (d): the `setof` rule has an ACCEPT case at last", () => {
@@ -3397,6 +4062,186 @@ describe("T2-401: the optimistic-default sweep, inverted", () => {
   });
 });
 
+describe("T2-404a: SHR-09, the flags and the world path", () => {
+  // The narrowing, graded from both sides. Read the fixture comments above for
+  // what each one isolates; every assertion here is paired with its opposite.
+
+  it("G27 ACCEPT: a declared reader gated on `p_token is null`", () => {
+    // The whole point of the ruling. Before the narrowing this was a finding,
+    // and the amendment that created the shape did not revisit the rule.
+    expect(
+      publicationFlagIssues(G27_GATED_WORLD_PATH, SHARE_READER_NAMES)
+    ).toEqual([]);
+  });
+
+  it("G27b REJECTS an ungated flag read by the SAME declared reader", () => {
+    // The half that makes the accept case above safe rather than a blanket
+    // exemption. If this ever goes green, "allow-listed" has come to mean
+    // "may read the flags", which is not what the owner ruled.
+    expect(
+      publicationFlagIssues(G27B_UNGATED_FLAG_READ, SHARE_READER_NAMES).join(
+        " | "
+      )
+    ).toContain("without requiring `p_token is null`");
+  });
+
+  it("G27c REJECTS the flags consulted while resolving a token", () => {
+    // `p_token is null` appears in this body — one branch away from the flag.
+    // A rule that asked "does the body mention the null test?" passes it.
+    expect(
+      publicationFlagIssues(G27C_FLAG_ON_TOKEN_PATH, SHARE_READER_NAMES).join(
+        " | "
+      )
+    ).toContain("is_worklog_public");
+  });
+
+  it.each<[string, string]>([
+    ["G27e a guard widened by `or`", G27E_WIDENED_GUARD],
+    ["G27f the same widening in a predicate", G27F_OR_PREDICATE],
+    ["G27h a read after `end if`", G27H_AFTER_END_IF],
+    ["G27j the second of two flags", G27J_ONE_OF_TWO],
+    ["G27k a null test in an EARLIER statement", G27K_LATER_STATEMENT],
+    ["G27l a guard on `is NOT null`", G27L_INVERTED_GUARD],
+    ["G27m the token path reached by `elsif`", G27M_ELSIF_TOKEN_PATH],
+    ["G27o a guard negated by `not (… is null)`", G27O_NEGATED_GUARD],
+    ["G27p the same negation in a predicate", G27P_NEGATED_PREDICATE],
+    ["G27q the ungated second arm of a `union`", G27Q_UNION_SECOND_ARM],
+    ["G27r a bare assignment with no predicate", G27R_BARE_ASSIGNMENT],
+    [
+      "G27s the `else` of `is not null` (over-strict, deliberate)",
+      G27S_NEGATIVE_ELSE,
+    ],
+    ["G27u an identifier ending in `where`", G27U_KEYWORD_SUFFIX_IDENTIFIER],
+  ])("%s is rejected", (_label, fixture) => {
+    expect(
+      publicationFlagIssues(fixture, SHARE_READER_NAMES).length
+    ).toBeGreaterThan(0);
+  });
+
+  it.each<[string, string]>([
+    ["G27n the gate expressed as an `elsif`", G27N_ELSIF_GATED],
+    ["G27t the flag in a join's `on`, gated by the `where`", G27T_ON_CLAUSE],
+    [
+      "G27v a gated read as a non-first statement (leading whitespace)",
+      G27V_LEADING_WHITESPACE_GATED,
+    ],
+  ])("%s is ACCEPTED", (_label, fixture) => {
+    // Paired with the rejects above, one for one. G27n is G27m's control and
+    // G27t is G27r's: without them, "an `elsif` never gates" and "a flag
+    // outside the predicate text is never gated" are both mutations the corpus
+    // survives, and each would reject a reader doing the right thing. G27v is
+    // the coordinate-space regression (PR #141): the accept case has to
+    // survive on a statement whose own leading whitespace was collapsed and
+    // then trimmed away, not just on the first statement of a body.
+    expect(publicationFlagIssues(fixture, SHARE_READER_NAMES)).toEqual([]);
+  });
+
+  it("G27j names the UNGATED flag and not the gated one", () => {
+    // A finding that named both would be telling a reviewer to go and look at
+    // correct code, which is how a real rule gets ignored.
+    const found = publicationFlagIssues(
+      G27J_ONE_OF_TWO,
+      SHARE_READER_NAMES
+    ).join(" | ");
+
+    expect(found).toContain("is_showcase_public");
+    expect(found).not.toContain("is_worklog_public");
+  });
+
+  it("G27g ACCEPT: the single-predicate spelling, gated as a conjunct", () => {
+    // The rule is not plpgsql-only. Without this, tightening it to require an
+    // `if` statement would reject a legitimate `language sql` reader silently.
+    expect(
+      publicationFlagIssues(G27G_CONJUNCT_ACCEPT, SHARE_READER_NAMES)
+    ).toEqual([]);
+  });
+
+  it("G27i REJECTS a correctly-gated routine that is not on the allow-list", () => {
+    // Verdict 1, unchanged by the narrowing: this body is gated exactly as
+    // G27's is, and it is still forbidden, because it is not one of the three
+    // readers the contract names.
+    expect(
+      publicationFlagIssues(G27I_NOT_ALLOW_LISTED, SHARE_READER_NAMES).join(
+        " | "
+      )
+    ).toContain("is not a declared share reader");
+  });
+
+  it("the allow-list is matched by SCHEMA and name, not by name", () => {
+    // The PR #74 lesson, applied to the new rule. A `private.share_read_records`
+    // bearing a declared reader's name must not inherit its permission to read
+    // the flags — it is a different function with a different ACL.
+    const impostor = G27_GATED_WORLD_PATH.replaceAll(
+      "public.share_read_records",
+      "private.share_read_records"
+    );
+
+    expect(impostor).not.toEqual(G27_GATED_WORLD_PATH);
+    expect(
+      publicationFlagIssues(impostor, SHARE_READER_NAMES).join(" | ")
+    ).toContain("is not a declared share reader");
+  });
+
+  it("a reader that names no flag at all produces nothing", () => {
+    // The reference reader, which is what shipped. The rule must be silent
+    // about it — otherwise the unmarked grader in `share-grants.test.ts` would
+    // be red for a routine doing exactly the right thing.
+    expect(
+      publicationFlagGateIssues(readerOf(CORRECT_SHARE_READER), true)
+    ).toEqual([]);
+    expect(
+      publicationFlagGateIssues(readerOf(CORRECT_SHARE_READER), false)
+    ).toEqual([]);
+  });
+
+  it("the per-routine rule and the sweep agree", () => {
+    // The sweep decides allow-list membership and delegates the rest. A
+    // divergence between them would mean one of the two is grading something
+    // nobody asserts on.
+    const [routine] = functions(G27B_UNGATED_FLAG_READ);
+
+    expect(publicationFlagGateIssues(routine, true)).toEqual(
+      publicationFlagIssues(G27B_UNGATED_FLAG_READ, SHARE_READER_NAMES)
+    );
+  });
+
+  it("every G27 fixture is one anon-reachable routine — none is vacuous", () => {
+    // The corpus's own canary. Each verdict above is a statement about a
+    // routine the sweep can actually see; a fixture that failed to parse, or
+    // that was never granted to `anon`, would score "no findings" and look
+    // like an accept case.
+    for (const fixture of [
+      G27_GATED_WORLD_PATH,
+      G27B_UNGATED_FLAG_READ,
+      G27C_FLAG_ON_TOKEN_PATH,
+      G27E_WIDENED_GUARD,
+      G27F_OR_PREDICATE,
+      G27G_CONJUNCT_ACCEPT,
+      G27H_AFTER_END_IF,
+      G27I_NOT_ALLOW_LISTED,
+      G27J_ONE_OF_TWO,
+      G27K_LATER_STATEMENT,
+      G27L_INVERTED_GUARD,
+      G27M_ELSIF_TOKEN_PATH,
+      G27N_ELSIF_GATED,
+      G27O_NEGATED_GUARD,
+      G27P_NEGATED_PREDICATE,
+      G27Q_UNION_SECOND_ARM,
+      G27R_BARE_ASSIGNMENT,
+      G27S_NEGATIVE_ELSE,
+      G27T_ON_CLAUSE,
+      G27U_KEYWORD_SUFFIX_IDENTIFIER,
+      G27V_LEADING_WHITESPACE_GATED,
+    ]) {
+      expect(functions(fixture)).toHaveLength(1);
+      expect(anonExecutableFunctions(fixture)).toHaveLength(1);
+      expect(functions(fixture)[0].body).toMatch(
+        /is_worklog_public|is_showcase_public/
+      );
+    }
+  });
+});
+
 describe("T2-401: every new probe fires, and every control stays silent", () => {
   it("every wide-open T2-401 probe produces at least one finding", () => {
     // The sweep, in the shape sections A and D use. A rule refactor that
@@ -3457,6 +4302,73 @@ describe("T2-401: every new probe fires, and every control stays silent", () => 
           ["records"]
         ),
       ],
+      [
+        "G27b ungated flag read",
+        publicationFlagIssues(G27B_UNGATED_FLAG_READ, SHARE_READER_NAMES),
+      ],
+      [
+        "G27c flag on the token path",
+        publicationFlagIssues(G27C_FLAG_ON_TOKEN_PATH, SHARE_READER_NAMES),
+      ],
+      [
+        "G27e widened guard",
+        publicationFlagIssues(G27E_WIDENED_GUARD, SHARE_READER_NAMES),
+      ],
+      [
+        "G27f widened predicate",
+        publicationFlagIssues(G27F_OR_PREDICATE, SHARE_READER_NAMES),
+      ],
+      [
+        "G27h read after end if",
+        publicationFlagIssues(G27H_AFTER_END_IF, SHARE_READER_NAMES),
+      ],
+      [
+        "G27i not on the allow-list",
+        publicationFlagIssues(G27I_NOT_ALLOW_LISTED, SHARE_READER_NAMES),
+      ],
+      [
+        "G27j one of two flags ungated",
+        publicationFlagIssues(G27J_ONE_OF_TWO, SHARE_READER_NAMES),
+      ],
+      [
+        "G27k null test in an earlier statement",
+        publicationFlagIssues(G27K_LATER_STATEMENT, SHARE_READER_NAMES),
+      ],
+      [
+        "G27l guard on `is not null`",
+        publicationFlagIssues(G27L_INVERTED_GUARD, SHARE_READER_NAMES),
+      ],
+      [
+        "G27m token path reached by elsif",
+        publicationFlagIssues(G27M_ELSIF_TOKEN_PATH, SHARE_READER_NAMES),
+      ],
+      [
+        "G27o guard negated by `not`",
+        publicationFlagIssues(G27O_NEGATED_GUARD, SHARE_READER_NAMES),
+      ],
+      [
+        "G27p negation in a predicate",
+        publicationFlagIssues(G27P_NEGATED_PREDICATE, SHARE_READER_NAMES),
+      ],
+      [
+        "G27q ungated union arm",
+        publicationFlagIssues(G27Q_UNION_SECOND_ARM, SHARE_READER_NAMES),
+      ],
+      [
+        "G27r bare assignment",
+        publicationFlagIssues(G27R_BARE_ASSIGNMENT, SHARE_READER_NAMES),
+      ],
+      [
+        "G27s else of `is not null`",
+        publicationFlagIssues(G27S_NEGATIVE_ELSE, SHARE_READER_NAMES),
+      ],
+      [
+        "G27u identifier ending in `where`",
+        publicationFlagIssues(
+          G27U_KEYWORD_SUFFIX_IDENTIFIER,
+          SHARE_READER_NAMES
+        ),
+      ],
     ];
 
     expect(
@@ -3489,6 +4401,15 @@ describe("T2-401: every new probe fires, and every control stays silent", () => 
           `),
           ["records"]
         ),
+        publicationFlagIssues(G27_GATED_WORLD_PATH, SHARE_READER_NAMES),
+        publicationFlagIssues(G27G_CONJUNCT_ACCEPT, SHARE_READER_NAMES),
+        publicationFlagIssues(G27N_ELSIF_GATED, SHARE_READER_NAMES),
+        publicationFlagIssues(G27T_ON_CLAUSE, SHARE_READER_NAMES),
+        publicationFlagIssues(
+          G27V_LEADING_WHITESPACE_GATED,
+          SHARE_READER_NAMES
+        ),
+        publicationFlagGateIssues(readerOf(CORRECT_SHARE_READER), true),
         ...G18_SETOF_NON_USER_TABLE.map(([, fixture]) =>
           functions(sql(fixture)).flatMap(projectionIssues)
         ),

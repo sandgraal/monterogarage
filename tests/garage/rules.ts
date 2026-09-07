@@ -72,7 +72,9 @@ import {
   GRANT_REVOCATION_COLUMN,
   PENDING_USER_TABLES,
   PLAINTEXT_TOKEN_COLUMNS,
+  PUBLIC_VISIBILITY_FLAG_COLUMNS,
   SHARE_GRANT_KINDS,
+  SHARE_READER_TOKEN_ARGUMENT,
   SHARE_TOKEN_HASH_COLUMN,
   USER_TABLES,
   USER_TABLE_NAMES,
@@ -94,6 +96,7 @@ import {
   privilegeVerdict,
   representsAbsence,
   rolePrivileges,
+  statementRanges,
   statements,
   type FunctionDefinition,
   type GrantState,
@@ -1837,6 +1840,396 @@ export function revocationGatingIssues(routine: FunctionDefinition): string[] {
         `gated by payment, by plan, or by any other condition (SHR-08, ` +
         `003 MON-02)`
     );
+}
+
+/* -------------------------------------------------------------------------
+ * SHR-09 — the publication flags, and the one path allowed to read them
+ *
+ * ## What changed, and the ruling that changed it (T2-404a, owner, 2026-09-06)
+ *
+ * The original rule was absolute: **no** anon-reachable routine may name
+ * `is_worklog_public` or `is_showcase_public`. Written 2026-09-02 for a surface
+ * that served token holders and nobody else, it was correct for that surface
+ * and it became unsatisfiable when the 2026-09-05 amendment folded T2-402's
+ * public showcase/work-log pages into the same anon reader: serving the *world*
+ * means consulting exactly those flags, and the amendment did not revisit the
+ * rule. T2-404 recorded the contradiction rather than routing around it — the
+ * two evasions available were a helper that moves the flag name out of the
+ * reader's own body (textual dodging) and a fourth anon function (widening an
+ * allow-list a grader pins), and both are worse than a red build.
+ *
+ * The owner's ruling narrows it in exactly one direction:
+ *
+ * > An allow-listed share reader may consult the publication flags **only in a
+ * > code path that also requires the token to be absent** — i.e. while serving
+ * > a world/no-token request. The same reader consulting those flags while
+ * > also resolving a real, non-null token stays forbidden, and any routine
+ * > that is not on the allow-list reading those flags stays forbidden outright.
+ *
+ * So there are three verdicts, not two, and each is its own finding:
+ *
+ * 1. **Not allow-listed, reads a flag** — forbidden. Unchanged from the
+ *    original rule; this is the whole of SHR-09 for every routine but three.
+ * 2. **Allow-listed, reads a flag with no token-is-null gate on that read** —
+ *    forbidden. This is the half that makes the narrowing safe rather than a
+ *    blanket exemption: "it is a declared reader, so flags are fine now" is
+ *    precisely the reading that would put a grant and a publication decision
+ *    on the same code path.
+ * 3. **Allow-listed, every flag read gated on the token being null** —
+ *    permitted. The world is a principal with no token, and this is what
+ *    serving it looks like.
+ *
+ * ## What "gated" means here, stated including its limits
+ *
+ * A flag mention is gated when either:
+ *
+ * - it sits inside a plpgsql `if <cond> then` / `elsif <cond> then` branch
+ *   whose own condition asserts the token is null, and the branch is delimited
+ *   at its chain's next `elsif`/`else` and at its matching `end if`; or
+ * - the *statement* it sits in asserts the token is null in conjunction with
+ *   it — every top-level `or` disjunct of that statement which mentions a flag
+ *   must also carry the null test, which is `isOwnerScoped`'s "every branch"
+ *   discipline applied to a different predicate.
+ *
+ * Two deliberate over-strictnesses, named here so the next person to hit one
+ * knows it is a decision and not a bug (`.claude/GRADER-PRINCIPLES.md`,
+ * "a known-pages sweep is only as complete as its list"):
+ *
+ * - **The `else` branch of `if <token> is not null then … else …` is not
+ *   accepted.** The guarded path has to name its condition positively. This is
+ *   what keeps a `case … when … then … else … end` *expression* — which
+ *   `share_read_records` already uses for its cost pair — from being read as an
+ *   `if`-chain's else and silently marking a region guarded.
+ * - **A nested `if` inside a guarded branch re-opens the question.** The span
+ *   ends at the chain's next `elsif`/`else`, and an inner chain's `else` is one
+ *   of those tokens if it is spelled at the same depth.
+ *
+ * Both push the same way: toward a flag read that is directly under a
+ * `if p_token is null then`. That is the shape a reviewer can check in one
+ * glance, and over-matching is the safe failure direction for a trust-boundary
+ * rule — a spurious finding costs five minutes, a missed one is a private
+ * work-log on a public page.
+ * ---------------------------------------------------------------------- */
+
+/**
+ * Does this boolean expression **imply** that the token is absent?
+ *
+ * Not "does it mention `p_token is null`" — the F1 lesson, one surface over.
+ * `p_token is null or p_token = 'x'` mentions it and guarantees nothing, and a
+ * regex would have accepted it. So the expression is decomposed:
+ *
+ * - a top-level `or` implies the assertion only if **every** branch does —
+ *   `or` is how a guard gets widened, exactly as in `isOwnerScoped`;
+ * - a top-level `and` implies it if **any** conjunct does;
+ * - a **negated** atom implies nothing, and is refused before the null test is
+ *   even looked for;
+ * - an atom implies it when it is the null test itself.
+ *
+ * Two spellings of the *inverse* have to be refused, and they fail for
+ * different reasons. `\bp_token is null\b` does not match
+ * `p_token is not null`, so that one cannot satisfy the regex by accident. But
+ * `not (p_token is null)` **contains** the null test verbatim — it is the
+ * forbidden condition wearing the permitted condition's text, and it is exactly
+ * the shape that reads the publication flags precisely *because* a token was
+ * presented. Anything under a leading `not` is therefore refused outright
+ * rather than analysed: `not (a or b)` is over-refused along with it, which is
+ * the safe direction for this rule (see the section header).
+ */
+function impliesTokenAbsent(expr: string, tokenArgument: string): boolean {
+  const text = unwrap(expr.trim());
+
+  const disjuncts = splitTopLevel(text, "or");
+  if (disjuncts.length > 1) {
+    return disjuncts.every((branch) =>
+      impliesTokenAbsent(branch, tokenArgument)
+    );
+  }
+
+  const conjuncts = splitTopLevel(text, "and");
+  if (conjuncts.length > 1) {
+    return conjuncts.some((branch) =>
+      impliesTokenAbsent(branch, tokenArgument)
+    );
+  }
+
+  if (/^not\b/.test(text)) return false;
+
+  return new RegExp(`\\b${tokenArgument}\\s+is\\s+null\\b`).test(text);
+}
+
+/** Keywords that end a `where` clause. */
+const PREDICATE_TERMINATORS =
+  /\b(order\s+by|group\s+by|having|window|limit|offset|fetch|returning|union|intersect|except|for\s+(?:no\s+key\s+)?update|for\s+share)\b/;
+
+/**
+ * The top-level `where` predicate of a statement, **and where it stops**.
+ *
+ * Top-level meaning at paren depth zero, so a subquery's `where` is not
+ * mistaken for the statement's own. A statement with no predicate returns
+ * `null` and is treated as ungated — an assignment like
+ * `v_public := v.is_worklog_public` has no condition on it at all, and reading
+ * "no predicate" as "nothing to object to" is how a rule ends up silent on the
+ * simplest spelling of the thing it forbids.
+ *
+ * ## Why the end offset is returned and not just the text
+ *
+ * A predicate governs the part of the statement it is a predicate *of*, and
+ * that is not the whole statement. `select … where p_token is null union
+ * select … where v.is_worklog_public` is one `;`-delimited chunk whose first
+ * top-level predicate asserts the token is absent and whose **second arm reads
+ * a publication flag under no such assertion** — accepting the flag because the
+ * chunk's first predicate implied absence would wave through exactly the
+ * conflation SHR-09 forbids. So `end` is the offset at which the predicate's
+ * authority stops, and the caller requires the flag occurrence to sit before
+ * it. Everything after a top-level `union` / `order by` / `limit` is out of
+ * scope of the gate and therefore ungated.
+ */
+function wherePredicate(
+  statement: string
+): { readonly text: string; readonly end: number } | null {
+  let depth = 0;
+  for (let index = 0; index < statement.length; index += 1) {
+    const char = statement[index];
+    if (char === "(") depth += 1;
+    else if (char === ")") depth -= 1;
+    else if (
+      depth === 0 &&
+      /^where\b/.test(statement.slice(index)) &&
+      (index === 0 || !/\w/.test(statement[index - 1]))
+    ) {
+      // The boundary-before test is not decoration: `^\bwhere\b` matches the
+      // tail of `somewhere`, and a bogus predicate is a predicate that might
+      // accidentally imply the token is absent.
+      const from = index + "where".length;
+      const tail = statement.slice(from);
+      // The terminator has to be top-level too: an `order by` inside a
+      // subquery in the predicate does not end the predicate.
+      let innerDepth = 0;
+      for (let cursor = 0; cursor < tail.length; cursor += 1) {
+        const inner = tail[cursor];
+        if (inner === "(") innerDepth += 1;
+        else if (inner === ")") innerDepth -= 1;
+        else if (
+          innerDepth === 0 &&
+          new RegExp(`^${PREDICATE_TERMINATORS.source}`).test(
+            tail.slice(cursor)
+          ) &&
+          (cursor === 0 || !/\w/.test(tail[cursor - 1]))
+        ) {
+          const text = tail.slice(0, cursor).trim();
+          return text ? { text, end: from + cursor } : null;
+        }
+      }
+      const text = tail.trim();
+      return text ? { text, end: statement.length } : null;
+    }
+  }
+  return null;
+}
+
+/** `true` when `text` names any publication flag. */
+function mentionsPublicationFlag(text: string): boolean {
+  return PUBLIC_VISIBILITY_FLAG_COLUMNS.some((column) =>
+    new RegExp(`\\b${column}\\b`).test(text)
+  );
+}
+
+/** The publication flags `text` actually names, for a finding message. */
+function publicationFlagsIn(text: string): string[] {
+  return PUBLIC_VISIBILITY_FLAG_COLUMNS.filter((column) =>
+    new RegExp(`\\b${column}\\b`).test(text)
+  );
+}
+
+/**
+ * `[start, end)` spans of a plpgsql body that run under a condition asserting
+ * the token is null.
+ *
+ * Scanned rather than parsed, over four token kinds and nothing else:
+ *
+ * - `if <cond> then` — opens a chain and raises the depth. `\bif\b` does not
+ *   match inside `elsif`, and `case … when … then` contains no `if`, so a CASE
+ *   expression cannot open one.
+ * - `elsif <cond> then` / `else` — ends the previous branch of *its* chain.
+ * - `end if` — closes a chain and lowers the depth. `end`, `end case` and
+ *   `end loop` are not `end if`, so nothing else closes one.
+ *
+ * A branch whose condition asserts the token is null contributes the span from
+ * its `then` to whichever comes first: the next `elsif`/`else` at the same
+ * depth, or the `end if` that closes its chain.
+ */
+function tokenAbsentSpans(
+  body: string,
+  tokenArgument: string
+): { readonly start: number; readonly end: number }[] {
+  const spans: { start: number; end: number }[] = [];
+  const token = /\b(end if|elsif|elseif|else|if)\b/g;
+
+  let depth = 0;
+  let open: { depth: number; start: number } | null = null;
+
+  const close = (at: number): void => {
+    if (open === null) return;
+    spans.push({ start: open.start, end: at });
+    open = null;
+  };
+
+  for (let match = token.exec(body); match; match = token.exec(body)) {
+    const word = match[1];
+    const at = match.index;
+
+    if (word === "end if") {
+      if (open !== null && open.depth >= depth) close(at);
+      depth = Math.max(0, depth - 1);
+      continue;
+    }
+
+    if (word === "if") {
+      // `if <cond> then` — the condition runs to the next `then`. An `if` with
+      // no `then` before the next statement boundary is not a block opener
+      // (`drop … if exists`), so it neither opens a chain nor moves the depth.
+      const then = /\bthen\b/.exec(body.slice(at));
+      const semicolon = body.indexOf(";", at);
+      if (!then || (semicolon !== -1 && at + then.index > semicolon)) continue;
+
+      depth += 1;
+      const condition = body.slice(at + word.length, at + then.index);
+      if (impliesTokenAbsent(condition, tokenArgument)) {
+        // A nested chain ends the enclosing span: see the header note on why
+        // the narrower reading is the one taken.
+        close(at);
+        open = { depth, start: at + then.index + "then".length };
+      }
+      continue;
+    }
+
+    // `elsif` / `elseif` / `else` — a new branch of the innermost chain.
+    if (open !== null && open.depth >= depth) close(at);
+    if (word === "else") continue;
+
+    const then = /\bthen\b/.exec(body.slice(at));
+    if (!then) continue;
+    const condition = body.slice(at + word.length, at + then.index);
+    if (impliesTokenAbsent(condition, tokenArgument)) {
+      open = { depth, start: at + then.index + "then".length };
+    }
+  }
+
+  close(body.length);
+  return spans;
+}
+
+/**
+ * SHR-09, per routine: where may a publication flag be read?
+ *
+ * `allowListed` is the caller's answer to "is this one of the declared share
+ * readers, by **schema and name**" — see `isContractRoutine` for why the schema
+ * half is not optional. A `private.share_read_records` is a different function
+ * and it is not on the list.
+ */
+export function publicationFlagGateIssues(
+  routine: FunctionDefinition,
+  allowListed: boolean,
+  tokenArgument: string = SHARE_READER_TOKEN_ARGUMENT
+): string[] {
+  const body = routine.body;
+  const named = publicationFlagsIn(body);
+  if (named.length === 0) return [];
+
+  if (!allowListed) {
+    return [
+      `${routine.identity}: reads ${named.join(", ")} and is not a declared ` +
+        `share reader — the grant path and GAR-04′'s publication path must ` +
+        `not meet in an anon-reachable routine (SHR-09)`,
+    ];
+  }
+
+  const spans = tokenAbsentSpans(body, tokenArgument);
+  const ranges = statementRanges(body);
+  const issues: string[] = [];
+  const reported = new Set<string>();
+
+  // Positional, one occurrence at a time. Asking the question of a whole
+  // `;`-delimited chunk would answer it wrongly for the shape that matters: a
+  // plpgsql `if <cond> then <read>` is one chunk, and the chunk begins *before*
+  // the guard the read runs under.
+  for (const column of PUBLIC_VISIBILITY_FLAG_COLUMNS) {
+    const occurrence = new RegExp(`\\b${column}\\b`, "g");
+    for (let hit = occurrence.exec(body); hit; hit = occurrence.exec(body)) {
+      const at = hit.index;
+      if (spans.some((span) => at >= span.start && at < span.end)) continue;
+
+      // Not inside a branch that requires the token to be absent. The remaining
+      // legitimate spelling is a single query whose own predicate says so.
+      const range = ranges.find((entry) => at >= entry.start && at < entry.end);
+      const predicate = range ? wherePredicate(range.text) : null;
+      // `at` is an offset into the body; `predicate.end` into `range.text`.
+      // Those are different coordinate spaces: `range.text` is the *trimmed*
+      // statement (see `statementRanges`' own doc comment — `start`/`end` are
+      // untrimmed, `text` is `.trim()`-ed), so an offset into `range.text` is
+      // relative to wherever the untrimmed statement's own leading whitespace
+      // ends, not to `range.start` itself. Almost every non-first statement
+      // in an indented plpgsql body has at least one such leading space once
+      // `normalizeSql` has collapsed its original indentation down to one.
+      // `leadingTrim` recovers that offset directly from the same untrimmed
+      // slice `range.text` was produced from, so `textStart` — not
+      // `range.start` — is what `at` has to be measured against.
+      const leadingTrim = range
+        ? body.slice(range.start, range.end).length -
+          body.slice(range.start, range.end).trimStart().length
+        : 0;
+      const textStart = range ? range.start + leadingTrim : 0;
+      // The flag has to sit inside the region the predicate actually governs —
+      // see `wherePredicate` for the `union` arm this closes.
+      if (range && predicate && at - textStart < predicate.end) {
+        if (impliesTokenAbsent(predicate.text, tokenArgument)) continue;
+        // Or the flag lives only inside `or` branches of the predicate that
+        // each imply it. One gated branch does not cover an ungated sibling —
+        // the `isOwnerScoped` discipline, on a different predicate.
+        const gated = splitTopLevel(unwrap(predicate.text), "or").filter(
+          (branch) => impliesTokenAbsent(branch, tokenArgument)
+        );
+        const elsewhere = gated.reduce(
+          (text, branch) => text.split(branch).join(" "),
+          range.text
+        );
+        if (!mentionsPublicationFlag(elsewhere)) continue;
+      }
+
+      const finding =
+        `${routine.identity}: reads ${column} without requiring ` +
+        `\`${tokenArgument} is null\` on that path — a declared share reader ` +
+        `may consult the publication flags only while serving a world ` +
+        `request, never while resolving a token (SHR-09)`;
+      if (reported.has(finding)) continue;
+      reported.add(finding);
+      issues.push(finding);
+    }
+  }
+
+  return issues;
+}
+
+/**
+ * SHR-09 over the whole anon surface: the sweep the grader asserts on.
+ *
+ * Driven from `anonExecutableFunctions` rather than from the allow-list, so a
+ * routine that reaches `anon` *without* being a declared reader is judged by
+ * verdict 1 above and not skipped for being unrecognised. The allow-list is
+ * consulted only to decide which of the three verdicts applies.
+ */
+export function publicationFlagIssues(
+  normalized: string,
+  allowed: readonly string[],
+  tokenArgument: string = SHARE_READER_TOKEN_ARGUMENT
+): string[] {
+  return anonExecutableFunctions(normalized).flatMap((routine) =>
+    publicationFlagGateIssues(
+      routine,
+      allowed.some((name) => isContractRoutine(routine, name)),
+      tokenArgument
+    )
+  );
 }
 
 /**
