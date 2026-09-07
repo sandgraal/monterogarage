@@ -64,8 +64,16 @@
  *     {@link applyResolvedShowcaseLinks} is the seam a page's client script
  *     must call, once the handle and vehicle id are known, to rewrite both
  *     the `<head>` tags and the switcher's anchors to the real address.
+ *  5. **The cover photo's public URL** (owner-approved addition, 2026-09-02;
+ *     the display half declared by T2-404d, following T2-404b's storage half
+ *     — the public `vehicle-cover-photos` bucket and its copy-on-designate
+ *     trigger). {@link publicCoverPhotoUrl} is the one place that knows the
+ *     `.../storage/v1/object/public/vehicle-cover-photos/<path>` shape, so the
+ *     page never re-derives it and the showcase card's `[data-showcase-cover]`
+ *     image and the garage's own cover rendering (`./cover.ts`) cannot drift on
+ *     what a "public cover URL" means.
  *
- * ## Expected-failure convention (now discharged)
+ * ## Expected-failure convention (discharged once, reopened once)
  *
  * Every export below used to throw {@link SHOWCASE_SEAM_NOT_IMPLEMENTED}. T2-404b
  * replaced the throws with the real logic and, in `tests/pages/
@@ -77,12 +85,17 @@
  * canary watching a function that no longer throws has nothing left to prove
  * (T802's `sync-plan.test.ts` records the identical retirement).
  *
- * {@link SHOWCASE_SEAM_NOT_IMPLEMENTED} is left exported, unused by the code
- * below, for the reason `./cover.ts` keeps `COVER_SEAM` after T2-306: the
- * message names its task for provenance, and a future seam in this module is
- * free to reuse the pattern.
+ * {@link SHOWCASE_SEAM_NOT_IMPLEMENTED} was left exported, unused, for exactly
+ * the reason it is used again now: `./cover.ts` kept `COVER_SEAM` after T2-306
+ * for "a future seam in this module is free to reuse the pattern," and
+ * {@link publicCoverPhotoUrl} (point 5 above) is that future seam arriving.
+ * T2-404d declares it as a throwing stub — the page-template wiring and the
+ * world-reader RPC's own `cover_photo_path` projection are a separate
+ * `[PLATFORM]` task this file does not implement — and the same activation
+ * rule applies: delete exactly the `.fails` marker on the grader it satisfies,
+ * never edit the assertion.
  *
- * refs specs/002-montero-garage (SHR-02, SHR-03, SHR-04, SHR-09),
+ * refs specs/002-montero-garage (SHR-02, SHR-03, SHR-04, SHR-09, GAR-01′),
  * specs/001-foundation (SCF-01, I18N-04),
  * specs/001-foundation/design/HANDOFF-DESIGN.md
  */
@@ -479,4 +492,65 @@ export function showcaseUrlParams(
   const vehicleId = segments[3];
   if (handle === undefined || vehicleId === undefined) return null;
   return { handle, vehicleId };
+}
+
+/**
+ * The public bucket a designated cover photo is copied into — the contract's
+ * `VEHICLE_COVER_PHOTOS_BUCKET` (`tests/garage/contract.ts`), restated here for
+ * the same reason `./photos.ts`'s `VEHICLE_PHOTOS_BUCKET` restates the private
+ * bucket's name: site code does not import a test file, so a module that has
+ * to build a public object URL needs its own copy of the schema fact. Shipped
+ * by T2-404b (`20260907130000_vehicle_cover_photo_public_bucket.sql`); this
+ * module does not create it, only names it.
+ */
+export const VEHICLE_COVER_PHOTOS_BUCKET = "vehicle-cover-photos";
+
+/**
+ * The public URL for a vehicle's cover photo, or `null` when there is none to
+ * show.
+ *
+ * ## The seam — declared by T2-404d, filled by the pairing `[PLATFORM]` task
+ *
+ * T2-404b shipped the storage half: a public `vehicle-cover-photos` bucket,
+ * kept in sync with `vehicles.cover_photo_path` by a copy-on-designate
+ * trigger, world-readable at
+ * `<PUBLIC_SUPABASE_URL>/storage/v1/object/public/vehicle-cover-photos/<path>`
+ * (the migration's own header comment). What it left unbuilt is the *display*
+ * half: the world-reader RPC (`share_read_vehicle`, `20260907120000_public_
+ * pages.sql`) returns no cover field yet, and the showcase page's
+ * `[data-showcase-cover]` image has nothing setting a `src` on it — see that
+ * page's own doc comment, "The cover photo is the no-cover placeholder, on
+ * purpose (for now)."
+ *
+ * This function is the one place that knows the public-URL shape, so a page
+ * calls it rather than re-deriving `.../storage/v1/object/public/…` inline —
+ * the same reason `applyResolvedShowcaseLinks` and `showcaseRoutePath` exist
+ * as named functions rather than string templates copy-pasted at each call
+ * site. `tests/pages/showcase-worklog.render.test.ts` grades this function
+ * directly (exact output for a known path, `null` in and `null` out, no
+ * double slash at the join) and grades the page's own `<script>` source
+ * *structurally* for calling it and wiring the result into the cover image —
+ * see that file's own header for why a structural read is this repo's
+ * accepted substitute for executing an Astro `<script>` under Vitest.
+ *
+ * ## Why this takes the already-fetched cover path, and asks nothing of SHR-09
+ *
+ * The privacy decision — may this vehicle's cover be shown at all — is not
+ * this function's to make (SHR-01: enforcement lives in RLS, a publication
+ * column, or a `security definer` reader, never in page code). By the time a
+ * page has a `coverPath` to hand this function, the world-reader RPC has
+ * already decided whether to include one — gated behind `is_showcase_public`,
+ * never the wider "some page is public" OR (see `contract.ts`'s
+ * `COVER_PUBLICATION_FLAG`) — so this function's only job is turning a path
+ * that has *already* legitimately arrived into the URL a browser can request.
+ * A `null` input (no cover designated, or the showcase is not public and the
+ * RPC omitted the field) returns `null`; there is nothing else it is allowed
+ * to guess at.
+ */
+export function publicCoverPhotoUrl(input: {
+  readonly supabaseUrl: string;
+  readonly coverPath: string | null;
+}): string | null {
+  void input;
+  throw new Error(SHOWCASE_SEAM_NOT_IMPLEMENTED);
 }

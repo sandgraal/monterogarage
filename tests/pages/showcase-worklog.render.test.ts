@@ -2,6 +2,16 @@
  * Graders for T2-404b's public showcase/work-log page templates —
  * declared by T2-404c [TEST], against a page that does not exist yet.
  *
+ * **Extended by T2-404d [TEST]** with the cover-photo *display* half T2-404b
+ * left as a seam: the showcase page's `<img data-showcase-cover>` is hidden
+ * and stays hidden because nothing ever sets a `src` on it (see that page's
+ * own doc comment, "The cover photo is the no-cover placeholder, on purpose
+ * (for now)"). `src/lib/garage/showcase-view.ts`'s new `publicCoverPhotoUrl`
+ * is the seam this extension grades, alongside a structural read of the
+ * page's own `<script>` proving it is wired to that seam — see § "The
+ * showcase page's cover image" below for why structural reading, not
+ * execution, is this file's tool here too.
+ *
  * > **SHR-02** A user SHALL be able to publish, per vehicle: a showcase page
  * > and/or a work-log page, each at a **stable public URL under their
  * > handle**, bilingual chrome, user content in whatever language the user
@@ -12,6 +22,8 @@
  * > design (HANDOFF-DESIGN.md) and hreflang per 001 I18N-04.
  * > **SHR-09** A grant SHALL NOT make a record eligible for the community
  * > evidence surfacing of GAR-04′.
+ * > **GAR-01′** … rendered wherever the vehicle is shown as a single item —
+ * > the garage vehicle list, and any future showcase-page card (SHR-02).
  *
  * ## Why this file cannot `AstroContainer.renderToString` a page
  *
@@ -54,8 +66,13 @@
  * `tests/garage/contract.ts`'s `publicationFlagGateIssues` (T2-404a) already
  * grade the **RPC** side of "does an anon-executable reader leak
  * `is_worklog_public`/`is_showcase_public` outside a null-token path" — this
- * file is not that either. This file grades what a **page template** does
- * with data it has already legitimately received.
+ * file is not that either. `tests/garage/public-cover-photo.test.ts` (T2-404d)
+ * grades the identical RPC-side question for the cover column — "does
+ * `share_read_vehicle` expose `cover_photo_path` only on the world path and
+ * only once `is_showcase_public` is true" — for the same reason: this file
+ * grades what a **page template** does with data it has already legitimately
+ * received, never whether the data was legitimate to hand it in the first
+ * place.
  *
  * ## Expected-failure convention
  *
@@ -97,9 +114,11 @@ import {
 } from "../../src/lib/garage/visibility.ts";
 import {
   applyResolvedShowcaseLinks,
+  publicCoverPhotoUrl,
   resolveShowcasePage,
   showcaseRoutePath,
   showcaseRoutePaths,
+  VEHICLE_COVER_PHOTOS_BUCKET,
   worklogRoutePath,
   worklogRoutePaths,
   type PublicProfileDirectory,
@@ -902,5 +921,394 @@ describe("runtime noindex on refusal — private by default (SHR-01, SHR-02)", (
     const script = extractScriptSource(WORKLOG_PAGE_PATH);
     const block = extractRefusalBlock(script, "history");
     expect(noindexesOnRefusal(block, "history")).toBe(true);
+  });
+});
+
+/* =========================================================================
+ * 7. The cover photo (T2-404d) — GAR-01′, SHR-02
+ *
+ * Two questions, graded two ways for the same reason section 6 gives: Vitest
+ * can execute `publicCoverPhotoUrl` directly (it is a plain function, not an
+ * Astro `<script>`), so that half is unit-tested normally. The showcase
+ * page's *use* of it cannot be executed the same way, so that half is read
+ * structurally — exactly section 6's "pull the wiring into an importable
+ * seam" precedent, one level further: the seam exists (`publicCoverPhotoUrl`)
+ * and what is ungraded-by-execution is only whether the page *calls* it.
+ * ====================================================================== */
+
+describe("publicCoverPhotoUrl — the public cover URL, once the seam is filled (GAR-01′)", () => {
+  it.fails("builds the public storage object URL for a cover path", () => {
+    expect(
+      publicCoverPhotoUrl({
+        supabaseUrl: "https://example.supabase.co",
+        coverPath:
+          "00000000-0000-4000-8000-00000000c400/00000000-0000-4000-8000-00000000c401/TEST-T2-404D-PHOTO-1.jpg",
+      })
+    ).toBe(
+      `https://example.supabase.co/storage/v1/object/public/${VEHICLE_COVER_PHOTOS_BUCKET}/00000000-0000-4000-8000-00000000c400/00000000-0000-4000-8000-00000000c401/TEST-T2-404D-PHOTO-1.jpg`
+    );
+  });
+
+  it.fails(
+    "returns null for a null cover path — POSITIVE CONTROL for the placeholder path below",
+    () => {
+      // Without this, "the placeholder renders when there is no cover" (the
+      // structural checks below) could be satisfied by a function that always
+      // returns *some* URL, string-built from a `null` path, that a browser
+      // would 404 on rather than the page honestly showing no cover at all.
+      expect(
+        publicCoverPhotoUrl({
+          supabaseUrl: "https://example.supabase.co",
+          coverPath: null,
+        })
+      ).toBeNull();
+    }
+  );
+
+  it.fails(
+    "does not produce a doubled slash when supabaseUrl already carries a trailing one",
+    () => {
+      // `SUPABASE_BROWSER_CONFIG.url` is `new URL(...).origin` and never carries
+      // a trailing slash today (`src/lib/supabase/config.ts`) — but the origin
+      // a caller hands in is this function's *input*, not something it may
+      // assume the shape of, and `.../public//vehicle-cover-photos/...` is a
+      // different (and likely 404ing) URL from the correct one.
+      expect(
+        publicCoverPhotoUrl({
+          supabaseUrl: "https://example.supabase.co/",
+          coverPath: "a/b/c.jpg",
+        })
+      ).toBe(
+        `https://example.supabase.co/storage/v1/object/public/${VEHICLE_COVER_PHOTOS_BUCKET}/a/b/c.jpg`
+      );
+    }
+  );
+
+  it.fails("never mistakes an empty string for a real path", () => {
+    // `cover_photo_path` is `string | null` everywhere else in this codebase
+    // (`vehicles.cover_photo_path`'s own column comment) — an empty string is
+    // not a value that column, or the RPC that reads it, is documented to
+    // produce, but a function this small is worth pinning against the input
+    // it must never be handed silently-wrong output for.
+    expect(
+      publicCoverPhotoUrl({
+        supabaseUrl: "https://example.supabase.co",
+        coverPath: "",
+      })
+    ).toBeNull();
+  });
+});
+
+/**
+ * The variable a showcase page's `enhance()` assigns
+ * `root.querySelector(...)("[data-showcase-cover]")` to, or `null` when the
+ * hook is never queried at all — which is today's real shape, and must stay
+ * recognised as "not wired" rather than throw, so the checks below can report
+ * a clean, specific "the page never queries its own cover hook" rather than a
+ * crash that looks like a harness bug.
+ */
+function coverElementVariable(script: string): string | null {
+  const match =
+    /(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=\s*root\.querySelector(?:<[^>]*>)?\s*\(\s*(["'])\[data-showcase-cover\]\2\s*\)/.exec(
+      script
+    );
+  return match ? match[1] : null;
+}
+
+/**
+ * The script from `marker` (inclusive) to the end of the extracted source.
+ *
+ * A loose slice rather than a brace-balanced function extraction, and
+ * deliberately so: what matters for the checks below is only that a cover
+ * assignment sits *after* the point the script itself uses to mean "this
+ * vehicle is confirmed public" (`setNoindex(false)`, called exactly once in
+ * either page, immediately on a successful resolution — section 6's own
+ * runtime-`noindex` graders establish that this is the shape both pages
+ * already share). Anything at or after that point is fair game for the cover
+ * wiring; anything before it — the refusal branches section 6 already grades
+ * — is exactly what this slice excludes, which is the property that matters:
+ * a cover assignment written into a *refusal* branch would not count.
+ */
+function sliceFromMarker(script: string, marker: string): string {
+  const at = script.indexOf(marker);
+  if (at === -1) {
+    throw new Error(`could not find "${marker}" in the extracted <script>`);
+  }
+  return script.slice(at);
+}
+
+/**
+ * Every brace-balanced `if (…) { … }` block in `text` whose **condition**
+ * mentions `variable`.
+ *
+ * Brace-balanced for the same reason `extractRefusalBlock` is: a naive
+ * fixed-length slice would mis-scope the moment the guard's body contains a
+ * nested `if` or object literal of its own. Matched on the *condition*
+ * mentioning `variable` — not on the body containing some needle — because
+ * the property that matters is that the unhide is reachable **only when the
+ * seam actually returned something**, which is a claim about what the `if`
+ * tests, not about what free-floating text happens to sit inside its braces.
+ */
+function ifBlocksGuardedOn(text: string, variable: string): string[] {
+  const blocks: string[] = [];
+  const opener = new RegExp(
+    `if\\s*\\([^)]*\\b${variable}\\b[^)]*\\)\\s*\\{`,
+    "g"
+  );
+  for (let hit = opener.exec(text); hit; hit = opener.exec(text)) {
+    const braceStart = hit.index + hit[0].length - 1;
+    let depth = 0;
+    for (let i = braceStart; i < text.length; i += 1) {
+      if (text[i] === "{") depth += 1;
+      else if (text[i] === "}") {
+        depth -= 1;
+        if (depth === 0) {
+          blocks.push(text.slice(braceStart, i + 1));
+          break;
+        }
+      }
+    }
+  }
+  return blocks;
+}
+
+/**
+ * Does the script wire `[data-showcase-cover]` to `publicCoverPhotoUrl`'s
+ * result, guarded so an absent cover leaves the placeholder alone?
+ *
+ * The contract this file grades the page against — named explicitly so the
+ * implementer builds to it rather than guessing at what a structural read
+ * can recognise:
+ *
+ *  1. the cover `<img>` is queried at all (`[data-showcase-cover]`, the hook
+ *     the markup already carries);
+ *  2. after the script's own "this vehicle is confirmed public" point
+ *     (`setNoindex(false)`), the result of `publicCoverPhotoUrl(` — the named
+ *     seam, not a second, inline re-derivation of the same URL shape (the
+ *     one-masking-function, one-route-builder discipline this codebase
+ *     applies everywhere else — `resolveCoverPath`/`maskRecordsForPrincipal`/
+ *     `applyResolvedShowcaseLinks`, one file over each) — is bound to a
+ *     variable;
+ *  3. an `if (…)` **whose condition tests that same variable** wraps: an
+ *     assignment of the cover element's `.src` that itself uses the seam's
+ *     result (not a hard-coded or independently-derived string), an `.alt`
+ *     assignment from the server-localized `data-string-cover-alt` template
+ *     (`text.stringCoverAlt` — the dataset camel-casing the page's other
+ *     `data-string-*` reads already use), and an unhide (`.hidden = false`
+ *     or `.removeAttribute("hidden")`).
+ *
+ * All three inside **one** guard keyed on the seam's own result, not
+ * scattered unconditionally through the success path — an unconditional
+ * `cover.hidden = false` would un-hide an `<img>` with no `src`, and GAR-01′'s
+ * placeholder rule ("a vehicle with photos but no cover renders the same
+ * placeholder image") is a claim about what happens when there is *no*
+ * cover, which an ungated unhide breaks silently.
+ */
+function coverIsWiredToSeam(script: string): boolean {
+  const varName = coverElementVariable(script);
+  if (varName === null) return false;
+
+  const success = sliceFromMarker(script, "setNoindex(false)");
+
+  // The bound variable's own assignment expression is not required to be a
+  // *bare* call — `SUPABASE_BROWSER_CONFIG ? publicCoverPhotoUrl(…) : null`
+  // is the realistic shape (the seam needs an origin the page may or may not
+  // have configured yet), so the seam call only has to appear somewhere in
+  // the same statement's right-hand side, not immediately after `=`. Proved
+  // necessary, not merely permissive: the first version of this pattern
+  // required the bare form and failed to recognize a scratch-wired real page
+  // using exactly the ternary shape above, which is why this file's own
+  // report names it as a finding worth recording rather than a stylistic
+  // choice.
+  const seamCall =
+    /(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=[^;]*?\bpublicCoverPhotoUrl\s*\(/.exec(
+      success
+    );
+  if (!seamCall) return false;
+  const urlVar = seamCall[1];
+
+  return ifBlocksGuardedOn(success, urlVar).some((block) => {
+    const setsSrc = new RegExp(
+      `\\b${varName}[!?]?\\.src\\s*=[^;]*\\b${urlVar}\\b`
+    ).test(block);
+    const setsAlt =
+      new RegExp(`\\b${varName}[!?]?\\.alt\\s*=`).test(block) &&
+      /\bstringCoverAlt\b/.test(block);
+    const unhides =
+      new RegExp(`\\b${varName}[!?]?\\.hidden\\s*=\\s*false\\b`).test(block) ||
+      new RegExp(
+        `\\b${varName}[!?]?\\.removeAttribute\\(\\s*["']hidden["']\\s*\\)`
+      ).test(block);
+    return setsSrc && setsAlt && unhides;
+  });
+}
+
+describe("coverElementVariable / coverIsWiredToSeam — helper self-tests (mutation-proofing the probe)", () => {
+  // Decoupled from any file on disk, exactly section 6's own convention: a
+  // broken regex is caught here first, against fixtures with a known answer,
+  // never discovered only by the real-page assertions below failing (or
+  // passing) for the wrong reason.
+
+  it("finds the cover element regardless of the type-parameter/quote style used", () => {
+    expect(
+      coverElementVariable(
+        `const cover = root.querySelector<HTMLImageElement>("[data-showcase-cover]");`
+      )
+    ).toBe("cover");
+    expect(
+      coverElementVariable(
+        `let coverImg = root.querySelector('[data-showcase-cover]');`
+      )
+    ).toBe("coverImg");
+  });
+
+  it("returns null when the hook is never queried — TODAY'S REAL PAGE SHAPE", () => {
+    expect(
+      coverElementVariable(
+        `const name = root.querySelector<HTMLElement>("[data-showcase-name]");`
+      )
+    ).toBeNull();
+  });
+
+  const CORRECT_WIRING = `
+    const cover = root.querySelector<HTMLImageElement>("[data-showcase-cover]");
+    async function open() {
+      setNoindex(false);
+      const resolved = resolution.vehicle;
+      const coverUrl = publicCoverPhotoUrl({
+        supabaseUrl: SUPABASE_BROWSER_CONFIG!.url,
+        coverPath: resolved.cover_photo_path,
+      });
+      if (coverUrl) {
+        cover!.src = coverUrl;
+        cover!.alt = (text.stringCoverAlt ?? "").replace("{name}", resolved.display_name);
+        cover!.hidden = false;
+      }
+      body!.hidden = false;
+    }
+  `;
+
+  it("POSITIVE CONTROL: recognizes the correctly-wired, correctly-guarded shape", () => {
+    expect(coverIsWiredToSeam(CORRECT_WIRING)).toBe(true);
+  });
+
+  it("does NOT match TODAY'S REAL PAGE — no cover element is ever queried", () => {
+    // The specific, current defect this section exists to close: neither
+    // page queries `[data-showcase-cover]` at all yet.
+    const noQuery = CORRECT_WIRING.replace(
+      `const cover = root.querySelector<HTMLImageElement>("[data-showcase-cover]");`,
+      ""
+    );
+    expect(coverIsWiredToSeam(noQuery)).toBe(false);
+  });
+
+  it("does NOT match a cover that is queried but never wired in the success path", () => {
+    const neverWired = CORRECT_WIRING.replace(
+      /if \(coverUrl\) \{[\s\S]*?\n {6}\}\n/,
+      ""
+    );
+    expect(coverIsWiredToSeam(neverWired)).toBe(false);
+  });
+
+  it("does NOT match wiring placed in a REFUSAL branch, before setNoindex(false)", () => {
+    // The exact scoping section 6 relies on: an assignment upstream of the
+    // "confirmed public" marker is in the wrong branch, whatever it does.
+    const beforeMarker = CORRECT_WIRING.replace(
+      "setNoindex(false);",
+      `if (cover) { cover.src = publicCoverPhotoUrl({ supabaseUrl: "x", coverPath: "y" }); }\n      setNoindex(false);`
+    ).replace(/if \(coverUrl\) \{[\s\S]*?\n {6}\}\n/, "");
+    expect(coverIsWiredToSeam(beforeMarker)).toBe(false);
+  });
+
+  it("does NOT match an unconditional unhide with no guard at all", () => {
+    // The defect GAR-01′'s placeholder rule forbids: a cover with no `src`
+    // (because there was no cover) being unhidden anyway.
+    const unconditional = CORRECT_WIRING.replace(
+      /if \(coverUrl\) \{([\s\S]*?)\n {6}\}\n/,
+      "$1\n"
+    );
+    expect(coverIsWiredToSeam(unconditional)).toBe(false);
+  });
+
+  it("does NOT match a guard that never calls the named seam function", () => {
+    // The DRY requirement, checked: re-deriving the URL inline (even
+    // correctly) is not what this file grades the page against — a second
+    // place that knows the `.../object/public/vehicle-cover-photos/…` shape
+    // is exactly the drift `publicCoverPhotoUrl` exists to prevent.
+    const inlineUrl = CORRECT_WIRING.replace(
+      /const coverUrl = publicCoverPhotoUrl\(\{[\s\S]*?\}\);/,
+      `const coverUrl = resolved.cover_photo_path ? \`https://x/storage/v1/object/public/vehicle-cover-photos/\${resolved.cover_photo_path}\` : null;`
+    );
+    expect(coverIsWiredToSeam(inlineUrl)).toBe(false);
+  });
+
+  it("does NOT match a guard missing the alt-text assignment", () => {
+    const noAlt = CORRECT_WIRING.replace(
+      /cover!\.alt = \(text\.stringCoverAlt[^;]*;\n\s*/,
+      ""
+    );
+    expect(coverIsWiredToSeam(noAlt)).toBe(false);
+  });
+
+  it("does NOT match an alt assignment that ignores the localized template string", () => {
+    // Sets *an* alt, but not the server-localized one (I18N-08: this file
+    // composes no prose of its own) — a hard-coded English string would pass
+    // a looser "sets .alt to something" check and fail this one correctly.
+    const hardCodedAlt = CORRECT_WIRING.replace(
+      `cover!.alt = (text.stringCoverAlt ?? "").replace("{name}", resolved.display_name);`,
+      `cover!.alt = "Cover photo";`
+    );
+    expect(coverIsWiredToSeam(hardCodedAlt)).toBe(false);
+  });
+
+  it("does NOT match a guard missing the unhide", () => {
+    const neverUnhidden = CORRECT_WIRING.replace(
+      `cover!.hidden = false;\n`,
+      ""
+    );
+    expect(coverIsWiredToSeam(neverUnhidden)).toBe(false);
+  });
+
+  it("accepts removeAttribute('hidden') as an equally correct unhide spelling", () => {
+    const viaRemoveAttribute = CORRECT_WIRING.replace(
+      "cover!.hidden = false;",
+      `cover!.removeAttribute("hidden");`
+    );
+    expect(coverIsWiredToSeam(viaRemoveAttribute)).toBe(true);
+  });
+});
+
+describe("the showcase page's own <script> (T2-404d)", () => {
+  it.fails(
+    "wires [data-showcase-cover] to publicCoverPhotoUrl, guarded, with the localized alt (GAR-01′)",
+    () => {
+      // The real defect, read structurally for the reason section 6's own
+      // header gives at length: Astro compiles this `<script>` to an empty
+      // client module under Vitest's SSR transform, so there is no DOM to
+      // drive. `coverIsWiredToSeam`'s own self-tests above already prove this
+      // helper recognizes the correct shape and rejects today's real one —
+      // this assertion is what turns green the moment the page's `enhance()`
+      // gains the block those self-tests describe.
+      const script = extractScriptSource(SHOWCASE_PAGE_PATH);
+      expect(coverIsWiredToSeam(script)).toBe(true);
+    }
+  );
+
+  it("TODAY: the placeholder markup ships `hidden` on the cover image and no cover query in the script — confirms the .fails above fails for the SEAM, not a typo", () => {
+    // Unmarked, and it must keep passing right up until the moment the test
+    // above is activated — the two are opposite readings of the same file and
+    // cannot both describe the shipped page. Pinned by reading the page's raw
+    // source rather than asserting `coverIsWiredToSeam(...) === false` a
+    // second time, so a change to the *markup* (the `hidden` attribute
+    // disappearing from `<img data-showcase-cover>`) is caught here even if
+    // the script-wiring helper above were somehow satisfied by accident.
+    const template = readFileSync(
+      new URL(SHOWCASE_PAGE_PATH, import.meta.url),
+      "utf8"
+    );
+    expect(template).toMatch(/data-showcase-cover[^>]*\bhidden\b/);
+
+    const script = extractScriptSource(SHOWCASE_PAGE_PATH);
+    expect(coverElementVariable(script)).toBeNull();
   });
 });

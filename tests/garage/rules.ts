@@ -1940,49 +1940,74 @@ export function revocationGatingIssues(routine: FunctionDefinition): string[] {
  * ---------------------------------------------------------------------- */
 
 /**
- * Does this boolean expression **imply** that the token is absent?
+ * Does this boolean expression **imply** `isAtomTrue` for every leaf it can
+ * reach — the general decomposition, with the leaf test itself left to the
+ * caller.
  *
- * Not "does it mention `p_token is null`" — the F1 lesson, one surface over.
- * `p_token is null or p_token = 'x'` mentions it and guarantees nothing, and a
- * regex would have accepted it. So the expression is decomposed:
+ * Factored out of what was originally `impliesTokenAbsent`'s own body (SHR-09,
+ * "does this imply `p_token is null`") so a second call site — T2-404d's cover
+ * -photo gate, which asks the identical structural question of a different
+ * atom, "does this imply `is_showcase_public` is asserted true" — reuses the
+ * one tested decomposition instead of a second, differently-tested copy of it
+ * (`.claude/GRADER-PRINCIPLES.md`, "grade behavior, not name lists": the
+ * *shape* of the question is what both callers share, not the particular
+ * column name).
+ *
+ * Not "does it mention the atom" — the F1 lesson, one surface over.
+ * `p_token is null or p_token = 'x'` mentions the null test and guarantees
+ * nothing, and a plain regex over the whole condition would have accepted it
+ * (and did, for the cover gate, until this fix — see `coverExposureIssues`'s
+ * corpus for the fixed shape). So the expression is decomposed instead:
  *
  * - a top-level `or` implies the assertion only if **every** branch does —
  *   `or` is how a guard gets widened, exactly as in `isOwnerScoped`;
  * - a top-level `and` implies it if **any** conjunct does;
- * - a **negated** atom implies nothing, and is refused before the null test is
- *   even looked for;
- * - an atom implies it when it is the null test itself.
+ * - a **negated** atom implies nothing, and is refused before `isAtomTrue` is
+ *   even asked;
+ * - otherwise the leaf is handed to `isAtomTrue` directly.
  *
- * Two spellings of the *inverse* have to be refused, and they fail for
- * different reasons. `\bp_token is null\b` does not match
- * `p_token is not null`, so that one cannot satisfy the regex by accident. But
- * `not (p_token is null)` **contains** the null test verbatim — it is the
- * forbidden condition wearing the permitted condition's text, and it is exactly
- * the shape that reads the publication flags precisely *because* a token was
- * presented. Anything under a leading `not` is therefore refused outright
- * rather than analysed: `not (a or b)` is over-refused along with it, which is
- * the safe direction for this rule (see the section header).
+ * The negation refusal is coarser than it has to be on purpose: `not (a or
+ * b)` is over-refused along with the genuine inverse it exists to catch (for
+ * the token case, `not (p_token is null)` — the forbidden condition wearing
+ * the permitted condition's text). Over-refusing is the safe direction for a
+ * trust-boundary rule (see the section header).
  */
-function impliesTokenAbsent(expr: string, tokenArgument: string): boolean {
+export function impliesAtom(
+  expr: string,
+  isAtomTrue: (atom: string) => boolean
+): boolean {
   const text = unwrap(expr.trim());
 
   const disjuncts = splitTopLevel(text, "or");
   if (disjuncts.length > 1) {
-    return disjuncts.every((branch) =>
-      impliesTokenAbsent(branch, tokenArgument)
-    );
+    return disjuncts.every((branch) => impliesAtom(branch, isAtomTrue));
   }
 
   const conjuncts = splitTopLevel(text, "and");
   if (conjuncts.length > 1) {
-    return conjuncts.some((branch) =>
-      impliesTokenAbsent(branch, tokenArgument)
-    );
+    return conjuncts.some((branch) => impliesAtom(branch, isAtomTrue));
   }
 
   if (/^not\b/.test(text)) return false;
 
-  return new RegExp(`\\b${tokenArgument}\\s+is\\s+null\\b`).test(text);
+  return isAtomTrue(text);
+}
+
+/**
+ * Does this boolean expression **imply** that the token is absent?
+ *
+ * The token-specific leaf test over {@link impliesAtom}'s decomposition: an
+ * atom implies token-absence when it is the null test itself,
+ * `\b${tokenArgument} is null\b`. `\bp_token is null\b` does not match
+ * `p_token is not null`, so that inverse cannot satisfy the regex by
+ * accident — the leading-`not` refusal in `impliesAtom` is what catches the
+ * other inverse spelling, `not (p_token is null)`, which contains the null
+ * test verbatim.
+ */
+function impliesTokenAbsent(expr: string, tokenArgument: string): boolean {
+  return impliesAtom(expr, (atom) =>
+    new RegExp(`\\b${tokenArgument}\\s+is\\s+null\\b`).test(atom)
+  );
 }
 
 /** Keywords that end a `where` clause. */
@@ -2085,8 +2110,14 @@ function publicationFlagsIn(text: string): string[] {
  * A branch whose condition asserts the token is null contributes the span from
  * its `then` to whichever comes first: the next `elsif`/`else` at the same
  * depth, or the `end if` that closes its chain.
+ *
+ * Exported for `tests/garage/public-cover-photo.test.ts` (T2-404d), which
+ * needs the identical "is this position inside the world path" question for
+ * `cover_photo_path` that `publicationFlagGateIssues` already asks for the two
+ * publication flags — reusing this scanner rather than a second, differently
+ * -tested copy of the same `if p_token is null then … end if` recognizer.
  */
-function tokenAbsentSpans(
+export function tokenAbsentSpans(
   body: string,
   tokenArgument: string
 ): { readonly start: number; readonly end: number }[] {

@@ -786,6 +786,32 @@ export const COVER_PHOTO_COLUMN = "cover_photo_path";
  */
 export const COVER_PHOTO_SOURCE_COLUMN = "photo_paths";
 
+/**
+ * The publication flag that gates the cover photo on the world (`p_token is
+ * null`) path of `share_read_vehicle` — declared by T2-404d [TEST], read by
+ * `tests/garage/public-cover-photo.test.ts` and `tests/pages/
+ * showcase-worklog.render.test.ts`.
+ *
+ * ## Why `is_showcase_public` and not "either flag" (the row-admitting OR)
+ *
+ * GAR-01′ names the cover as content of a specific surface: "rendered
+ * wherever the vehicle is shown as a single item — the garage vehicle list,
+ * and any future showcase-page card (SHR-02)." The world path's own row
+ * filter is wider than that — `is_showcase_public is true or
+ * is_worklog_public is true`, because a work-log-only truck still needs its
+ * name and taxonomy identity to head that page — and a reader that gated the
+ * cover on the SAME OR would hand a cover photo to a vehicle whose owner
+ * published *only* the work-log and never the showcase card the cover
+ * belongs to. That is precisely the conflation SHR-09 already names for the
+ * two publication flags themselves ("the grant path and GAR-04′'s publication
+ * path must not meet in an anon-reachable routine") — one surface over: the
+ * row-admitting question ("does *some* page of this truck exist") and the
+ * cover-admitting question ("does *this* page exist") are different
+ * questions, and a reader that answers the second with the first's predicate
+ * gets it wrong the moment the two flags disagree.
+ */
+export const COVER_PUBLICATION_FLAG = "is_showcase_public";
+
 /* -------------------------------------------------------------------------
  * Storage
  * ---------------------------------------------------------------------- */
@@ -875,6 +901,25 @@ export const VEHICLE_PHOTOS_BUCKET = "vehicle-photos";
  * mid-playback exactly as one for a photo expires mid-render.
  */
 export const RECORD_MEDIA_BUCKET = "record-media";
+
+/**
+ * The **public** bucket a designated cover photo is copied into — shipped by
+ * T2-404b (`20260907130000_vehicle_cover_photo_public_bucket.sql`), named
+ * here for `tests/garage/public-cover-photo.test.ts` (T2-404d) and
+ * `tests/pages/showcase-worklog.render.test.ts`, which both have to build the
+ * exact public object URL a showcase page renders:
+ * `<PUBLIC_SUPABASE_URL>/storage/v1/object/public/vehicle-cover-photos/<path>`.
+ *
+ * Not in {@link PRIVATE_BUCKETS} — it is the one bucket in this project where
+ * `storage.buckets.public = true` is correct rather than the leak that list's
+ * sweep exists to catch (see the migration's own header comment for why a
+ * second, genuinely-public bucket is the accepted trade against a signer
+ * surface). The object path shape is identical to `VEHICLE_PHOTOS_BUCKET`'s
+ * (`<owner uuid>/<vehicle id>/<file>`, `testVehiclePhotoPath` below already
+ * builds it) — a copy of the same key in a different, world-readable bucket,
+ * not a different naming scheme.
+ */
+export const VEHICLE_COVER_PHOTOS_BUCKET = "vehicle-cover-photos";
 
 /**
  * Every bucket that must never serve an object without a session.
