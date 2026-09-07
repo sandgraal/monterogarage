@@ -65,8 +65,13 @@ export const SEARCH_INDEX_TABLE = "search_index_entries";
  * Every column the table declares, in the shape `.select()` and `.upsert()`
  * both use — snake_case, matching the migration
  * (`supabase/migrations/20260906120200_search_index_entries.sql`).
- * `search_vector` is deliberately absent: it is `generated always as (…)
- * stored`, the database computes it, and this script never reads or writes it.
+ * `search_vector` is deliberately absent: a `before insert or update` trigger
+ * on the table computes it from the other columns
+ * (`supabase/migrations/20260906120200_search_index_entries.sql` — not a
+ * `generated always as (…) stored` column, because `to_tsvector`'s
+ * `regconfig` argument is STABLE, not IMMUTABLE, and Postgres refuses that
+ * inside a generated column's expression), and this script never reads or
+ * writes it.
  */
 const DB_COLUMNS =
   "collection, entry_id, locale, href, title, subtitle, snippet, badges, codes, extra";

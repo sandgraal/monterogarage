@@ -41,14 +41,23 @@
 -- three as ordinary columns would turn every re-sync into duplicate rows
 -- instead of updates.
 --
--- ## `search_vector` is a generated column, not trigger-maintained
+-- ## `search_vector` is trigger-maintained, not a generated column
 --
--- Either shape is graded (`tests/sync/schema-shape.test.ts`'s
+-- Both shapes are graded (`tests/sync/schema-shape.test.ts`'s
 -- `searchVectorLocaleIssues` recognises both the `case … when` and the
--- `if/elsif` trigger-function shapes) — `generated always as (…) stored` is
--- chosen here because the value is a pure function of five other columns on
--- the same row and Postgres computing it on write, once, is simpler than a
--- `before insert or update` trigger doing the same arithmetic by hand.
+-- `if/elsif` trigger-function shapes), but only one of them actually works on
+-- real Postgres: `to_tsvector(regconfig, text)` is **STABLE**, not
+-- **IMMUTABLE** — `regconfig` names a *lookup* into `pg_ts_config`, which a
+-- future `ALTER TEXT SEARCH CONFIGURATION` could change, so Postgres refuses
+-- to let it appear inside a `generated always as (…) stored` expression at
+-- all: `ERROR: generation expression is not immutable (SQLSTATE 42P17)`.
+-- This is not a tunable strictness setting — it fails on every real Postgres,
+-- confirmed live by this migration's own first Tier-B CI run (job
+-- 34080154471) after landing with the generated-column shape. A `before
+-- insert or update` trigger has no such restriction: `STABLE` only forbids a
+-- function from appearing in an index expression or a generated column's
+-- definition, not in ordinary row-processing code, which is exactly what a
+-- trigger body is.
 --
 -- `to_tsvector`'s dictionary argument branches on `locale` — `'english'` only
 -- where `locale = 'en'`, `'spanish'` only where `locale = 'es'` — RM-01's
@@ -59,6 +68,13 @@
 -- `src/lib/search.ts`'s `buildSearchHaystack`, which concatenates the same
 -- six fields client-side for the exact same reason (two adjacent fields
 -- joined by a space can never fuse into a false substring match).
+--
+-- The column itself is `tsvector not null` with no default: a `before
+-- insert or update` **row-level** trigger runs before Postgres checks `not
+-- null`, so every row — inserted with or without an explicit `search_vector`
+-- — has it overwritten by the trigger before any constraint is evaluated.
+-- `scripts/sync-reference-search.mjs` never names this column in its insert
+-- list for exactly that reason: it is not the sync job's to set.
 
 create table public.search_index_entries (
   collection text not null,
@@ -71,20 +87,7 @@ create table public.search_index_entries (
   badges text[] not null default '{}',
   codes text[] not null default '{}',
   extra text[] not null default '{}',
-  search_vector tsvector generated always as (
-    to_tsvector(
-      (case locale
-         when 'en' then 'english'::regconfig
-         when 'es' then 'spanish'::regconfig
-       end),
-      coalesce(title, '') || ' ' ||
-        coalesce(subtitle, '') || ' ' ||
-        coalesce(snippet, '') || ' ' ||
-        coalesce(array_to_string(badges, ' '), '') || ' ' ||
-        coalesce(array_to_string(codes, ' '), '') || ' ' ||
-        coalesce(array_to_string(extra, ' '), '')
-    )
-  ) stored not null,
+  search_vector tsvector not null,
   constraint search_index_entries_pkey primary key (collection, entry_id, locale),
   constraint search_index_entries_collection_ck
     check (collection in ('glossary', 'problems', 'parts', 'mods')),
@@ -95,7 +98,67 @@ create table public.search_index_entries (
 comment on table public.search_index_entries is
   'RM-01/RM-02: the git-authored read-model the CI sync job (scripts/sync-reference-search.mjs) writes on every merge to main. One row per (collection, entry_id, locale). Never written by anything else.';
 comment on column public.search_index_entries.search_vector is
-  'RM-01: generated, per-row dictionary keyed on locale — english for en, spanish for es. Indexed below.';
+  'RM-01: trigger-maintained by set_search_index_entry_search_vector() below (to_tsvector is STABLE, not IMMUTABLE, so it cannot be a generated column — see the note above), per-row dictionary keyed on locale — english for en, spanish for es. Indexed below.';
+
+-- ---------------------------------------------------------------------------
+-- The trigger that maintains `search_vector` on every insert/update
+-- ---------------------------------------------------------------------------
+-- `security invoker`: this trigger reads and writes only the row already
+-- being inserted/updated by whichever role the enclosing statement runs as
+-- (in practice, only `service_role` — RM-02's one writer) — no elevated
+-- privilege is needed, the same reasoning
+-- `20260906120000_vehicle_cover_photo.sql`'s `clear_departed_vehicle_cover()`
+-- gives for its own plain-invoker trigger. `set search_path = ''` for the
+-- usual reason this repo's other functions all carry it: an unqualified name
+-- inside the body should never resolve against a search path an attacker
+-- could have altered. `to_tsvector`, `coalesce` and `array_to_string` are
+-- `pg_catalog` builtins, always resolvable regardless of `search_path`, so
+-- the empty path costs nothing here.
+
+create or replace function public.set_search_index_entry_search_vector()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  if new.locale = 'en' then
+    new.search_vector := to_tsvector(
+      'english',
+      coalesce(new.title, '') || ' ' ||
+        coalesce(new.subtitle, '') || ' ' ||
+        coalesce(new.snippet, '') || ' ' ||
+        coalesce(array_to_string(new.badges, ' '), '') || ' ' ||
+        coalesce(array_to_string(new.codes, ' '), '') || ' ' ||
+        coalesce(array_to_string(new.extra, ' '), '')
+    );
+  elsif new.locale = 'es' then
+    new.search_vector := to_tsvector(
+      'spanish',
+      coalesce(new.title, '') || ' ' ||
+        coalesce(new.subtitle, '') || ' ' ||
+        coalesce(new.snippet, '') || ' ' ||
+        coalesce(array_to_string(new.badges, ' '), '') || ' ' ||
+        coalesce(array_to_string(new.codes, ' '), '') || ' ' ||
+        coalesce(array_to_string(new.extra, ' '), '')
+    );
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.set_search_index_entry_search_vector() from public;
+revoke all on function public.set_search_index_entry_search_vector() from anon;
+revoke all on function public.set_search_index_entry_search_vector() from authenticated;
+
+comment on function public.set_search_index_entry_search_vector() is
+  'RM-01: sets new.search_vector from new.locale''s dictionary (english/spanish) and the concatenated title/subtitle/snippet/badges/codes/extra columns. Runs before insert or update on public.search_index_entries below; not callable directly (execute revoked from public/anon/authenticated).';
+
+drop trigger if exists on_search_index_entry_write on public.search_index_entries;
+
+create trigger on_search_index_entry_write
+  before insert or update on public.search_index_entries
+  for each row execute function public.set_search_index_entry_search_vector();
 
 -- ---------------------------------------------------------------------------
 -- The GIN index `@@` queries need (RM-01, T803's server-side search endpoint)
