@@ -318,6 +318,27 @@ Stop and ask before any of these:
   implementer's diff), lands it as its own reviewed change on `main` first,
   and T802 rebases onto it and drops its own edits to those three files
   before merging.
+  **A third instance on `share-delivery.test.ts`, plus a review-coverage gap,
+  both from T2-404b on 2026-09-07.** The T2-404b page-template fix round
+  (#155, `e12ec66`) added a new `describe` block to
+  `tests/garage/share-delivery.test.ts` — a test-writer-owned file (T2-401
+  `[TEST]`) — grading the implementer's own `vercel.json` rewrites. An
+  independent code-reviewer mutation-tested it (reverting the config to the
+  pre-fix no-slash form turns exactly the new cases red) and confirmed its
+  expectations derive from `@vercel/routing-utils` plus the pre-existing route
+  builders, not from the render logic under test — sound and biting, not
+  vicious self-grading — but it is another implementer edit to a grader file
+  it does not own. Per this section's standing rule, the next change to
+  `vercel.json` grader coverage is a test-writer's. **Separately, a render
+  defect reached `main` through two clean reviews:** #155's work-log page left
+  an indexable page on a refused `readPublicRecords` (the showcase page
+  noindexed correctly; the work-log path did not), and neither independent
+  review of #155 exercised the work-log refusal→noindex path — the render
+  grader's refusal coverage was showcase-only. The repo's Copilot reviewer
+  caught it post-merge; fixed forward, in order, by an independently-authored
+  render grader reproducing it (#157) and a one-line implementer fix that
+  activated it (#158). The lesson is coverage-shaped, not a separation breach:
+  a per-page invariant graded on one page and not its sibling is the gap.
 - A clean fact-check, a clean bilingual edit, and all required branch-protection
   checks authorize the `pr-shepherd` to merge without another confirmation.
 - Never `--no-verify`, never a bare force-push, never `gh pr merge --admin`,

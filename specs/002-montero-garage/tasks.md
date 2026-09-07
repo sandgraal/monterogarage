@@ -1210,7 +1210,7 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   open questions for the owner are in that branch's report: whether a
   reserved-word check constraint needs a seed/admin path for MIG-04's own
   profile, and whether `gitana-blanca` should be reserved too.
-- [ ] **T2-402 [PLATFORM]** Showcase + work-log public pages: stable handle
+- [x] **T2-402 [PLATFORM]** Showcase + work-log public pages: stable handle
   URLs, per-vehicle toggles, per-record/per-field visibility, HANDOFF-DESIGN.md
   chrome, hreflang. Activates T2-401. Depends: T2-401 merged, T2-303. *(SHR-02..04)*
   <br>**Amended 2026-08-31:** the per-record cost-masking logic must be
@@ -1270,7 +1270,7 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   re-run the first migration. Both paths converge; every rule lives in the new
   file, once.
 
-- [ ] **T2-404 [PLATFORM]** Typed share grants + the public showcase/work-log
+- [x] **T2-404 [PLATFORM]** Typed share grants + the public showcase/work-log
   pages: the `shares` table, create and revoke RPCs (authenticated), the anon
   read RPCs (serving both the share-token accountless page and T2-402's public
   showcase/work-log pages through one reviewed reader), the Edge Function
@@ -1496,7 +1496,7 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   because a mutation survived a first pass — `G27k` (offsets emptied) and
   `G27u` (an identifier ending in `where`) — which is the discipline working,
   not decoration.
-- [ ] **T2-404b [PLATFORM]** Implements the T2-404a seam: the actual public
+- [x] **T2-404b [PLATFORM]** Implements the T2-404a seam: the actual public
   showcase/work-log page rendering T2-402/T2-404 both deferred — a
   world-reader code path added to the existing anon RPCs (`share_read_vehicle`
   et al.) that serves a `null` token by consulting
@@ -1542,7 +1542,29 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   page-template portion of T2-404b does not merge without it.** The RPC
   half (world-reader path + the cover-photo bucket work above) is not
   gated by T2-404c and may land first.
-- [ ] **T2-404c [TEST]** Render graders for T2-404b's showcase/work-log page
+  <br>**Closed 2026-09-07, in five parts.** The world-reader RPC half
+  (`c803ce5`); the showcase/work-log page templates (#155, `e12ec66`); the
+  cover-photo public bucket + copy-on-designate trigger (#156, `4eddda8`); then
+  — after the repo's Copilot reviewer caught, *post-merge*, that the work-log
+  page left an indexable "not published" page on a refused `readPublicRecords`
+  read (the showcase page noindexed correctly, the work-log path did not, and
+  neither independent review of #155 had exercised that path) — an
+  independently-authored noindex-on-refusal render grader reproducing it (#157,
+  `6d18327`) and the one-line `setNoindex(true)` fix that activated it (#158,
+  `a76a9541`). **Two follow-ups deferred by owner-scope decision, both
+  non-blocking, recorded so they are not lost:** (F2) this storage/RLS half
+  ships with no Tier-B boundary grader — the owner scoped the `[TEST]`
+  requirement to the page half only; a committed Tier-B grader proving the
+  public-bucket negatives (a non-cover photo is not copyable in; a stale cover
+  is removed on change; a cross-owner copy is rejected) is worth a future
+  `[TEST]` task. (F3) the copy-on-designate trigger needs a hosted
+  `app.settings.storage_internal_url` (`HANDOFF-T2-404B-STORAGE-URL.md`) and
+  possibly a `net.http_post` execute grant on the hosted project — a
+  deploy-time owner verification, deliberately not patched reflexively (a broad
+  `net.http_post` grant is itself an abuse vector). The implementer-authored
+  `vercel.json` guard added to `share-delivery.test.ts` in #155 is logged as
+  separation-debt in AGENTS.md.
+- [x] **T2-404c [TEST]** Render graders for T2-404b's showcase/work-log page
   templates — the page-template half named above, following the T504a
   pattern (author from the spec's chrome/hreflang requirements and
   HANDOFF-DESIGN.md, never from T2-404b's own not-yet-written markup). Must
