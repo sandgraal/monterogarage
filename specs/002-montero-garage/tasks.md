@@ -1507,9 +1507,10 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   boxes, not just this line's, once this ships. Depends: T2-404a merged.
   *(SHR-02..04, SHR-09)*
   <br>**First attempt (2026-09-07) found a real grader defect and stopped
-  correctly, per AGENTS.md's separation rule.** `tests/garage/
-  reviewer-probes.test.ts`'s "the shipped lifecycle RPCs parse to their real
-  signatures" pins `share_read_records`'s argument names to exactly
+  correctly, per AGENTS.md's separation rule.**
+  `tests/garage/reviewer-probes.test.ts`'s "the shipped lifecycle RPCs parse
+  to their real signatures" pins `share_read_records`'s argument names to
+  exactly
   `["p_token"]` — unsatisfiable by any honest world-reader implementation,
   since a token-less request must name a vehicle by handle + id instead. Not
   edited by the implementer; routed to an independent test-writer as its own
