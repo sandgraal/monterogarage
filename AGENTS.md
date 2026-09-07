@@ -286,6 +286,30 @@ Stop and ask before any of these:
   re-litigated per incident:** the next edit to this file, or a repeat of
   this pattern on any other grader, is a test-writer's change, not another
   implementer mutation-testing its own diff after the fact.
+  **The repeat happened, on 2026-09-06/07, and this time across spec
+  lineages.** T802 `[PLATFORM]` (CI sync job, `feat/001-t802-sync-search-index`,
+  spec 001) registered its new `search_index_entries` table in
+  `EXEMPT_PUBLIC_TABLES` (`tests/garage/contract.ts`) and added a filter
+  consulting that map to the anon-privilege sweeps in
+  `tests/garage/rls-deny-by-default.test.ts` and
+  `tests/garage/share-instrument.test.ts` — grader files authored under
+  T2-401a `[TEST]`, spec 002, a different lineage the implementer neither
+  wrote nor was tasked to touch. An independent code-reviewer confirmed the
+  edit was load-bearing (reverting it to `origin/main`'s versions produces 4
+  real failures against the unmodified T802 migration) and that the
+  technical judgment was plausible on the merits (`search_index_entries` is
+  genuinely public reference data under RM-02) but that plausibility does
+  not license an implementer to encode the call unilaterally in a
+  security-relevant grader it does not own — `EXEMPT_PUBLIC_TABLES`'s own
+  docstring anticipates exactly this addition as something "a conductor
+  reviewing the sharing work will see," describing independent review of
+  the pairing, not the implementer self-approving it in the same commit.
+  Routed per this section's own instruction: an independent `test-writer`
+  instance re-authors the `EXEMPT_PUBLIC_TABLES` addition and the two
+  sweep-test changes from RM-02's spec text directly (not by copying the
+  implementer's diff), lands it as its own reviewed change on `main` first,
+  and T802 rebases onto it and drops its own edits to those three files
+  before merging.
 - A clean fact-check, a clean bilingual edit, and all required branch-protection
   checks authorize the `pr-shepherd` to merge without another confirmation.
 - Never `--no-verify`, never a bare force-push, never `gh pr merge --admin`,
