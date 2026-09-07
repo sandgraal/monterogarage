@@ -1296,3 +1296,45 @@ describe("the showcase page's own <script> (T2-404d)", () => {
    * identical reason, is the precedent this follows.
    */
 });
+
+/**
+ * ## The one half of that retired canary that is still a live invariant
+ *
+ * `coverIsWiredToSeam` (above) proves the *client* unhides
+ * `[data-showcase-cover]` once `publicCoverPhotoUrl` hands back a real URL,
+ * inside the confirmed-public guard. It says nothing about the element's
+ * state before that script has run, or on a read that never reaches the
+ * unhide guard at all — no cover designated, the fetch fails, JS never
+ * loads. That state is set once, server-side, in the page's static markup
+ * (the frontmatter template, not the `<script>` body) — a property none of
+ * section 7's script-structural checks touch, because there is no script
+ * involved: the page's own doc comment names the invariant directly, "a
+ * `null` result … leaves the `[data-showcase-cover]` image exactly as
+ * shipped: `hidden`" (GAR-01′, SHR-02). A future edit that dropped `hidden`
+ * from the markup — or moved the cover image out from under
+ * `[data-showcase-cover]` entirely — would leave every assertion above
+ * green; this is the one that would not.
+ *
+ * Read the same way section 6/7 read the `<script>` body: raw source text,
+ * structurally located (the sole `<img>` tag carrying `data-showcase-cover`,
+ * not a fixed-length slice), so a reordering of its attributes does not
+ * change what is checked, and a page that dropped the hook entirely fails
+ * loudly on "no such tag" rather than the `hidden` check silently matching
+ * nothing.
+ */
+describe("the showcase page's cover <img> ships hidden by default in the server-rendered markup (GAR-01′, SHR-02)", () => {
+  it("the [data-showcase-cover] element carries the `hidden` attribute before any client script runs", () => {
+    const source = readFileSync(
+      new URL(SHOWCASE_PAGE_PATH, import.meta.url),
+      "utf8"
+    );
+    const coverTag = [...source.matchAll(/<img\b[^>]*>/g)]
+      .map((match) => match[0])
+      .find((tag) => /\bdata-showcase-cover\b/.test(tag));
+    expect(
+      coverTag,
+      "expected an <img> tag carrying data-showcase-cover in the page's static markup"
+    ).toBeDefined();
+    expect(/\bhidden\b/.test(coverTag as string)).toBe(true);
+  });
+});
