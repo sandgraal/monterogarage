@@ -1,0 +1,68 @@
+name: Sync reference search index
+
+# ──────────────────────────────────────────────────────────────────────────
+# T802 [PLATFORM] — the git→Supabase read-model sync (RM-01, RM-02).
+#
+# > RM-01 "WHEN content merges to `main`, CI SHALL sync the built content
+# > into Supabase … The sync SHALL be idempotent and one-directional."
+# > RM-02 "THE Supabase read-model SHALL never be written by any process
+# > other than the CI sync job."
+#
+# `push` to `main` ONLY — never `pull_request`. A fork PR's workflow run does
+# not carry repository secrets by design, but this file does not rely on that:
+# RM-02's write credential belongs to exactly one trigger, and naming it here
+# is what `tests/sync/ci-wiring.test.ts` grades, not GitHub's own fork-secret
+# behaviour.
+#
+# A dedicated workflow rather than a step inside `ci.yml`: `ci.yml`'s own
+# header says its three job names are load-bearing required branch-protection
+# contexts, and RM-01's trigger ("content merges to main") is not "every pull
+# request" — see `tests/sync/contract.ts`'s `SYNC_WORKFLOW_PATH` docstring for
+# the fuller reasoning (same shape `link-check.yml` was split out for).
+#
+# `dist/search-index.json` — `npm run build`'s own output
+# (`src/pages/search-index.json.ts`) — is this job's only source of "what git
+# says"; `scripts/sync-reference-search.mjs` never calls `getCollection`
+# itself (see that script's own docstring for why it cannot, running here
+# under bare Node with no bundler).
+# ──────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: Sync reference search index
+    runs-on: ubuntu-latest
+    # No PUBLIC_SUPABASE_ANON_KEY anywhere in this job — RM-02's write path
+    # authenticates as service_role only. PUBLIC_SUPABASE_URL is not a secret
+    # (it is the project's public API origin, already shipped to every
+    # browser via the Vercel build) but is read from a repository secret here
+    # anyway so this job never depends on Vercel's own env configuration.
+    env:
+      PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Builds `dist/search-index.json` (src/pages/search-index.json.ts)
+      # alongside the rest of the static site. `astro build` is the same
+      # command `npm run verify`/`npm run build` already run, so this job
+      # exercises no build path the merge gate has not already proven green.
+      - name: Build
+        run: npx astro build
+
+      - name: Sync
+        run: node scripts/sync-reference-search.mjs

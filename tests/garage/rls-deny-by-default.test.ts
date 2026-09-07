@@ -274,7 +274,13 @@ describe("deny-by-default is declared, not assumed", () => {
     // mentions, and a table that does not exist yet has no ACL to be known.
     // The `createdTables` half is what makes this airtight anyway: the day
     // T2-404 creates `shares`, it joins this sweep from the other side whether
-    // anyone remembers to move it or not.
+    // anyone remembers to move it or not. The same is true from the exemption
+    // side: `tableGrantIssues` defaults to skipping anything named in
+    // `EXEMPT_PUBLIC_TABLES` (`search_index_entries`, RM-01/RM-02) — public
+    // reference content this sweep was never meant to grade — without either
+    // call site here having to filter `tables` itself. See that map's own
+    // docstring, and `tableGrantIssues`'s, for why that table's `anon` select
+    // grant is correct rather than a finding.
     const sql = migrationSql();
     const tables = [
       ...new Set([
