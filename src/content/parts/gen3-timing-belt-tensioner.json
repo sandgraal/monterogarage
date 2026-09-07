@@ -1,0 +1,48 @@
+{
+  "id": "gen3-timing-belt-tensioner",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    },
+    "engines": ["6g74-sohc", "6g75"]
+  },
+  "oemNumber": "MD362861",
+  "system": "engine",
+  "quantityPerVehicle": 1,
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen3 Timing Belt Tensioner (MD362861): Genuine Mitsubishi part number, fitment table and quantity per vehicle",
+      "url": "https://lusooverland.com/VP-MMC-MD362861",
+      "archiveUrl": "https://web.archive.org/web/20260907002646/https://lusooverland.com/VP-MMC-MD362861",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    },
+    {
+      "title": "Luso Overland — MONTERO Gen3 OEM Timing Belt Kit: the tensioner listed among the parts the specialist replaces together",
+      "url": "https://lusooverland.com/VP-LO-K-TB005",
+      "archiveUrl": "https://web.archive.org/web/20260907004053/https://lusooverland.com/VP-LO-K-TB005",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    },
+    {
+      "title": "YoshiParts — Mitsubishi OEM timing belt tensioner adjuster MD362861: part number, description and Pajero/Montero V65W (3rd Gen, 1999-2006) fitment, independent of the Montero specialist's catalogue above",
+      "url": "https://yoshiparts.com/parts/mitsubishi-MD362861",
+      "archiveUrl": "https://web.archive.org/web/20260907021959/https://yoshiparts.com/parts/mitsubishi-MD362861",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Timing belt tensioner",
+      "summary": "The hydraulic tensioner that holds the timing belt tight. It is the part that decides whether a good belt stays a good belt: when the tensioner leaks down, the belt goes slack, and on an interference engine a belt that jumps teeth ends the engine rather than stranding you. Nobody who has the front of this engine apart should put the old tensioner back — the specialist who assembles the kit for this generation lists it with the belt, the idler and the water pump as things that come out together and go back together, and the access is the expensive half of the job. The number, the fitment and the count come from the Montero specialist's own catalogue page, cited below — a parts catalogue is good evidence for what a part number is and what it fits, and it is not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification."
+    },
+    "es": {
+      "title": "Tensor de la faja de distribución",
+      "summary": "El tensor hidráulico que mantiene templada la faja de distribución. Es la pieza que decide si una faja buena sigue siendo una faja buena: cuando el tensor se vence, la faja queda floja, y en un motor de interferencia una faja que se brinca dientes no lo deja botado, le termina el motor. Quien ya tenga destapado el frente del motor no debería volver a montar el tensor viejo: la casa especializada que arma el juego para esta generación lo enumera junto con la faja, la polea loca y la bomba de agua como piezas que salen juntas y entran juntas, y el acceso es la mitad cara del trabajo. El número, la compatibilidad y la cantidad salen de la ficha de catálogo de la casa especializada en Montero que se cita abajo. Un catálogo de repuestos es buena evidencia de qué es un número de parte y en qué encaja, pero no es literatura de fábrica: lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller."
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "id": "gen3-thermostat-md351861",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2002
+    },
+    "engines": ["6g74-sohc"]
+  },
+  "oemNumber": "MD351861",
+  "system": "cooling",
+  "supersededBy": "gen3-thermostat",
+  "quantityPerVehicle": 1,
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen3 NM; SPORT Thermostat (1305A239): states that the current number replaces this old part number",
+      "url": "https://lusooverland.com/VP-MMC-1305A239",
+      "archiveUrl": "https://web.archive.org/web/20260907003004/https://lusooverland.com/VP-MMC-1305A239",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    },
+    {
+      "title": "YoshiParts — Mitsubishi OEM thermostat kit MD351861: part number and description, independent of the Montero specialist's catalogue above",
+      "url": "https://yoshiparts.com/parts/mitsubishi-MD351861",
+      "archiveUrl": "https://web.archive.org/web/20260907021859/https://yoshiparts.com/parts/mitsubishi-MD351861",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Thermostat, superseded number (smaller petrol V6)",
+      "summary": "This page exists so that an old number found on a box, an invoice or a forum post resolves to something rather than to nothing. It is the superseded thermostat number for the earlier Gen 3 trucks with the smaller petrol V6; the catalogue page cited below states plainly that the current part replaces it, and the supersession chain on this page points at the number to order today. Do not order this one — a counter that still has stock has old stock. The replacement claim comes from a single catalogue page and not from a Mitsubishi parts bulletin, which is worth knowing before you argue with a parts clerk about it."
+    },
+    "es": {
+      "title": "Termostato, número reemplazado (V6 de menor cilindrada)",
+      "summary": "Esta página existe para que un número viejo que aparezca en una caja, en una factura o en un mensaje de foro resuelva a algo y no a nada. Es el número de termostato sustituido para los primeros vehículos de tercera generación con el V6 de menor cilindrada; la ficha de catálogo que se cita abajo dice sin rodeos que la pieza vigente lo reemplaza, y la cadena de sustitución de esta página apunta al número que hay que pedir hoy. No pida este: un mostrador que todavía lo tenga, lo tiene viejo. La afirmación de reemplazo viene de una sola ficha de catálogo y no de un boletín de repuestos de Mitsubishi, cosa que conviene saber antes de discutirla con el dependiente."
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "id": "gen3-front-camshaft-seal",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    },
+    "engines": ["6g74-sohc", "6g75"]
+  },
+  "oemNumber": "MD372536",
+  "system": "engine",
+  "quantityPerVehicle": 2,
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen 1, 2, 3; SPORT; MMM Camshaft Oil Seal, FRONT (MD372536): part number, fitment table and quantity per vehicle",
+      "url": "https://lusooverland.com/VP-MMC-MD372536",
+      "archiveUrl": "https://web.archive.org/web/20260907002826/https://lusooverland.com/VP-MMC-MD372536",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    },
+    {
+      "title": "Luso Overland — MONTERO Gen3 OEM Timing Belt Kit: the front camshaft seal listed among the parts already exposed during a belt service",
+      "url": "https://lusooverland.com/VP-LO-K-TB005",
+      "archiveUrl": "https://web.archive.org/web/20260907004053/https://lusooverland.com/VP-LO-K-TB005",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    },
+    {
+      "title": "YoshiParts — Mitsubishi OEM camshaft oil seal MD372536: part number, description and Pajero/Montero V73W (3rd Gen, 1999-2006) fitment, independent of the Montero specialist's catalogue above",
+      "url": "https://yoshiparts.com/parts/mitsubishi-MD372536",
+      "archiveUrl": "https://web.archive.org/web/20260907021206/https://yoshiparts.com/parts/mitsubishi-MD372536",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Front camshaft oil seal",
+      "summary": "The seal at the front of each cylinder head, behind the timing covers. It is a known leak point on this V6, and the oil it drops lands on the timing belt — which is the reason it matters more than a small seal usually would. The truck takes one per head, so the quantity above is what you order for the pair. This is the classic \"do it while you are in there\" part: replacing it costs a seal and a few minutes on a job you are already paying for, and skipping it means paying for the same access twice. The number, the fitment and the count come from the Montero specialist's own catalogue page, cited below — a parts catalogue is good evidence for what a part number is and what it fits, and it is not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification."
+    },
+    "es": {
+      "title": "Retenedor delantero del árbol de levas",
+      "summary": "El retenedor del frente de cada cabezote, detrás de las tapas de distribución. Es un punto de fuga conocido en este V6, y el aceite que suelta cae sobre la faja de distribución, que es la razón por la que importa más de lo que suele importar un retenedor pequeño. El vehículo lleva uno por cabezote, así que la cantidad indicada arriba es la que se pide para el par. Este es el repuesto clásico de \"hágalo ya que está adentro\": cambiarlo cuesta un retenedor y unos minutos dentro de un trabajo que usted ya está pagando, y dejarlo pasar significa pagar dos veces el mismo acceso. El número, la compatibilidad y la cantidad salen de la ficha de catálogo de la casa especializada en Montero que se cita abajo. Un catálogo de repuestos es buena evidencia de qué es un número de parte y en qué encaja, pero no es literatura de fábrica: lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller."
+    }
+  }
+}
