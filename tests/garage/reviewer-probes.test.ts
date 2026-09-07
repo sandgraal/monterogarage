@@ -47,6 +47,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  EXEMPT_PUBLIC_TABLES,
   RECEIPTS_BUCKET,
   SHARE_READER_NAMES,
   USER_TABLE_NAMES,
@@ -2555,6 +2556,31 @@ describe("declaredArgumentNames — PostgREST resolves by NAME (T2-404a)", () =>
     // The end-to-end half. Read off the migration that actually shipped, so a
     // parser that produced plausible-looking nonsense for synthetic input would
     // still be caught.
+    //
+    // Lifecycle RPCs only: `create_share_grant` and `revoke_share_grant` — the
+    // pair the migration's own header comment (20260906120100_share_grants.sql)
+    // names "the two authenticated lifecycle RPCs", distinct from
+    // `share_read_vehicle`/`_records`/`_receipts`, its "three security definer
+    // readers". `share-grants.test.ts`'s "both lifecycle RPCs take the argument
+    // names the graders send" uses the same two-RPC scope independently.
+    //
+    // `share_read_records`'s real argNames used to be asserted here too
+    // (`toEqual(["p_token"])`), but that pinned an exact, closed signature on a
+    // reader T2-404b (specs/002-montero-garage) is required to widen: the
+    // public showcase/work-log world-reader path serves a null token and has
+    // no token to look a vehicle up by, so it needs a way to name a handle and
+    // a vehicle id instead. It also proved nothing this test doesn't already
+    // prove without it — `revoke_share_grant(p_share_id uuid)` is the same
+    // single-arg, single-line, no-default, no-keyword shape, read from the
+    // same real migration, so the parser's ability to read a one-argument
+    // routine's real signature off shipped SQL is still exercised end-to-end
+    // — `revoke_share_grant` is a lifecycle RPC, not a reader, but the parser
+    // doesn't know the difference; it only sees argument syntax.
+    // Removed 2026-09-06 (grader-defect fix, refs specs/002-montero-garage
+    // T2-404b) rather than widened to a guessed future signature, since this
+    // test's job is proving the parser against what already shipped, not
+    // pre-committing an implementation to argument names the spec does not
+    // name.
     const declared = functions(migrationSql());
     const named = (name: string) =>
       declared.find((routine) => routine.name === name)?.argNames;
@@ -2567,7 +2593,6 @@ describe("declaredArgumentNames — PostgREST resolves by NAME (T2-404a)", () =>
       "p_expires_in_hours",
     ]);
     expect(named("revoke_share_grant")).toEqual(["p_share_id"]);
-    expect(named("share_read_records")).toEqual(["p_token"]);
   });
 
   it("`header` still contains NO argument name — the defect, pinned", () => {
@@ -4415,5 +4440,146 @@ describe("T2-401: every new probe fires, and every control stays silent", () => 
         ),
       ].flat()
     ).toEqual([]);
+  });
+});
+
+/* =========================================================================
+ * G28 — `tableGrantIssues` honouring `EXEMPT_PUBLIC_TABLES`
+ * ====================================================================== */
+
+describe("G28: tableGrantIssues skips a table EXEMPT_PUBLIC_TABLES names, and only that table", () => {
+  /**
+   * The grant shape RM-01/RM-02 actually requires for
+   * `search_index_entries` — `select` to `anon` and `authenticated`,
+   * everything else revoked, full CRUD reserved to `service_role` — derived
+   * from `specs/001-foundation/spec.md` (RM-02) and T801's `tasks.md` entry
+   * ("`select` for `anon`/`authenticated` is **not** graded as a violation —
+   * this is public reference content, not `tests/garage/contract.ts`'s
+   * private-data standard"), not copied from any implementer's migration.
+   * Table name matches the real one deliberately: this is the fixture that
+   * proves the *real* default `EXEMPT_PUBLIC_TABLES` (not a synthetic
+   * stand-in) actually silences the real table it names.
+   */
+  const G28_SEARCH_INDEX_ENTRIES = sql(`
+    create table public.search_index_entries (
+      collection text not null,
+      entry_id text not null,
+      locale text not null,
+      title text not null,
+      constraint search_index_entries_pkey primary key (collection, entry_id, locale)
+    );
+    alter table public.search_index_entries enable row level security;
+    alter table public.search_index_entries force row level security;
+    create policy "search index entries are public reference data"
+      on public.search_index_entries for select to anon, authenticated using (true);
+
+    revoke all on public.search_index_entries from anon;
+    revoke all on public.search_index_entries from public;
+    revoke all on public.search_index_entries from authenticated;
+
+    grant select on public.search_index_entries to anon;
+    grant select on public.search_index_entries to authenticated;
+    grant select, insert, update, delete on public.search_index_entries to service_role;
+  `);
+
+  /**
+   * The same shape, on a table name that will never appear in the real
+   * `EXEMPT_PUBLIC_TABLES` — a generic probe for the *mechanism*, in the
+   * style of G10's synthetic exempt map for `ungradedTableIssues`, so the
+   * behaviour under test is "a named exemption is honoured", not "this one
+   * particular table happens to work".
+   */
+  const G28_GENERIC_PUBLIC_TABLE = sql(`
+    create table public.reference_probe (id uuid primary key);
+    revoke all on public.reference_probe from anon;
+    revoke all on public.reference_probe from public;
+    revoke all on public.reference_probe from authenticated;
+    grant select on public.reference_probe to anon;
+    grant select on public.reference_probe to authenticated;
+  `);
+
+  it("G28: with no exemption, the anon select grant is flagged — the failing-first proof", () => {
+    // Confirms `tableGrantIssues` still does its ordinary job when a table is
+    // NOT exempt: this is the exact finding `search_index_entries` would have
+    // produced against every call site in this suite before this branch
+    // added it to `EXEMPT_PUBLIC_TABLES` — reproduced here against a
+    // synthetic table name (rather than the real one) so this probe keeps
+    // meaning what it says even after the real table is exempted below.
+    const issues = tableGrantIssues(
+      G28_GENERIC_PUBLIC_TABLE,
+      ["reference_probe"],
+      {
+        exempt: new Map(),
+      }
+    ).join(" | ");
+
+    expect(issues).toContain("public.reference_probe");
+    expect(issues).toContain("anon holds select");
+  });
+
+  it("G28: naming the table in a synthetic exempt map silences it", () => {
+    const exempt = new Map([
+      ["reference_probe", "synthetic probe — public reference data"],
+    ]);
+
+    expect(
+      tableGrantIssues(G28_GENERIC_PUBLIC_TABLE, ["reference_probe"], {
+        exempt,
+      })
+    ).toEqual([]);
+  });
+
+  it("G28: the DEFAULT exempt set — EXEMPT_PUBLIC_TABLES itself — silences search_index_entries with no options argument", () => {
+    // The real assertion: both call sites in `rls-deny-by-default.test.ts`
+    // and `share-instrument.test.ts` call `tableGrantIssues(sql, tables)`
+    // with no third argument, so this is the path that actually matters.
+    expect(
+      tableGrantIssues(G28_SEARCH_INDEX_ENTRIES, ["search_index_entries"])
+    ).toEqual([]);
+  });
+
+  it("G28: exempting one table does not blind the sweep to a genuinely wide-open one", () => {
+    // The positive control this whole probe would be worthless without. Reuses
+    // G9 — an unrelated, already-wide-open `records` fixture from earlier in
+    // this file — called with the real default `EXEMPT_PUBLIC_TABLES`, which
+    // does not contain "records". If adding an entry ever widened the check
+    // instead of narrowing it to the named table, this goes green and should
+    // not.
+    expect(tableGrantIssues(G9_REVOKE_THEN_GRANT, ["records"])).not.toEqual([]);
+  });
+
+  it("G28: EXEMPT_PUBLIC_TABLES really does contain search_index_entries, with a real reason", () => {
+    // A control on the fixture data itself, not the rule — if this map were
+    // ever emptied back out (or the key renamed) while the tests above kept
+    // passing `search_index_entries` explicitly as a table name, the probe
+    // above would start testing nothing. `share-instrument.test.ts` also pins
+    // the map's exact size; this pins the one entry's shape.
+    expect(EXEMPT_PUBLIC_TABLES.has("search_index_entries")).toBe(true);
+    expect(
+      EXEMPT_PUBLIC_TABLES.get("search_index_entries")?.length ?? 0
+    ).toBeGreaterThan(20);
+  });
+
+  it("G28: the known, bounded gap — an exempt table's WRITE grants are not checked here", () => {
+    // Documented rather than hidden, per .claude/GRADER-PRINCIPLES.md's "a
+    // known-pages sweep is only as complete as its list": `tableGrantIssues`
+    // skips an exempt table entirely, so a mistaken `grant insert … to
+    // authenticated` on `search_index_entries` would NOT be caught by this
+    // function. That is intentional, not an oversight — `tableGrantIssues`'s
+    // "authenticated may hold select/insert/update/delete" expected-list is
+    // the correct shape for RLS-scoped user data and the WRONG shape for this
+    // table (RM-02 forbids all three verbs for `authenticated` too, not just
+    // `anon`), so reusing it here would give a false pass, not a real proof.
+    // The real proof of write-verb absence is
+    // `tests/sync/contract.ts`'s `SEARCH_INDEX_WRITE_VERBS` /
+    // `SEARCH_INDEX_WRITE_DENIED_ROLES` and `tests/sync/rules.ts`'s
+    // `writeGrantIssues` — a different suite, deliberately, because it is the
+    // one that knows this table's actual expected ACL.
+    const compromised = sql(`
+      ${G28_SEARCH_INDEX_ENTRIES}
+      grant insert on public.search_index_entries to authenticated;
+    `);
+
+    expect(tableGrantIssues(compromised, ["search_index_entries"])).toEqual([]);
   });
 });

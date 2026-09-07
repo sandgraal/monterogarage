@@ -1,0 +1,41 @@
+{
+  "id": "gen3-thermostat-larger-v6",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2003,
+      "to": 2006
+    },
+    "engines": ["6g75"]
+  },
+  "oemNumber": "1305A191",
+  "system": "cooling",
+  "quantityPerVehicle": 1,
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen 2, 3 NP; SPORT Thermostat (1305A191): Genuine Mitsubishi number, opening temperature, fitment table and the older numbers it replaces",
+      "url": "https://lusooverland.com/VP-MMC-1305A191",
+      "archiveUrl": "https://web.archive.org/web/20260907003027/https://lusooverland.com/VP-MMC-1305A191",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    },
+    {
+      "title": "YoshiParts — Mitsubishi OEM thermostat kit 1305A191: part number and description, independent of the Montero specialist's catalogue above",
+      "url": "https://yoshiparts.com/parts/mitsubishi-1305A191",
+      "archiveUrl": "https://web.archive.org/web/20260907021740/https://yoshiparts.com/parts/mitsubishi-1305A191",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Thermostat, larger petrol V6",
+      "summary": "The thermostat for the later Gen 3 trucks with the larger petrol V6. It is not the same part as the one fitted to the earlier trucks and it does not open at the same temperature, so the two are not interchangeable however similar they look on a counter. The catalogue page cited below also names two older Mitsubishi numbers this one replaces; both belong to earlier trucks, neither has a page here yet, and the supersession chain on this page is therefore shorter than the real one. Fitting a wrong-temperature thermostat is not a dramatic failure — it is a truck that runs cool, never reaches its map, and quietly costs fuel. The number, the fitment and the count come from the Montero specialist's own catalogue page, cited below — a parts catalogue is good evidence for what a part number is and what it fits, and it is not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification."
+    },
+    "es": {
+      "title": "Termostato, V6 de mayor cilindrada",
+      "summary": "El termostato de los vehículos de tercera generación tardíos con el V6 de mayor cilindrada. No es la misma pieza que la de los vehículos tempranos y no abre a la misma temperatura, así que no son intercambiables por más parecidos que se vean en el mostrador. La ficha citada abajo también nombra dos números Mitsubishi más viejos que este reemplaza; los dos pertenecen a vehículos anteriores, ninguno tiene página aquí todavía, y por eso la cadena de sustitución de esta página es más corta que la real. Montar un termostato con la temperatura equivocada no es una falla dramática: es un vehículo que trabaja frío, que nunca llega al punto que espera la computadora y que gasta combustible de más sin avisar. El número, la compatibilidad y la cantidad salen de la ficha de catálogo de la casa especializada en Montero que se cita abajo. Un catálogo de repuestos es buena evidencia de qué es un número de parte y en qué encaja, pero no es literatura de fábrica: lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller."
+    }
+  }
+}

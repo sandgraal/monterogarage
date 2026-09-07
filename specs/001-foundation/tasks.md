@@ -277,8 +277,9 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
     - **Deliberately not changed.** `kind: "tsb"` on NHTSA recall records stays: round 1 verified it as correct and consistent with T404, and the fuel-valve entry's documentary tier depends on it. `suiche` vs `interruptor` stays as written — no source arbitrates it, and inventing a canonical without one is what produced the `tensor` finding in round 1; recorded below as a glossary gap instead.
   - **Glossary gaps recorded for GAP-01, not invented here:** clock spring / espiral de contacto, switch (`suiche` vs `interruptor`), companion shaft, crush washer / arandela de sello, detent ball, surge tank / depósito de admisión, strut top hat, `hule` in the spring-pad sense, `palier` vs `eje`.
   - **Dangling ids are deliberate.** Fix paths reference `parts` ids that T503 is scoped to create ("every part referenced by T303/T403/T404"). Verified part numbers found during research and handed to T503: front sway bar end links 4056A106 / 4056A105 (interchange MR374521, MR374522); transfer case position switches MR580151/2/3/4/5 (interchange MR453314–MR453318) plus crush washer MU000393; brake booster accumulator 4630A012 (2003-2006 with traction control) and MR977223 (without); freewheel clutch control solenoid MR430381; front lower ball joint MR496799; front upper ball joint 4010A056; timing belt tensioner MD362861; 3.8L surge tank gaskets MR561581/2/4; differential seals MB393883, MB664285, MR350883, MR580530; exhaust manifold gaskets MR281721, MB687015, MD149764.
-- [ ] **T403a [CONTENT]** Resolve the `acumulador`/`acumuladores` glossary collision T403 found (search "acumulador" in T403's block above) — find a genuine Costa Rican source establishing `acumulador` as everyday CR usage for a hydraulic brake-system pressure accumulator, independent of and alongside `batería`'s "car battery" sense, and if found apply the `falseFriend`-style fix (`es|llanta` precedent) to `all-electrical-bateria.json` so the word is usable in prose without breaking `batería` coverage. *(GLO-02, GLO-03)*
-  - **Attempt 1 (2026-09-06): no qualifying source found — task not completed, box stays unchecked.** A real search effort across several categories, all coming up empty or too weak:
+- [x] **T403a [CONTENT]** Resolve the `acumulador`/`acumuladores` glossary collision T403 found (search "acumulador" in T403's block above) — find a genuine Costa Rican source establishing `acumulador` as everyday CR usage for a hydraulic brake-system pressure accumulator, independent of and alongside `batería`'s "car battery" sense, and if found apply the `falseFriend`-style fix (`es|llanta` precedent) to `all-electrical-bateria.json` so the word is usable in prose without breaking `batería` coverage. *(GLO-02, GLO-03)*
+  - **Owner ruling (2026-09-07): closed without a source — the CR term stays permanently avoided, not "blocked pending a source."** After Attempt 1 below found nothing qualifying, the owner decided directly: don't use "acumulador" for the brake-hydraulics sense in Costa Rican prose at all, full stop. This is the task's actual resolution, not a deferral — the box is checked because the decision this task existed to produce (how should the site's ES prose refer to this part?) has been made, even though the outcome is "avoid the word" rather than "here is the fix." No future attempt is needed or wanted; `T503`'s workaround phrasing ("depósito de presión del booster de freno") is the permanent answer, not a placeholder. `all-electrical-bateria.json`'s aliases stay unchanged and `check:glossary` continues to correctly block `acumulador`/`acumuladores` in ES prose site-wide — that is now working as intended, not a known gap.
+  - **Attempt 1 (2026-09-06): no qualifying source found.** Kept as historical record of the search effort that led to the owner ruling above — it does not reflect the task's current (checked) state. A real search effort across several categories, all coming up empty or too weak:
     - **CR vendor/parts catalogues checked directly, none list the part as "acumulador":** `guiaautomotrizcr.com` (site-restricted search, zero hits), `repuestos-costarica.com`'s own Montero page (live site unreachable — `curl` times out, connection refused; checked its 2019 Wayback capture instead, page is a category-landing page with no itemized "acumulador" listing), `grupoautomotrizzuniga.com`'s Montero parts page (fetched via its 2024-02-20 Wayback capture after the live site 429'd twice; no "acumulador" or "4630A012" anywhere on the page), `centraldefrenoscr.com` (Guápiles shop; live site times out, checked 2022-08-17 Wayback capture — its brake category list is Bombas/Kits/Empaques/**Booster**/Caliper/Pistones/Pastillas/Discos/Zapatas/etc., no "Acumulador" line item), `todofrenoscr.com` and `partesdechasiscr.com` (both live, both zero hits on "acumulador"). Every CR shop that names this family of part calls it a "Booster", matching the workaround phrasing T403 already shipped, not "acumulador".
     - **MercadoLibre Costa Rica and Encuentra24:** no listing found for this part or part number 4630A012 on the `.co.cr` marketplace (only Mexico/Chile/Colombia listings turned up, all excluded as non-CR per this task's scope).
     - **Opinautos (cross-country forum, CR threads do exist and are usable evidence elsewhere in this repo) checked comment-by-comment for every CR-flagged poster found:** (1) a "Toyota 4Runner" ABS-accumulator thread where the original poster is Puerto Rico and a Costa Rica-flagged commenter ("Max R") replies "A mi igual y lo tuve que desconectar" — agreeing with, but never himself using, the word "acumulador"; (2) a Mitsubishi Montero 2005 "Limited" brake-noise thread where "acumulador" is used by commenters from Argentina and Mexico but the one Costa Rica-flagged commenter (Francisco López) doesn't use the word at all, discussing a transmission noise instead; (3) a Mitsubishi Montero "Seguridad" defects index page checked for any Costa-Rica-authored *original post* using "acumulador" — none found (the closest is a Venezuela-authored thread). **None of these rises to "a genuine CR source establishing usage"** — comprehension/agreement by a CR reader following someone else's word is not the same claim as CR speakers using it themselves, and AGENTS.md's "cite what you actually read" standard does not stretch that far.
@@ -509,6 +510,110 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
     spelling and the false positive it must not reopen are pinned in
     `src/lib/procedures/figures.test.ts`.
 - [ ] **T503 [CONTENT]** Parts wave 1: every part referenced by T303/T403/T404 garage+problem entries. Depends: T501, gaps report. *(PRT-01, PRT-02)*
+  - **Wave 1 shipped (2026-09-06): 29 entries in `src/content/parts/`, the
+    collection's first content.** `npm run gaps` went from 69 items / 63
+    dangling fix-path references / 49 distinct dangling `parts` ids to 39 / 33
+    / 29 — **20 distinct ids closed**, and `Parts with no narrowed fitment
+    (GAP-01)` is 0. **The box stays unchecked**: the task line says *every*
+    part the merged problem entries reference, and 29 ids are still dangling.
+  - **What is left, and why it is a second wave rather than an oversight.**
+    The 29 remaining ids fall into three groups. (1) Parts whose catalogue
+    page names *several* Mitsubishi numbers where the referencing fix path
+    names one id — `gen3-front-strut-bushing-kit`, `gen3-timing-belt`,
+    `gen3-water-pump`, `gen3-exhaust-manifold-left`/`-right`,
+    `gen3-transmission-pan-filter`. Each needs a naming decision of the kind
+    this wave made three times (see the third convention now recorded in
+    `src/i18n/entry-slugs.ts`), and making six more of them inside one branch
+    would have buried them. (2) Parts sourced only from pages this session
+    could not open — `amayama.com` and `mitsubishipartscentral.com` are both
+    behind Cloudflare interstitials, and an unreadable page is not a source.
+    (3) Aftermarket-only or fabricated items (`gen3-surge-tank-butterfly-
+    delete-disc`, `gen3-front-shock-absorber`, `gen3-rear-coil-spring`) whose
+    "OEM number" is a category error — the schema makes `oemNumber` identity,
+    so these need either a genuine Mitsubishi number or a decision that the
+    `parts` collection is not where they belong.
+  - **Known sibling numbers found and deliberately not minted.** Every one is
+    on a cited, archived page, and each needs an id nothing references yet:
+    front differential side/pinion and rear pinion seals (MB393883, MB664285,
+    MR580530 — this wave shipped only the rear side seal MR350883, which is
+    the one the fix path names); the left and right surge tank plenum gaskets
+    (MR561581, MR561582 — this wave shipped MR561584, the surge-tank-to-lower-
+    manifold gasket); the lower transmission crossmember bushing, which the
+    seller renders as `2910A066` on the kit page and `2910066` in the variant
+    table — **two spellings on one site is exactly the case where guessing is
+    forbidden**, so it was left out rather than picked by plausibility.
+  - **Source posture, for whoever reviews or extends this.** Every entry is
+    `community-consensus` on a Luso Overland catalogue page (`kind: "vendor"`)
+    except `gen3-brake-booster-accumulator-without-traction-control`, which is
+    `anecdotal`: MR977223 appears in a prose sentence on the page for the
+    *other* accumulator rather than in a catalogue listing of its own, and no
+    second source could be opened. It is a brake part, so the entry says that
+    in both locales rather than rounding the tier up. The `vendor` kind is the
+    right evidence class here by `src/schemas/entry.ts`'s own note ("good for
+    part numbers and supersession, not for factory figures"), and
+    `community-consensus <- vendor` already has corpus precedent.
+  - **Sankei 555 numbers were taken only where the page prints them.** The
+    555 sway-bar links are cross-referenced (SL7840L / SL7840R, stated in a
+    table); the 555 ball joints are not, because their numbers appear only
+    inside the store's own SKU string and reading a part number out of a SKU
+    is inference, not citation.
+  - **Review-round tier fix (2026-09-06): single-vendor sourcing is not
+    `community-consensus`, and the fix is a second independent citation, not
+    a downgrade.** The fact-checker's first-round pass found that 28 of the
+    29 entries claimed `community-consensus` while citing only Luso Overland
+    — including entries citing two Luso Overland pages, which is still one
+    vendor. `src/schemas/entry.ts` calls this legal-but-a-review-question by
+    design ("a `community-consensus` entry cited only by a vendor catalogue
+    is legal, and whether it should be is a question for review"), so this
+    session treated it as exactly that: for every one of the 28, a second,
+    independently-owned vendor catalogue page was located, opened, confirmed
+    to state the same OEM number against Montero/Pajero fitment, and
+    archived — mostly `yoshiparts.com`, plus `stmtuned.com`, `jparauto.com`
+    and `burjauto.com` for the numbers Yoshi doesn't carry. `4010A056`'s
+    Yoshi listing names the wrong generation (its 4th-gen V87W page), so
+    Burj Auto's chassis-code table (V73W–V78W, i.e. this truck) stands in for
+    it instead — a mismatched fitment on a candidate source is a reason to
+    look further, not to cite it anyway. **The policy applied, so a future
+    wave can follow it without re-deriving it**: single-vendor
+    `community-consensus` gets a second independent citation before it ships,
+    not a downgrade to `anecdotal` — `anecdotal` stays reserved for what
+    `gen3-brake-booster-accumulator-without-traction-control` actually is,
+    a number with no catalogue listing of its own. Where a second source
+    could not be found and confirmed, the honest move is the downgrade this
+    branch never had to make. Two entries (`gen3-front-sway-bar-end-link`,
+    `-right`) also picked up the "catalogue lists further OEM interchange
+    numbers, none of them has a page here yet" disclosure their siblings
+    already carried (`MR374521`/`MR374522`, named in this file's earlier
+    dangling-ids note), for the same reason those siblings have it.
+    web.archive.org's Save Page Now endpoint was down for part of this
+    session (`archive.org/wayback/available` and existing snapshots stayed
+    reachable throughout, only new captures failed with a 520/523); it
+    recovered before this round finished and every new citation above was
+    captured and re-verified against its own snapshot, not left pending.
+  - **Review-round terminology fix and a deliberate non-mint (2026-09-06).**
+    `gen3-transfer-case-switch-crush-washer`'s ES prose used two different
+    words for the same part in the same paragraph — "arandela de sello" in
+    its first sentence, "arandela de aplastamiento" in its second — while
+    every one of its five sibling entries (the transfer-case position
+    switches, plus `gen3-transmission-pan-drain-crush-washer`) already say
+    "arandela de aplastamiento" consistently. Fixed by dropping the stray
+    "de sello" so the term is now uniform across all six entries that use it.
+    **A glossary entry for "crush washer" / "arandela de aplastamiento" was
+    considered and deliberately not minted this round.** The English side is
+    solid — every cited Luso Overland and YoshiParts page in this wave calls
+    the part a "crush washer" — but this branch could not open a Spanish-
+    language source that uses the exact ES phrase for this class of part:
+    `lubricantes-online.com` calls the same physical part "arandela de
+    cobre" / "arandela de tapón de cárter" instead, and the Mexican
+    marketplace listings that do use "arandela de aplastamiento" for
+    exactly this kind of washer (Amazon.com.mx, MercadoLibre) returned
+    HTTP 503/403 on every fetch attempt this session, so per AGENTS.md a
+    page that could not be opened is not a source. Filed as a GAP-01
+    glossary follow-up rather than invented: whoever picks it up next needs
+    one opened, archivable, Spanish-language source using this term for a
+    drain-plug or fastener-sealing washer (CR-based preferred, matching the
+    bar the rest of this collection's glossary entries clear) before it can
+    ship at `community-consensus`.
 - [x] **T504a [TEST]** Render graders for the procedures index page
   (`procedures-index.render.test.ts`) — cards render, hrefs resolve, filters
   work, T204's provisional-match indicator shows on a partial fitment match.
@@ -802,7 +907,7 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
   - **The implementation seam:** `src/lib/sync/reference-search.ts` exports the row/plan types and a `computeSyncPlan(gitRows, dbRows): SyncPlan` that throws `"not implemented: T802"`. T802 fills in the body only — the types are the contract, and `tests/sync/sync-plan.test.ts`'s idempotency/one-directionality proofs run unchanged once it does.
   - **Tier B / live-stack note:** no live-Supabase behavioural tier exists for this feature (unlike `tests/garage/`'s Tier A/B split) — everything here is Tier A (migration text + pure logic + file text), since T802 has not shipped a schema for a live stack to run against yet. Whether a Tier B belongs here (proving the GIN index actually serves `@@` queries, proving RLS behaviourally rather than declaratively) is a call for whoever scopes T802/T803, not invented on this branch.
   - **Open question for T802/T803, not decided here:** whether the sync's "built content" (RM-01) should read Astro's `getCollection()` output directly or a pre-built JSON artifact — orthogonal to every grader in this branch, since `computeSyncPlan` takes already-shaped `ReferenceSearchRow[]` and does not care where they came from.
-- [ ] **T802 [PLATFORM]** CI sync job git→Supabase (typed tables, en/es dictionaries), service key only in CI secrets. Activates T801 graders. Depends: T801 merged. *(RM-01, RM-02)*
+- [x] **T802 [PLATFORM]** CI sync job git→Supabase (typed tables, en/es dictionaries), service key only in CI secrets. Activates T801 graders. Depends: T801 merged. *(RM-01, RM-02)*
 - [ ] **T803 [PLATFORM]** Server-side search endpoint + site integration behind client-side fallback. Depends: T802. *(SRCH-01)*
 
 ## Phase-closing reviews
