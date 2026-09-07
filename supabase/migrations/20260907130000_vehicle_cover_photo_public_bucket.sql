@@ -76,9 +76,15 @@
 -- invents or stores. Forwarding it authenticates the copy call **as the same
 -- owner whose update just fired the trigger**, subject to the exact same
 -- storage policies as if that owner had called the Storage API directly, for
--- exactly as long as the token they already hold remains valid. Nothing new
--- is created, nothing is written to the database, and the call can do nothing
--- its holder could not already do with one more request of their own.
+-- exactly as long as the token they already hold remains valid. The call can
+-- do nothing its holder could not already do with one more request of their
+-- own — but it is not written-nowhere: `pg_net` is itself queue-backed, and
+-- persists the outbound request (this `Authorization: Bearer …` header
+-- included) in its own `net`-schema tables until cleaned up. That is the
+-- caller's own short-lived user JWT, not a service key, landing in tables
+-- only privileged roles can read — a narrower exposure than a stored secret,
+-- but a real one, and worth stating plainly rather than claiming nothing is
+-- written at all.
 --
 -- Verified end-to-end against the local stack before being written into this
 -- file: upload a photo as an authenticated test owner into `vehicle-photos`;
@@ -328,6 +334,17 @@ begin
   -- by polling the public route after a cover change in a live Tier B run,
   -- not by reading the SQL, which is exactly the failure mode `exception when
   -- others then null` always risks and exactly why this comment exists.
+  -- A swallowed *removal* is not the same risk as a swallowed copy-in: a
+  -- failed copy leaves the showcase card on its existing no-cover placeholder
+  -- (the ruling's own accepted fallback), but a failed removal leaves a
+  -- de-designated cover's public copy sitting at its stable, unauthenticated
+  -- `/object/public/…` URL indefinitely — a privacy regression with no signal
+  -- and no retry. The `storage.allow_delete_query` fix above already removed
+  -- the one *known* cause (`storage.protect_delete` firing ahead of RLS), but
+  -- anything else that can make a `delete` fail (a lock, a statement
+  -- timeout, a future policy change) must not vanish the same way that bug
+  -- once did: `raise warning` so it lands in logs, without turning a storage
+  -- hiccup into a failed vehicle write.
   if old.cover_photo_path is not null then
     begin
       perform set_config('storage.allow_delete_query', 'true', true);
@@ -335,7 +352,9 @@ begin
        where bucket_id = 'vehicle-cover-photos'
          and name = old.cover_photo_path;
     exception when others then
-      null;
+      raise warning
+        'sync_vehicle_cover_public_copy: failed to remove public cover copy % from bucket vehicle-cover-photos: %',
+        old.cover_photo_path, sqlerrm;
     end;
   end if;
 
@@ -380,7 +399,7 @@ revoke all on function public.sync_vehicle_cover_public_copy() from anon;
 revoke all on function public.sync_vehicle_cover_public_copy() from authenticated;
 
 comment on function public.sync_vehicle_cover_public_copy() is
-  'T2-404b: keeps vehicle-cover-photos in sync with cover_photo_path. Removal is a plain SQL delete; the copy-in forwards the caller''s own PostgREST bearer token to the Storage API''s copy route (never a service key) and swallows any failure, because GAR-01'' and SHR-01 do not depend on this call succeeding.';
+  'T2-404b: keeps vehicle-cover-photos in sync with cover_photo_path. Removal is a plain SQL delete that logs (raise warning) rather than silently swallows a failure, because a de-designated cover left world-readable is a privacy regression; the copy-in forwards the caller''s own PostgREST bearer token to the Storage API''s copy route (never a service key -- it transits pg_net''s net-schema queue/response tables, not a stored secret) and swallows any failure there, because GAR-01'' and SHR-01 do not depend on the copy succeeding.';
 
 drop trigger if exists on_vehicle_cover_public_copy on public.vehicles;
 
