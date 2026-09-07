@@ -1,0 +1,41 @@
+{
+  "id": "gen3-thermostat",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2002
+    },
+    "engines": ["6g74-sohc"]
+  },
+  "oemNumber": "1305A239",
+  "system": "cooling",
+  "quantityPerVehicle": 1,
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen3 NM; SPORT Thermostat (1305A239): current Genuine Mitsubishi number, opening temperature, fitment table, and the old part number it replaces",
+      "url": "https://lusooverland.com/VP-MMC-1305A239",
+      "archiveUrl": "https://web.archive.org/web/20260907003004/https://lusooverland.com/VP-MMC-1305A239",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    },
+    {
+      "title": "YoshiParts — Mitsubishi OEM thermostat kit 1305A239: part number and description, independent of the Montero specialist's catalogue above",
+      "url": "https://yoshiparts.com/parts/mitsubishi-1305A239",
+      "archiveUrl": "https://web.archive.org/web/20260907021856/https://yoshiparts.com/parts/mitsubishi-1305A239",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Thermostat, smaller petrol V6",
+      "summary": "The current Genuine Mitsubishi thermostat for the earlier Gen 3 trucks with the smaller petrol V6, and the number that replaced the one this catalogue lists as superseded — the chain is on this page. It matters which of the two Gen 3 thermostats you order: the earlier and later trucks use different parts that open at different temperatures, and the catalogue gives a figure for each, so match the part to your engine rather than to the word \"Montero\". The specialist selling it recommends genuine units only and is unusually emphatic about it. The number, the fitment and the count come from the Montero specialist's own catalogue page, cited below — a parts catalogue is good evidence for what a part number is and what it fits, and it is not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification."
+    },
+    "es": {
+      "title": "Termostato, V6 de menor cilindrada",
+      "summary": "El termostato original Mitsubishi vigente para los primeros vehículos de tercera generación con el V6 de menor cilindrada, y el número que reemplazó al que este catálogo da por sustituido — la cadena aparece en esta misma página. Importa cuál de los dos termostatos de tercera generación pida: los vehículos tempranos y los tardíos usan piezas distintas que abren a temperaturas distintas, y el catálogo da una cifra para cada uno, así que haga coincidir el repuesto con su motor y no con la palabra \"Montero\". La casa que lo vende recomienda solo unidades originales y es enfática al respecto. El número, la compatibilidad y la cantidad salen de la ficha de catálogo de la casa especializada en Montero que se cita abajo. Un catálogo de repuestos es buena evidencia de qué es un número de parte y en qué encaja, pero no es literatura de fábrica: lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller."
+    }
+  }
+}
