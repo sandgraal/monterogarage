@@ -1592,13 +1592,23 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   `20260907140000_public_showcase_cover` deployed to the hosted project and
   **verified live on Gitana's page** (cover renders, correct src/localized alt,
   no console errors). *(GAR-01′, SHR-02, SHR-09)*
-  <br>**Two non-blocking follow-ups, recorded so they aren't lost:** (1) the
-  render grader no longer directly asserts the cover img ships `hidden` by
-  default — the retired "TODAY" canary bundled that property, so a one-line
-  render-grader assertion (a test-writer's, per the ledger) should re-pin the
-  placeholder-when-null invariant; (2) the hosted `sync_vehicle_cover_public_copy`
-  still carries the 2026-09-07 prod-only fallback-URL override (see T2-404b's
-  closure note) that a future migration must reconcile.
+  <br>**Both follow-ups now DONE (2026-09-07):** (1) the cover img
+  `hidden`-by-default invariant is re-pinned by a render assertion (#163,
+  `3c48c86`) — a boundary-safe attribute-token match, after Copilot caught (and
+  the fix closed) an `aria-hidden` false-positive in the first attempt.
+  (2) The prod-only cover-copy URL override is reconciled into the repo (#164,
+  `c2dd869`, deployed + verified live): `sync_vehicle_cover_public_copy` now
+  reads its Storage URL from `public.get_cover_storage_url()` — a Vault secret
+  (`cover_storage_url`), env-settable, falling back to the local kong gateway —
+  so the hosted value lives in Vault (seeded out-of-band by the conductor), not
+  a hardcoded function body, and a re-deploy can no longer revert it. A
+  config-table attempt was abandoned first: it introduced a new `public` table,
+  which `ungradedTableIssues` requires be enumerated/exempted in `contract.ts`
+  (`USER_TABLES`/`EXEMPT_PUBLIC_TABLES`), and this private zero-grant table fit
+  no existing entry — adding a category for it is a test-writer/contract change
+  an implementer can't make unilaterally. Vault adds no `public` table, so it
+  cleared every sweep. The old `app.settings.storage_internal_url` GUC is out of
+  the picture entirely.
 
 - [ ] **T2-403 [PLATFORM]** Community evidence surfacing: opt-in per-record
   first-hand evidence on problem pages (001 GAR-04 re-cut). Depends: T2-402,
