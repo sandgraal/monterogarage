@@ -109,7 +109,7 @@ comment on column public.search_index_entries.search_vector is
 -- privilege is needed, the same reasoning
 -- `20260906120000_vehicle_cover_photo.sql`'s `clear_departed_vehicle_cover()`
 -- gives for its own plain-invoker trigger. `set search_path = ''` for the
--- usual reason this repo's other functions all carry it: an unqualified name
+-- usual reason many of this repo's functions carry it: an unqualified name
 -- inside the body should never resolve against a search path an attacker
 -- could have altered. `to_tsvector`, `coalesce` and `array_to_string` are
 -- `pg_catalog` builtins, always resolvable regardless of `search_path`, so
