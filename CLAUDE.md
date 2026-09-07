@@ -30,8 +30,10 @@ conducts.
 
 ## Commands
 
-- `npm run verify` — every merge-blocking check except link/a11y (CI runs those
-  on top); must pass before any commit
+- `npm run verify` — every merge-blocking check. Link checking, a11y (Pa11y),
+  Lighthouse budgets, and end-to-end tests are not merge-blocking — they run
+  on weekly-scheduled CI jobs instead (`link-check.yml` since 2026-08-30,
+  `a11y-lighthouse-e2e.yml` since 2026-09-07); must pass before any commit
 - `npm run dev` / `npm run build` / `npm run check`
 - `npm test` / `npm run lint` / `npm run test:e2e` (Playwright, `tests/e2e/`)
 - `npm run check:locales` / `check:citations` / `check:glossary` / `check:links`

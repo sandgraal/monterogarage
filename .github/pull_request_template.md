@@ -27,10 +27,12 @@ que agregue o modifique una entrada.
 <!-- Commands run + one-line results (npm run verify, etc.) -->
 
 <!--
-CI gates this PR on: Harness validation · Verify · Links + a11y (Pa11y WCAG2AA
-plus the SCF-06 Lighthouse budgets). The built site is attached to the Verify
-run as the `site-dist` artifact — download it from the run summary to inspect
-the pages this branch produces. Merging to `main` publishes to GitHub Pages.
+CI gates this PR on: Harness validation · Verify. Link checking, a11y (Pa11y
+WCAG2AA), the SCF-06 Lighthouse budgets, and end-to-end tests run on weekly
+scheduled jobs instead, not on this PR. The built site is attached to the
+Verify run as the `site-dist` artifact — download it from the run summary to
+inspect the pages this branch produces. Merging to `main` publishes to
+GitHub Pages.
 -->
 
 ## Passes

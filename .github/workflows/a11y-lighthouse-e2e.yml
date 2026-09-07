@@ -1,0 +1,384 @@
+name: A11y, Lighthouse & E2E (scheduled)
+
+# ──────────────────────────────────────────────────────────────────────────
+# Owner ruling 2026-09-07: accessibility (Pa11y), Lighthouse budgets, and the
+# Playwright end-to-end suite join external link checking (`link-check.yml`,
+# owner ruling 2026-08-30) off the merge-blocking path. The owner's stated
+# reasoning, in the moment: these tests are too much for every PR — not worth
+# that much testing on the merge path. `main`'s branch protection now
+# requires only two contexts — "Harness validation" and "Verify (check ·
+# lint · test · locales · citations · glossary · build)" — see `ci.yml`'s own
+# header comment for the load-bearing-job-names rule this leaves intact with
+# a smaller required set.
+#
+# This workflow runs the exact steps CI used to run inline in the old
+# "Links + a11y" job — both `astro build`s, both Pa11y sweeps, both Lighthouse
+# runs, all three Playwright steps — carried over unchanged; see each step
+# below for why it exists. The only thing that changes is *what happens* on
+# failure: instead of blocking a merge, this workflow files (or updates) a
+# single tracking issue, the same way `link-check.yml` does for dead sources,
+# so problems get triaged without holding up unrelated PRs.
+# ──────────────────────────────────────────────────────────────────────────
+
+on:
+  schedule:
+    # Monday 07:00 UTC — after link-check.yml's Monday 06:00 UTC run, so the
+    # two scheduled workflows do not collide.
+    - cron: "0 7 * * 1"
+  workflow_dispatch: {}
+
+# Least privilege by default; the job below widens `issues: write` only, and
+# job-level permissions replace this block entirely for that job — so every
+# scope the job needs is spelled out there, not inherited from here.
+permissions:
+  contents: read
+
+env:
+  # Both audits drive an installed Chrome instead of downloading one
+  # (`.puppeteerrc.cjs`). This path is the Google Chrome the ubuntu runner
+  # image ships; `resolveChromePath()` fails loudly if it ever moves.
+  CHROME_PATH: /usr/bin/google-chrome
+
+jobs:
+  a11y-lighthouse-e2e:
+    name: A11y, Lighthouse & E2E
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # The a11y gate is two independent checks against the same built site:
+      # Pa11y for WCAG 2.1 AA rule violations, Lighthouse for SCF-06's score
+      # budgets. Both need `dist/`, so this job builds it — `astro build`
+      # rather than `npm run build`, because `astro check` already runs (and
+      # is merge-blocking) in `ci.yml`'s `verify` job, and repeating it here
+      # buys nothing but a slower run.
+      #
+      # Captured to a file (rather than just letting it print) so the
+      # tracking-issue step below can quote the exact problem without
+      # re-running the build. `set +e` around the command only — every other
+      # line keeps the workflow's default `bash -e` behaviour so a mistake
+      # elsewhere in this step still fails loudly instead of being swallowed.
+      - name: Build site for audits
+        id: build_plain
+        run: |
+          set +e
+          npx astro build > build-plain-output.txt 2>&1
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          set -e
+          cat build-plain-output.txt
+
+      # 002 MIG-03 review finding: CI's only build was always the env-less one
+      # above — `PUBLIC_SUPABASE_URL`/`PUBLIC_SUPABASE_ANON_KEY` unset — because
+      # no project exists to hand it real credentials (`src/lib/supabase/config.ts`'s
+      # "absent is a supported state" note). Vercel's production and preview
+      # builds are *not* env-less; they carry the real project's credentials, so
+      # what ships is the configured page: the garage app, the sign-in form, the
+      # whole `SUPABASE_BROWSER_CONFIG !== null` branch of every page that
+      # branches on it. A gate that only ever audits the degraded "accounts are
+      # not switched on here" notice audits ~0% of that surface — which is
+      # exactly the gap that let the boot-stall regression this same review found
+      # (`tests/e2e/garage-unreachable.spec.ts`) reach review instead of CI.
+      #
+      # So this build gets real-shaped, throwaway credentials: a syntactically
+      # valid JWT (decodes to `{"role":"anon",…}`, so `isSecretKey()` accepts it)
+      # and an `https://` URL in Supabase's own project-subdomain shape. Neither
+      # is a secret — the anon key is *designed* to be public (row-level
+      # security is what protects data, not keeping this key hidden;
+      # `config.ts`'s own doc comment), and `example.supabase.co` resolves to
+      # nothing. They live here in the open on purpose, not in a repository or
+      # environment secret, because they are not one.
+      #
+      # `if: always()`: independent of the plain build above (different
+      # `outDir`), so a plain-build failure should not stop this one from
+      # running and reporting its own result too.
+      - name: Build site for audits (configured — dummy Supabase credentials)
+        id: build_configured
+        if: always()
+        env:
+          PUBLIC_SUPABASE_URL: https://example.supabase.co
+          # A throwaway, syntactically-valid anon-shaped JWT. Not a real key —
+          # `example.supabase.co` does not exist — and not a secret-key shape
+          # either: `readSupabaseConfig()` (`src/lib/supabase/config.ts`) throws
+          # the build if it ever is, so this is also a passing assertion that
+          # the guard accepts a legitimate anon key rather than rejecting every
+          # key regardless of shape.
+          PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlLWRlbW8iLCJyZWYiOiJleGFtcGxlIiwiZXhwIjoyMDAwMDAwMDAwfQ.dummy-signature-not-a-real-key-do-not-use
+        run: |
+          set +e
+          npx astro build --outDir dist-configured > build-configured-output.txt 2>&1
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          set -e
+          cat build-configured-output.txt
+
+      - name: Accessibility (Pa11y, WCAG2AA)
+        id: a11y_plain
+        if: always()
+        run: |
+          set +e
+          npm run test:a11y > a11y-plain-output.txt 2>&1
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          set -e
+          cat a11y-plain-output.txt
+
+      - name: Accessibility, configured build (Pa11y, WCAG2AA)
+        id: a11y_configured
+        if: always()
+        run: |
+          set +e
+          npm run test:a11y -- --dist dist-configured > a11y-configured-output.txt 2>&1
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          set -e
+          cat a11y-configured-output.txt
+
+      - name: Lighthouse budgets (a11y ≥ 95, performance ≥ 90)
+        id: lighthouse_plain
+        if: always()
+        run: |
+          set +e
+          npm run test:lighthouse > lighthouse-plain-output.txt 2>&1
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          set -e
+          cat lighthouse-plain-output.txt
+
+      # SCF-06's budget on the pages that only exist once a project is
+      # configured — the garage and sign-in pages score 94/90 and 100/95-100
+      # respectively as of this writing (see the PR that added this step for
+      # the exact numbers this CI runner measured). If a runner ever lands
+      # under budget here, that is a real regression or a slower runner to
+      # investigate — never a reason to lower `BUDGETS` in
+      # `scripts/check-lighthouse.mjs`.
+      - name: Lighthouse budgets, configured build (a11y ≥ 95, performance ≥ 90)
+        id: lighthouse_configured
+        if: always()
+        run: |
+          set +e
+          npm run test:lighthouse -- --dist dist-configured > lighthouse-configured-output.txt 2>&1
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          set -e
+          cat lighthouse-configured-output.txt
+
+      # T204 fills the constitution's e2e slot. This workflow already has the
+      # two things the suite needs: a built `dist/` from the step above, and
+      # an installed Chrome.
+      #
+      # Which Chrome, precisely, because the two environments differ and the
+      # T204 review asked for this to be written down rather than implied:
+      # `playwright.config.ts` calls `resolveChromePath()`, the same resolver
+      # the two audits above use. In *this* workflow it returns the
+      # workflow-level `env.CHROME_PATH` set near the top of the file
+      # (`/usr/bin/google-chrome`, the path the ubuntu runner image ships). On
+      # a developer machine nothing sets that variable and the resolver's
+      # candidate list finds the locally installed browser instead — including
+      # the macOS `/Applications/Google Chrome.app` path. Either way nothing
+      # downloads a browser: Playwright's own bundled build is never installed,
+      # for the same reason `.puppeteerrc.cjs` turns Puppeteer's download off.
+      #
+      # `playwright test` rather than `npm run test:e2e`, which would rebuild
+      # `dist/` a second time in this job for nothing — the same reasoning as
+      # the `npx astro build` above.
+      - name: End-to-end (Playwright, vehicle selector + locale switcher)
+        id: e2e_all
+        if: always()
+        run: |
+          set +e
+          npx playwright test > e2e-output.txt 2>&1
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          set -e
+          cat e2e-output.txt
+
+      # `tests/e2e/garage-unreachable.spec.ts` needs the *configured* build:
+      # `[garageSegment].astro`'s closing script is a no-op when
+      # `SUPABASE_BROWSER_CONFIG` is `null`
+      # (`if (root && SUPABASE_BROWSER_CONFIG) enhance(root)`), so on an
+      # unconfigured build the garage app never renders and its Supabase
+      # client chunk is never fetched — nothing for the spec to abort, and the
+      # page's `data-garage-state` never leaves "boot" either way. That spec
+      # would be green against plain `dist/` whether or not the fix it grades
+      # (T2-301 review F1's boot `.catch`) existed, so it needs the configured
+      # build for real (see the spec's own header for why chunk *existence* is
+      # not what tells the two builds apart). The step above already ran every
+      # other spec against plain `dist/`; this one points
+      # `playwright.config.ts`'s `E2E_DIST`/`E2E_PORT` at `dist-configured/`
+      # and a different port, and runs only the one spec that needs it.
+      #
+      # `E2E_EXPECT_CONFIGURED=1` is a second, independent claim (review F1):
+      # the spec's own markup-sniffing detector (`data-garage-gate` in the
+      # built HTML) could silently stop matching — an attribute rename in
+      # `[garageSegment].astro` that nobody re-synced with the test — and
+      # without this variable that reads as "this must be the plain build",
+      # so the suite would skip-green and quietly stop catching the
+      # regression it exists for. With it set, "detector says unconfigured"
+      # on a run CI declared configured fails the file outright instead. The
+      # step above (plain `dist/`, no `E2E_EXPECT_CONFIGURED`) still skips
+      # cleanly, and so does `npm run test:e2e` locally.
+      - name: End-to-end (Playwright, garage unreachable — configured build)
+        id: e2e_garage_unreachable
+        if: always()
+        env:
+          E2E_DIST: dist-configured
+          E2E_PORT: 4323
+          E2E_EXPECT_CONFIGURED: "1"
+        run: |
+          set +e
+          npx playwright test tests/e2e/garage-unreachable.spec.ts > e2e-garage-unreachable-output.txt 2>&1
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          set -e
+          cat e2e-garage-unreachable-output.txt
+
+      # `tests/e2e/hidden-guard.spec.ts` (T2-303 review F10): only its garage-
+      # and sign-in-page cases (`test.describe` titles ending `(configured)`)
+      # need this build — same reasoning as the step above, since those two
+      # pages only render their real, `[hidden]`-carrying markup once
+      # `SUPABASE_BROWSER_CONFIG` is set. Its other cases (glossary,
+      # community, problems) do not branch on that flag at all and already
+      # ran, for real, in the plain-`dist/` step above (`npx playwright test`
+      # with no filter runs every spec file, this one included).
+      #
+      # `--grep '\(configured\)'` is load-bearing, not decoration: without it
+      # this step would re-run the *whole* file — including the six
+      # glossary/community/problems cases that already ran once, for real,
+      # against plain `dist/` above. That is redundant CI time rather than a
+      # correctness bug (those six cases are just as true against either
+      # build, so running them twice never hides anything) — but it directly
+      # contradicts what this step is documented as doing, so a stale filter
+      # here would be exactly the kind of drift this file's other comments
+      # warn about elsewhere. Scoped to the one describe-title substring only
+      # `CONFIGURED_ONLY_PAGES` cases carry, so a page added to
+      # `UNCONDITIONAL_PAGES` never accidentally starts matching here.
+      #
+      # `E2E_EXPECT_CONFIGURED=1` is the same second, independent claim as the
+      # garage-unreachable step above (review F1): the spec's own
+      # markup-sniffing detectors (`data-garage-gate`, `data-signin-signed-in`
+      # in the built HTML) could silently stop matching, and without this
+      # variable that reads as "this must be the plain build" — skip-green,
+      # regression coverage gone dark. With it set, "detector says
+      # unconfigured" on a run CI declared configured fails the file outright
+      # instead. The plain-`dist/` step above still skips those four cases
+      # cleanly with no `E2E_EXPECT_CONFIGURED` set, and so does
+      # `npm run test:e2e` locally.
+      - name: End-to-end (Playwright, hidden-guard configured-only cases — configured build)
+        id: e2e_hidden_guard
+        if: always()
+        env:
+          E2E_DIST: dist-configured
+          E2E_PORT: 4323
+          E2E_EXPECT_CONFIGURED: "1"
+        run: |
+          set +e
+          npx playwright test tests/e2e/hidden-guard.spec.ts --grep '\(configured\)' > e2e-hidden-guard-output.txt 2>&1
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          set -e
+          cat e2e-hidden-guard-output.txt
+
+      # Combines every step's exit code above into one flag, so both the
+      # issue-filing step and the final fail step key off one source of
+      # truth rather than repeating a nine-way `||` chain twice.
+      - name: Determine overall status
+        id: status
+        if: always()
+        env:
+          BUILD_PLAIN_CODE: ${{ steps.build_plain.outputs.exit_code }}
+          BUILD_CONFIGURED_CODE: ${{ steps.build_configured.outputs.exit_code }}
+          A11Y_PLAIN_CODE: ${{ steps.a11y_plain.outputs.exit_code }}
+          A11Y_CONFIGURED_CODE: ${{ steps.a11y_configured.outputs.exit_code }}
+          LIGHTHOUSE_PLAIN_CODE: ${{ steps.lighthouse_plain.outputs.exit_code }}
+          LIGHTHOUSE_CONFIGURED_CODE: ${{ steps.lighthouse_configured.outputs.exit_code }}
+          E2E_ALL_CODE: ${{ steps.e2e_all.outputs.exit_code }}
+          E2E_GARAGE_UNREACHABLE_CODE: ${{ steps.e2e_garage_unreachable.outputs.exit_code }}
+          E2E_HIDDEN_GUARD_CODE: ${{ steps.e2e_hidden_guard.outputs.exit_code }}
+        run: |
+          failed=false
+          for code in \
+            "$BUILD_PLAIN_CODE" "$BUILD_CONFIGURED_CODE" \
+            "$A11Y_PLAIN_CODE" "$A11Y_CONFIGURED_CODE" \
+            "$LIGHTHOUSE_PLAIN_CODE" "$LIGHTHOUSE_CONFIGURED_CODE" \
+            "$E2E_ALL_CODE" "$E2E_GARAGE_UNREACHABLE_CODE" "$E2E_HIDDEN_GUARD_CODE"
+          do
+            if [ -n "$code" ] && [ "$code" != "0" ]; then
+              failed=true
+            fi
+          done
+          echo "failed=$failed" >> "$GITHUB_OUTPUT"
+
+      # File or update one tracking issue rather than spamming a new one every
+      # week; search by exact title match first — same pattern as
+      # `link-check.yml`. Quotes every failing step's captured output so the
+      # issue is enough to triage from without re-running the workflow.
+      - name: Open or update the tracking issue
+        if: steps.status.outputs.failed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: "A11y / Lighthouse / E2E failures — weekly check"
+          BUILD_PLAIN_CODE: ${{ steps.build_plain.outputs.exit_code }}
+          BUILD_CONFIGURED_CODE: ${{ steps.build_configured.outputs.exit_code }}
+          A11Y_PLAIN_CODE: ${{ steps.a11y_plain.outputs.exit_code }}
+          A11Y_CONFIGURED_CODE: ${{ steps.a11y_configured.outputs.exit_code }}
+          LIGHTHOUSE_PLAIN_CODE: ${{ steps.lighthouse_plain.outputs.exit_code }}
+          LIGHTHOUSE_CONFIGURED_CODE: ${{ steps.lighthouse_configured.outputs.exit_code }}
+          E2E_ALL_CODE: ${{ steps.e2e_all.outputs.exit_code }}
+          E2E_GARAGE_UNREACHABLE_CODE: ${{ steps.e2e_garage_unreachable.outputs.exit_code }}
+          E2E_HIDDEN_GUARD_CODE: ${{ steps.e2e_hidden_guard.outputs.exit_code }}
+        run: |
+          body_file="$(mktemp)"
+          {
+            echo "Automated weekly a11y / Lighthouse / e2e check found problems."
+            echo ""
+            echo "Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo "Checked: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo ""
+            echo "Owner ruling 2026-09-07: a11y, Lighthouse, and e2e moved off the"
+            echo "merge-blocking path onto this weekly schedule — this does not"
+            echo "block merges, see \`specs/001-foundation/spec.md\` SCF-03 and"
+            echo "\`.github/workflows/ci.yml\`."
+            echo ""
+
+            add_section() {
+              label="$1"; file="$2"; code="$3"
+              if [ -n "$code" ] && [ "$code" != "0" ] && [ -f "$file" ]; then
+                echo "### ${label} (exit ${code})"
+                echo ""
+                echo '```'
+                cat "$file"
+                echo '```'
+                echo ""
+              fi
+            }
+
+            add_section "Build (plain)" build-plain-output.txt "$BUILD_PLAIN_CODE"
+            add_section "Build (configured — dummy Supabase credentials)" build-configured-output.txt "$BUILD_CONFIGURED_CODE"
+            add_section "Pa11y, WCAG2AA (plain)" a11y-plain-output.txt "$A11Y_PLAIN_CODE"
+            add_section "Pa11y, WCAG2AA (configured build)" a11y-configured-output.txt "$A11Y_CONFIGURED_CODE"
+            add_section "Lighthouse budgets (plain)" lighthouse-plain-output.txt "$LIGHTHOUSE_PLAIN_CODE"
+            add_section "Lighthouse budgets (configured build)" lighthouse-configured-output.txt "$LIGHTHOUSE_CONFIGURED_CODE"
+            add_section "End-to-end (all specs, plain build)" e2e-output.txt "$E2E_ALL_CODE"
+            add_section "End-to-end (garage unreachable, configured build)" e2e-garage-unreachable-output.txt "$E2E_GARAGE_UNREACHABLE_CODE"
+            add_section "End-to-end (hidden-guard configured-only cases, configured build)" e2e-hidden-guard-output.txt "$E2E_HIDDEN_GUARD_CODE"
+          } > "$body_file"
+
+          existing="$(gh issue list --state open --search "\"${TITLE}\" in:title" --json number,title \
+            | jq -r --arg t "$TITLE" '[.[] | select(.title == $t)][0].number // empty')"
+
+          if [ -n "$existing" ]; then
+            gh issue edit "$existing" --body-file "$body_file"
+            echo "Updated tracking issue #$existing"
+          else
+            gh issue create --title "$TITLE" --body-file "$body_file"
+          fi
+
+      # Surface the failure in the Actions UI/notifications after the issue
+      # is filed/updated — the issue step above must run even on failure, so
+      # this is a separate, final step rather than letting any check step
+      # itself fail the job.
+      - name: Fail the job if problems remain
+        if: steps.status.outputs.failed == 'true'
+        run: exit 1
