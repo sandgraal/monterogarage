@@ -160,9 +160,16 @@ Two standing rules, learned the hard way (2026-08-29):
   fact-checked content created post-approval defects that took an audit
   and an erratum branch to unwind.
 - **No external notification ever reaches you.** Waiting for one ends
-  your run silently. Poll with foreground `sleep` + `gh pr checks`
-  loops; under the archive.org throttle a Links + a11y run at content
-  scale legitimately takes 30 minutes to ~2.6 hours — slow is not stuck.
+  your run silently. Poll with foreground `sleep` + `gh pr checks` loops.
+  Required CI (`Harness validation`, `Verify`) is fast — if either is
+  still running after several minutes, something is wrong, not just slow.
+  `Tier-B RLS graders` is informational and can legitimately take a while;
+  never let it block anything else. **Do the cheap, correct next action
+  first, before polling anything slow** — reply to an outstanding review
+  thread, resolve it, rebase — then check CI. A real incident this
+  project hit: an instance spent 25+ minutes polling a slow check while
+  a blocking review comment sat unanswered the whole time. Polling is not
+  progress.
 
 ## Report (final message)
 
