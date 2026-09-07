@@ -1,0 +1,41 @@
+{
+  "id": "gen3-transmission-crossmember-bushing",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    },
+    "engines": ["6g74-sohc", "6g75"]
+  },
+  "oemNumber": "2910A065",
+  "system": "transmission",
+  "quantityPerVehicle": 4,
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen3 Transmission Crossmember Bushing: the table naming the upper and lower bushings with their Mitsubishi numbers and quantity per vehicle",
+      "url": "https://lusooverland.com/VP-MMC-2910A06X",
+      "archiveUrl": "https://web.archive.org/web/20260907003756/https://lusooverland.com/VP-MMC-2910A06X",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    },
+    {
+      "title": "Luso Overland — MONTERO Gen3 Automatic Transmission Service Kit: the kit contents, listing the upper and lower crossmember bushings and their quantities alongside the fluid, filter and drain washer",
+      "url": "https://lusooverland.com/VP-LO-K-AT003",
+      "archiveUrl": "https://web.archive.org/web/20260907003955/https://lusooverland.com/VP-LO-K-AT003",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Transmission crossmember bushing, upper",
+      "summary": "The upper rubber bushing in the transmission crossmember, and the truck takes the quantity shown above. There is also a lower bushing in the same crossmember with a different Mitsubishi number, which does not have a page here yet — order both, because the crossmember is either apart or it is not. The seller's description is the useful bit: these dry out and shrink, the transmission sags, and the symptom people notice is a hard jolt going from park into reverse or drive. They come out and go in by hand, no press needed, and the crossmember has to come off anyway to drop the transmission pan, so this is the classic thing to add to a fluid and filter service. The number, the fitment and the count come from the Montero specialist's own catalogue page, cited below — a parts catalogue is good evidence for what a part number is and what it fits, and it is not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification."
+    },
+    "es": {
+      "title": "Buje superior del travesaño de la transmisión",
+      "summary": "El buje de hule superior del travesaño de la transmisión, y el vehículo lleva la cantidad indicada arriba. En el mismo travesaño va también un buje inferior con otro número Mitsubishi, que todavía no tiene página aquí: pida los dos, porque el travesaño o está desarmado o no lo está. Lo útil de la descripción del vendedor es esto: se resecan y se encogen, la transmisión se descuelga, y el síntoma que la gente nota es un golpe seco al pasar de parqueo a reversa o a marcha. Salen y entran a mano, sin prensa, y de todos modos hay que bajar el travesaño para sacar el cárter de la transmisión, así que este es el añadido clásico a un cambio de aceite y filtro. El número, la compatibilidad y la cantidad salen de la ficha de catálogo de la casa especializada en Montero que se cita abajo. Un catálogo de repuestos es buena evidencia de qué es un número de parte y en qué encaja, pero no es literatura de fábrica: lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller."
+    }
+  }
+}

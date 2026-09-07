@@ -1,0 +1,41 @@
+{
+  "id": "gen3-transmission-pan-drain-crush-washer",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    },
+    "engines": ["6g74-sohc", "6g75"]
+  },
+  "oemNumber": "MD050317",
+  "system": "transmission",
+  "quantityPerVehicle": 1,
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen1, 2, 3; SPORT; MMM Oil Drain Plug Crush Washer (MD050317): part number, fitment table, quantity, and the note that on Gen3 trucks this washer is used for the transmission oil pan drain plug only",
+      "url": "https://lusooverland.com/VP-MMC-MD050317",
+      "archiveUrl": "https://web.archive.org/web/20260907003853/https://lusooverland.com/VP-MMC-MD050317",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    },
+    {
+      "title": "Luso Overland — MONTERO Gen3 Automatic Transmission Service Kit: the kit contents, listing this washer as the pan drain bolt crush washer",
+      "url": "https://lusooverland.com/VP-LO-K-AT003",
+      "archiveUrl": "https://web.archive.org/web/20260907003955/https://lusooverland.com/VP-LO-K-AT003",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Transmission pan drain plug crush washer",
+      "summary": "The one-time-use sealing washer under the transmission pan drain plug. The catalogue is specific about this on the Gen 3: this washer is the transmission drain plug's, not the engine's — the engine sump takes a different number — so do not let a counter hand you \"the drain washer\" and assume it is the right one. It seals by crushing, so it seals properly once. Reusing it is how a clean transmission service turns into a slow drip on the driveway a week later, and it is the cheapest part in the whole job. The number, the fitment and the count come from the Montero specialist's own catalogue page, cited below — a parts catalogue is good evidence for what a part number is and what it fits, and it is not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification."
+    },
+    "es": {
+      "title": "Arandela del tapón de drenaje de la transmisión",
+      "summary": "La arandela de sello de un solo uso que va bajo el tapón de drenaje del cárter de la transmisión. El catálogo es específico para la tercera generación: esta arandela es la del tapón de la transmisión y no la del motor — el cárter del motor lleva otro número —, así que no deje que en el mostrador le entreguen \"la arandela del tapón\" y usted suponga que es la correcta. Sella aplastándose, o sea que sella bien una sola vez. Reutilizarla es la forma en que un cambio de aceite de transmisión limpio se convierte en una mancha de aceite en el piso una semana después, y es el repuesto más barato de todo el trabajo. El número, la compatibilidad y la cantidad salen de la ficha de catálogo de la casa especializada en Montero que se cita abajo. Un catálogo de repuestos es buena evidencia de qué es un número de parte y en qué encaja, pero no es literatura de fábrica: lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller."
+    }
+  }
+}

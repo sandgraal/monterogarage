@@ -1,0 +1,34 @@
+{
+  "id": "gen3-front-upper-ball-joint",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    },
+    "engines": ["6g74-sohc", "6g75"]
+  },
+  "oemNumber": "4010A056",
+  "system": "suspension",
+  "quantityPerVehicle": 2,
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen3 Ball Joint, Front / Upper (4010A056): part number, fitment table, quantity per vehicle, and the note that a new castle nut and cotter pin are included",
+      "url": "https://lusooverland.com/VP-MMC-4010A056",
+      "archiveUrl": "https://web.archive.org/web/20260907003406/https://lusooverland.com/VP-MMC-4010A056",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Front upper ball joint",
+      "summary": "The upper ball joint in each front corner, one per side. Like the lower joint it arrives with a new castle nut and cotter pin, and like the lower joint the specialist's advice is genuine only for a truck that carries weight or leaves the pavement. Check both joints on the same day: they wear at similar rates, they are reached through the same disassembly, and finding the second one loose a month after paying for the first is a self-inflicted wound. Ball joints are steering and suspension — if you are not equipped to check the play correctly or to torque the castle nut to the manual's figure, have a qualified mechanic do it. The number, the fitment and the count come from the Montero specialist's own catalogue page, cited below — a parts catalogue is good evidence for what a part number is and what it fits, and it is not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification."
+    },
+    "es": {
+      "title": "Rótula superior delantera",
+      "summary": "La rótula superior de cada esquina delantera, una por lado. Igual que la inferior, viene con tuerca de castillo y chaveta nuevas, y igual que la inferior el consejo de la casa especializada es usar original en un vehículo que carga peso o que sale del asfalto. Revise las dos rótulas el mismo día: se desgastan a ritmos parecidos, se llega a ellas con el mismo desarme, y encontrar la segunda floja un mes después de haber pagado la primera es una herida autoinfligida. Las rótulas son dirección y suspensión: si usted no está equipado para medir el juego correctamente o para apretar la tuerca de castillo al valor del manual, llévelo donde un mecánico calificado. El número, la compatibilidad y la cantidad salen de la ficha de catálogo de la casa especializada en Montero que se cita abajo. Un catálogo de repuestos es buena evidencia de qué es un número de parte y en qué encaja, pero no es literatura de fábrica: lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller."
+    }
+  }
+}

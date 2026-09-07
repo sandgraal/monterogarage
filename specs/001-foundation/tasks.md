@@ -509,6 +509,53 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
     spelling and the false positive it must not reopen are pinned in
     `src/lib/procedures/figures.test.ts`.
 - [ ] **T503 [CONTENT]** Parts wave 1: every part referenced by T303/T403/T404 garage+problem entries. Depends: T501, gaps report. *(PRT-01, PRT-02)*
+  - **Wave 1 shipped (2026-09-06): 29 entries in `src/content/parts/`, the
+    collection's first content.** `npm run gaps` went from 69 items / 63
+    dangling fix-path references / 49 distinct dangling `parts` ids to 39 / 33
+    / 29 — **20 distinct ids closed**, and `Parts with no narrowed fitment
+    (GAP-01)` is 0. **The box stays unchecked**: the task line says *every*
+    part the merged problem entries reference, and 29 ids are still dangling.
+  - **What is left, and why it is a second wave rather than an oversight.**
+    The 29 remaining ids fall into three groups. (1) Parts whose catalogue
+    page names *several* Mitsubishi numbers where the referencing fix path
+    names one id — `gen3-front-strut-bushing-kit`, `gen3-timing-belt`,
+    `gen3-water-pump`, `gen3-exhaust-manifold-left`/`-right`,
+    `gen3-transmission-pan-filter`. Each needs a naming decision of the kind
+    this wave made three times (see the third convention now recorded in
+    `src/i18n/entry-slugs.ts`), and making six more of them inside one branch
+    would have buried them. (2) Parts sourced only from pages this session
+    could not open — `amayama.com` and `mitsubishipartscentral.com` are both
+    behind Cloudflare interstitials, and an unreadable page is not a source.
+    (3) Aftermarket-only or fabricated items (`gen3-surge-tank-butterfly-
+    delete-disc`, `gen3-front-shock-absorber`, `gen3-rear-coil-spring`) whose
+    "OEM number" is a category error — the schema makes `oemNumber` identity,
+    so these need either a genuine Mitsubishi number or a decision that the
+    `parts` collection is not where they belong.
+  - **Known sibling numbers found and deliberately not minted.** Every one is
+    on a cited, archived page, and each needs an id nothing references yet:
+    front differential side/pinion and rear pinion seals (MB393883, MB664285,
+    MR580530 — this wave shipped only the rear side seal MR350883, which is
+    the one the fix path names); the left and right surge tank plenum gaskets
+    (MR561581, MR561582 — this wave shipped MR561584, the surge-tank-to-lower-
+    manifold gasket); the lower transmission crossmember bushing, which the
+    seller renders as `2910A066` on the kit page and `2910066` in the variant
+    table — **two spellings on one site is exactly the case where guessing is
+    forbidden**, so it was left out rather than picked by plausibility.
+  - **Source posture, for whoever reviews or extends this.** Every entry is
+    `community-consensus` on a Luso Overland catalogue page (`kind: "vendor"`)
+    except `gen3-brake-booster-accumulator-without-traction-control`, which is
+    `anecdotal`: MR977223 appears in a prose sentence on the page for the
+    *other* accumulator rather than in a catalogue listing of its own, and no
+    second source could be opened. It is a brake part, so the entry says that
+    in both locales rather than rounding the tier up. The `vendor` kind is the
+    right evidence class here by `src/schemas/entry.ts`'s own note ("good for
+    part numbers and supersession, not for factory figures"), and
+    `community-consensus <- vendor` already has corpus precedent.
+  - **Sankei 555 numbers were taken only where the page prints them.** The
+    555 sway-bar links are cross-referenced (SL7840L / SL7840R, stated in a
+    table); the 555 ball joints are not, because their numbers appear only
+    inside the store's own SKU string and reading a part number out of a SKU
+    is inference, not citation.
 - [x] **T504a [TEST]** Render graders for the procedures index page
   (`procedures-index.render.test.ts`) — cards render, hrefs resolve, filters
   work, T204's provisional-match indicator shows on a partial fitment match.

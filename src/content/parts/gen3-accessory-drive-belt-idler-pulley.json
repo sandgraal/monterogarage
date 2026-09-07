@@ -1,0 +1,48 @@
+{
+  "id": "gen3-accessory-drive-belt-idler-pulley",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    },
+    "engines": ["6g74-sohc", "6g75"]
+  },
+  "oemNumber": "MD368209",
+  "system": "engine",
+  "quantityPerVehicle": 1,
+  "crossReferences": [
+    {
+      "ref": "koyo-smooth",
+      "brand": "Koyo",
+      "partNumber": "PU159026RR1HY6",
+      "quality": "oem-supplier"
+    }
+  ],
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen3 Accessory Drive Belt Idler Pulleys: the table pairing each Mitsubishi number with the Koyo number, description and quantity per vehicle",
+      "url": "https://lusooverland.com/VP-KOY-MD3682XX",
+      "archiveUrl": "https://web.archive.org/web/20260907003158/https://lusooverland.com/VP-KOY-MD3682XX",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Accessory drive belt idler pulley, smooth",
+      "summary": "The smooth-faced idler the accessory belt runs over — the silver one. There are two idlers on the front of this engine and they are different parts: this one runs on the flat back of the belt, the other is grooved and runs on the ribbed face. Order by face, not by \"idler pulley\", because both will come up under that phrase. A dry idler bearing announces itself as a rumble that changes with engine speed and not with road speed, and it is worth catching early: a seized idler shreds the belt, and the belt drives the alternator, the water pump drive and the power steering. The number, the fitment and the count come from the Montero specialist's own catalogue page, cited below — a parts catalogue is good evidence for what a part number is and what it fits, and it is not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification.",
+      "crossReferenceNotes": {
+        "koyo-smooth": "The catalogue states that Koyo makes the drive belt pulleys for Mitsubishi, and sells this one in Koyo's own box at a lower price than the Mitsubishi-labelled packaging. Same part, cheaper label — the useful kind of cross-reference."
+      }
+    },
+    "es": {
+      "title": "Polea loca lisa de la faja de accesorios",
+      "summary": "La polea loca de cara lisa por la que corre la faja de accesorios — la plateada. En el frente de este motor hay dos poleas locas y son piezas distintas: esta corre sobre el lomo liso de la faja y la otra es acanalada y corre sobre la cara con estrías. Pida por la cara y no por \"polea loca\", porque con esa frase le van a salir las dos. Un rodamiento de polea loca seco se anuncia como un ronroneo que cambia con las revoluciones del motor y no con la velocidad del vehículo, y conviene agarrarlo temprano: una polea loca trabada destroza la faja, y esa faja mueve el alternador, el accionamiento de la bomba de agua y la dirección hidráulica. El número, la compatibilidad y la cantidad salen de la ficha de catálogo de la casa especializada en Montero que se cita abajo. Un catálogo de repuestos es buena evidencia de qué es un número de parte y en qué encaja, pero no es literatura de fábrica: lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller.",
+      "crossReferenceNotes": {
+        "koyo-smooth": "El catálogo indica que Koyo fabrica las poleas de la faja de accesorios para Mitsubishi y vende esta en la caja del propio Koyo, más barata que el empaque con etiqueta Mitsubishi. La misma pieza con otra etiqueta: la clase útil de equivalencia."
+      }
+    }
+  }
+}

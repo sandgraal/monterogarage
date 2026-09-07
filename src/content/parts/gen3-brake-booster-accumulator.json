@@ -1,0 +1,34 @@
+{
+  "id": "gen3-brake-booster-accumulator",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2003,
+      "to": 2006
+    },
+    "engines": ["6g75"]
+  },
+  "oemNumber": "4630A012",
+  "system": "brakes",
+  "quantityPerVehicle": 1,
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen3 NP Brake Booster Accumulator (4630A012): part number, fitment table, quantity per vehicle, the traction-control condition, and the symptom described",
+      "url": "https://lusooverland.com/VP-MMC-4630A012",
+      "archiveUrl": "https://web.archive.org/web/20260907003520/https://lusooverland.com/VP-MMC-4630A012",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Brake booster accumulator, trucks with traction control",
+      "summary": "The pressure vessel that stores hydraulic assist for the brake booster on the later Gen 3 trucks fitted with traction control. It is the big silver cylinder; the trucks without traction control take a different, smaller, black and round part, which has its own page here — check which one your truck has before ordering, because they are not interchangeable and this is the brake system. The seller describes the failure the way owners describe it: a chirp or a turkey-gobble noise when you press the pedal. A brake part that has begun to announce itself is not a wait-and-see item. If the pedal has changed at all, stop driving it and have a qualified mechanic look at the whole booster circuit, not just this part. The number, the fitment and the count come from the Montero specialist's own catalogue page, cited below — a parts catalogue is good evidence for what a part number is and what it fits, and it is not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification."
+    },
+    "es": {
+      "title": "Depósito de presión del booster de freno, con control de tracción",
+      "summary": "El recipiente de presión que almacena la asistencia hidráulica del booster de freno en los vehículos de tercera generación tardíos equipados con control de tracción. Es el cilindro plateado grande; los vehículos sin control de tracción llevan otra pieza, más pequeña, negra y redonda, que tiene su propia página aquí — confirme cuál trae su vehículo antes de pedir, porque no son intercambiables y esto es el sistema de frenos. El vendedor describe la falla como la describen los dueños: un chillido o un sonido de chompipe al pisar el pedal. Una pieza de frenos que ya empezó a avisar no es algo para dejar pasar. Si el pedal cambió aunque sea un poco, deje de manejarlo y haga que un mecánico calificado revise todo el circuito del booster y no solo esta pieza. El número, la compatibilidad y la cantidad salen de la ficha de catálogo de la casa especializada en Montero que se cita abajo. Un catálogo de repuestos es buena evidencia de qué es un número de parte y en qué encaja, pero no es literatura de fábrica: lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller."
+    }
+  }
+}

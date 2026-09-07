@@ -1,0 +1,42 @@
+{
+  "id": "gen3-transfer-case-position-switch-cdl",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    },
+    "engines": ["6g74-sohc", "6g75"],
+    "trims": ["limited"]
+  },
+  "oemNumber": "MR580154",
+  "system": "transfer-case",
+  "quantityPerVehicle": 1,
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen3 Transfer Case Position Switch (the five position-specific Genuine Mitsubishi part numbers, fitment and trim)",
+      "url": "https://lusooverland.com/VP-MMC-MR58015X",
+      "archiveUrl": "https://web.archive.org/web/20260907003711/https://lusooverland.com/VP-MMC-MR58015X",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    },
+    {
+      "title": "Luso Overland — MONTERO Gen3 Transfer Case Switch Gasket / Crush Washer (MU000393): one washer under each of the five switches",
+      "url": "https://lusooverland.com/VP-MMC-MU000393",
+      "archiveUrl": "https://web.archive.org/web/20260907003733/https://lusooverland.com/VP-MMC-MU000393",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Transfer case position switch, centre diff lock",
+      "summary": "The switch that reads the centre differential lock. The transfer case on the Super Select II trucks carries five of these switches, one per position, and each position has its own part number — order by position, not by the words \"transfer case switch\", or you will fit a switch that reads the wrong shift. Each switch seals with its own crush washer, which is a separate part and is single-use. A failed switch is what puts the blinking four-wheel-drive light on the dash; before you buy one, pull the transfer-case trouble code and confirm which switch it names, because five identical-looking switches make guessing expensive. The number, the fitment and the count come from the Montero specialist's own catalogue page, cited below — a parts catalogue is good evidence for what a part number is and what it fits, and it is not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification."
+    },
+    "es": {
+      "title": "Interruptor de posición de la transferencia, bloqueo del diferencial central",
+      "summary": "El interruptor que lee el bloqueo del diferencial central. La caja de transferencia de los vehículos con Super Select II lleva cinco de estos interruptores, uno por posición, y cada posición tiene su propio número de parte: pida por posición y no por \"interruptor de la transferencia\", o va a montar uno que lee el cambio equivocado. Cada interruptor sella con su propia arandela de aplastamiento, que es un repuesto aparte y de un solo uso. Un interruptor dañado es lo que pone a parpadear la luz de doble tracción en el tablero. Antes de comprar uno, saque el código de falla de la transferencia y confirme cuál interruptor menciona, porque cinco interruptores iguales por fuera hacen que adivinar salga caro. El número, la compatibilidad y la cantidad salen de la ficha de catálogo de la casa especializada en Montero que se cita abajo. Un catálogo de repuestos es buena evidencia de qué es un número de parte y en qué encaja, pero no es literatura de fábrica: lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller."
+    }
+  }
+}

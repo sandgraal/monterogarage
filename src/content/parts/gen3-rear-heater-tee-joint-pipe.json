@@ -1,0 +1,34 @@
+{
+  "id": "gen3-rear-heater-tee-joint-pipe",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    },
+    "engines": ["6g74-sohc", "6g75"]
+  },
+  "oemNumber": "MR958633",
+  "system": "cooling",
+  "quantityPerVehicle": 2,
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen3 Rear Heater Tee Joint Pipe (MR958633): part number, fitment table, quantity per vehicle and the interchange number listed",
+      "url": "https://lusooverland.com/VP-MMC-MR958633",
+      "archiveUrl": "https://web.archive.org/web/20260907003252/https://lusooverland.com/VP-MMC-MR958633",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Rear heater tee joint pipe",
+      "summary": "The tee that splits coolant off to the rear heater, on the trucks that have one. It corrodes where the metal meets the hose and then weeps, and because it sits under the body rather than in the engine bay the loss shows up as a slowly falling reservoir and a smell rather than as a puddle you can see from the driver's seat. The truck takes the quantity shown above, and the sensible order is both plus the hoses, since the hose clamps are what you disturb getting at them. The catalogue also lists an interchange number for this part; it has no page here yet, so ask the counter to cross-reference rather than assuming this is the only number that will come up. The number, the fitment and the count come from the Montero specialist's own catalogue page, cited below — a parts catalogue is good evidence for what a part number is and what it fits, and it is not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification."
+    },
+    "es": {
+      "title": "Tubo en T del calefactor trasero",
+      "summary": "La T que deriva refrigerante hacia el calefactor trasero, en los vehículos que lo traen. Se corroe donde el metal se junta con la manguera y empieza a rezumar, y como va debajo de la carrocería y no en el compartimiento del motor, la pérdida se nota como un depósito que baja despacio y un olor, no como un charco que usted vea desde el asiento. El vehículo lleva la cantidad indicada arriba, y lo sensato es pedir los dos junto con las mangueras, porque las abrazaderas son lo que uno mueve para llegar. El catálogo también menciona un número intercambiable para esta pieza; todavía no tiene página aquí, así que pídale al mostrador que haga la referencia cruzada en vez de suponer que este es el único número que va a aparecer. El número, la compatibilidad y la cantidad salen de la ficha de catálogo de la casa especializada en Montero que se cita abajo. Un catálogo de repuestos es buena evidencia de qué es un número de parte y en qué encaja, pero no es literatura de fábrica: lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller."
+    }
+  }
+}

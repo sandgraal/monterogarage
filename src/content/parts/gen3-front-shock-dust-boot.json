@@ -1,0 +1,34 @@
+{
+  "id": "gen3-front-shock-dust-boot",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    },
+    "engines": ["6g74-sohc", "6g75"]
+  },
+  "oemNumber": "MR448172",
+  "system": "suspension",
+  "quantityPerVehicle": 2,
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen3 Front Shock Damper / Dust Boot (MR448172): part number, fitment table, quantity per vehicle, and the note on which replacement shocks already include one",
+      "url": "https://lusooverland.com/VP-MMC-MR448172",
+      "archiveUrl": "https://web.archive.org/web/20260907003455/https://lusooverland.com/VP-MMC-MR448172",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Front shock damper and dust boot",
+      "summary": "The rubber damper and dust boot that sits over each front shock shaft, one per side. It keeps grit off the shaft — which is what decides how long a shock seal lasts on a road that is half gravel — and it takes the hit at the end of upward travel. Read the seller's note before ordering: some replacement shocks arrive with their own damper and boot already fitted and do not need this part, while others do not, so check what is in the box before you buy two of these. It is a rubber part on a truck old enough for every rubber part to be original, so if the strut is apart, look at it. The number, the fitment and the count come from the Montero specialist's own catalogue page, cited below — a parts catalogue is good evidence for what a part number is and what it fits, and it is not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification."
+    },
+    "es": {
+      "title": "Guardapolvo y tope del amortiguador delantero",
+      "summary": "El tope de hule y guardapolvo que va sobre el vástago de cada amortiguador delantero, uno por lado. Mantiene la arenilla lejos del vástago — que es lo que decide cuánto dura el retenedor de un amortiguador en un camino que es mitad lastre — y recibe el golpe al final del recorrido hacia arriba. Lea la nota del vendedor antes de pedir: algunos amortiguadores de repuesto vienen ya con su propio tope y guardapolvo montados y no necesitan esta pieza, y otros no, así que revise qué trae la caja antes de comprar dos. Es una pieza de hule en un vehículo con edad suficiente para que todo el hule sea el de fábrica: si el amortiguador está desarmado, revísela. El número, la compatibilidad y la cantidad salen de la ficha de catálogo de la casa especializada en Montero que se cita abajo. Un catálogo de repuestos es buena evidencia de qué es un número de parte y en qué encaja, pero no es literatura de fábrica: lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller."
+    }
+  }
+}

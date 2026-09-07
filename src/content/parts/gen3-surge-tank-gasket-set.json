@@ -1,0 +1,33 @@
+{
+  "id": "gen3-surge-tank-gasket-set",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2003,
+      "to": 2006
+    },
+    "engines": ["6g75"]
+  },
+  "oemNumber": "MR561584",
+  "system": "engine",
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen3 NP 3.8L Surge Tank Gaskets: the three Genuine Mitsubishi numbers, each named by its position in the intake",
+      "url": "https://lusooverland.com/VP-MMC-MR56158X",
+      "archiveUrl": "https://web.archive.org/web/20260907003315/https://lusooverland.com/VP-MMC-MR56158X",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Surge tank to lower manifold gasket",
+      "summary": "The gasket between the surge tank and the lower intake manifold on the larger petrol V6 — the one that always has to come off when the variable-intake butterflies are rebuilt, deleted or the tank is swapped. Read the catalogue page before you order: the surge tank job needs three different gaskets, this one plus a left and a right plenum gasket, each with its own Mitsubishi number, and the other two do not have pages here yet. Ordering one and discovering the other two at the bench with an open intake is the failure mode this paragraph exists to prevent. No quantity per vehicle is recorded here because the catalogue does not state one for this position. The number, the fitment and the count come from the Montero specialist's own catalogue page, cited below — a parts catalogue is good evidence for what a part number is and what it fits, and it is not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification."
+    },
+    "es": {
+      "title": "Empaque del depósito de admisión al múltiple inferior",
+      "summary": "El empaque entre el depósito de admisión y el múltiple de admisión inferior del V6 de mayor cilindrada: el que siempre hay que sacar cuando se reconstruyen o se eliminan las mariposas de admisión variable, o cuando se cambia el depósito. Lea la ficha del catálogo antes de pedir: el trabajo del depósito de admisión lleva tres empaques distintos — este más uno izquierdo y uno derecho del pleno —, cada uno con su propio número Mitsubishi, y los otros dos todavía no tienen página aquí. Pedir uno y descubrir los otros dos en el taller con la admisión abierta es justamente la falla que este párrafo existe para evitar. Aquí no se registra cantidad por vehículo porque el catálogo no indica ninguna para esta posición. El número, la compatibilidad y la cantidad salen de la ficha de catálogo de la casa especializada en Montero que se cita abajo. Un catálogo de repuestos es buena evidencia de qué es un número de parte y en qué encaja, pero no es literatura de fábrica: lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller."
+    }
+  }
+}

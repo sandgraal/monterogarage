@@ -1,0 +1,35 @@
+{
+  "id": "gen3-transfer-case-switch-crush-washer",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    },
+    "engines": ["6g74-sohc", "6g75"],
+    "trims": ["limited"]
+  },
+  "oemNumber": "MU000393",
+  "system": "transfer-case",
+  "quantityPerVehicle": 5,
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen3 Transfer Case Switch Gasket / Crush Washer (MU000393): part number, fitment table, and the quantity of five, one per switch",
+      "url": "https://lusooverland.com/VP-MMC-MU000393",
+      "archiveUrl": "https://web.archive.org/web/20260907003733/https://lusooverland.com/VP-MMC-MU000393",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Transfer case switch crush washer",
+      "summary": "The sealing washer that goes under a transfer case position switch. There is one under each of the five switches, which is where the quantity above comes from, and it is a crush washer: it seals by deforming once, so a reused one is a slow gear-oil leak down the side of the case. It costs almost nothing, and the labour to go back for it costs the same as the first trip. While a switch is out, take the detent ball below it out too, clean it and its cavity, and put the new washer on with the new switch. The number, the fitment and the count come from the Montero specialist's own catalogue page, cited below — a parts catalogue is good evidence for what a part number is and what it fits, and it is not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification."
+    },
+    "es": {
+      "title": "Arandela del interruptor de la transferencia",
+      "summary": "La arandela de sello que va debajo de cada interruptor de posición de la caja de transferencia. Hay una debajo de cada uno de los cinco interruptores, de ahí sale la cantidad indicada arriba, y es una arandela de aplastamiento: sella deformándose una sola vez, así que una reutilizada es una fuga lenta de aceite de engranajes por el costado de la caja. Cuesta casi nada, y volver por ella cuesta lo mismo que el primer viaje. Con el interruptor afuera, saque también la bolita de tope que va debajo, límpiela junto con su cavidad, y monte la arandela nueva con el interruptor nuevo. El número, la compatibilidad y la cantidad salen de la ficha de catálogo de la casa especializada en Montero que se cita abajo. Un catálogo de repuestos es buena evidencia de qué es un número de parte y en qué encaja, pero no es literatura de fábrica: lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller."
+    }
+  }
+}

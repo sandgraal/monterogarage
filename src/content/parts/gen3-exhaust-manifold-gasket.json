@@ -1,0 +1,34 @@
+{
+  "id": "gen3-exhaust-manifold-gasket",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    },
+    "engines": ["6g74-sohc", "6g75"]
+  },
+  "oemNumber": "MR281721",
+  "system": "exhaust",
+  "quantityPerVehicle": 2,
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen2, 2.5, 3; SPORT Exhaust Manifold Gasket (MR281721): part number, fitment table, quantity per vehicle and the OEM interchange numbers listed",
+      "url": "https://lusooverland.com/VP-MMC-MR281721",
+      "archiveUrl": "https://web.archive.org/web/20260907003225/https://lusooverland.com/VP-MMC-MR281721",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Exhaust manifold gasket",
+      "summary": "The gasket between each exhaust manifold and its cylinder head. The truck takes one per bank, so the quantity above is the pair, and there is no sensible way to do one side only once the studs are out — they are the cheapest thing in the job and the only thing standing between you and doing it again. Cracked manifolds are a known Gen 3 problem, which means most people meeting this gasket are meeting it during a manifold replacement rather than because the gasket itself failed. The catalogue lists further OEM interchange numbers alongside this one; none of them has a page here yet, so let the parts counter cross-reference rather than insisting on a single number. The number, the fitment and the count come from the Montero specialist's own catalogue page, cited below — a parts catalogue is good evidence for what a part number is and what it fits, and it is not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification."
+    },
+    "es": {
+      "title": "Empaque del múltiple de escape",
+      "summary": "El empaque entre cada múltiple de escape y su cabezote. El vehículo lleva uno por banco, así que la cantidad de arriba es el par, y no hay forma sensata de hacer un solo lado cuando ya salieron los espárragos: es lo más barato del trabajo y lo único que separa a usted de tener que repetirlo. Los múltiples quebrados son un problema conocido de la tercera generación, lo que significa que la mayoría de la gente se topa con este empaque durante un cambio de múltiple y no porque el empaque haya fallado. El catálogo enumera otros números originales intercambiables junto a este; ninguno tiene página aquí todavía, así que deje que el mostrador haga la referencia cruzada en vez de insistir en un solo número. El número, la compatibilidad y la cantidad salen de la ficha de catálogo de la casa especializada en Montero que se cita abajo. Un catálogo de repuestos es buena evidencia de qué es un número de parte y en qué encaja, pero no es literatura de fábrica: lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller."
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "id": "gen3-automatic-transmission-fluid-spiii",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    },
+    "engines": ["6g74-sohc", "6g75"]
+  },
+  "oemNumber": "MZ320200",
+  "system": "fluids",
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — Mitsubishi SP-III ATF 1Qt (MZ320200): part number, the per-generation fill quantities, and the seller's warning about non-OEM fluid in Gen3 transmissions",
+      "url": "https://lusooverland.com/VF-MMC-MZ320200",
+      "archiveUrl": "https://web.archive.org/web/20260902205417/https://lusooverland.com/VF-MMC-MZ320200",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    },
+    {
+      "title": "Luso Overland — MONTERO Gen3 Automatic Transmission Service Kit: the kit contents, naming this fluid and the number of quarts the service takes",
+      "url": "https://lusooverland.com/VP-LO-K-AT003",
+      "archiveUrl": "https://web.archive.org/web/20260907003955/https://lusooverland.com/VP-LO-K-AT003",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Genuine Mitsubishi SP-III automatic transmission fluid",
+      "summary": "Mitsubishi's own SP-III automatic transmission fluid, sold by the quart under the number above. This is the one place on a Gen 3 where using \"a good ATF\" instead of the specified one is a genuinely expensive mistake: the specialist who sells it says they have seen more than one Gen 3 transmission ruined by non-OEM fluid, and says it plainly enough that it is worth repeating. No quantity per vehicle is recorded here on purpose — the fill and the drain-and-refill amounts are different figures and both live on the cited page, so read them there rather than trusting a memory of them. Some brands now sell an SP-IV described as backwards compatible; the seller is not making that jump, and neither is this page. The number, the fitment and the count come from the Montero specialist's own catalogue page, cited below — a parts catalogue is good evidence for what a part number is and what it fits, and it is not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification."
+    },
+    "es": {
+      "title": "Aceite de transmisión automática original Mitsubishi SP-III",
+      "summary": "El aceite de transmisión automática SP-III de la propia Mitsubishi, que se vende por cuarto bajo el número indicado arriba. Este es el punto de una tercera generación donde usar \"un buen aceite de transmisión\" en vez del especificado sale caro de verdad: la casa especializada que lo vende dice haber visto más de una transmisión de tercera generación arruinada por aceite no original, y lo dice con suficiente claridad como para repetirlo. Aquí no se registra cantidad por vehículo a propósito: la capacidad total y la cantidad de un drenado y relleno son cifras distintas y las dos están en la ficha citada, así que léalas ahí y no de memoria. Algunas marcas ya venden un SP-IV que describen como compatible hacia atrás; el vendedor no da ese salto, y esta página tampoco. El número, la compatibilidad y la cantidad salen de la ficha de catálogo de la casa especializada en Montero que se cita abajo. Un catálogo de repuestos es buena evidencia de qué es un número de parte y en qué encaja, pero no es literatura de fábrica: lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller."
+    }
+  }
+}
