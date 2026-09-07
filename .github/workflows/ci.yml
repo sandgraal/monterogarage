@@ -155,6 +155,118 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # Owner-requested CI performance fix (2026-09-06): every step below this
+      # one runs two full `astro build`s, two Pa11y sweeps, two Lighthouse
+      # budget runs, and the full Playwright suite plus two more targeted
+      # runs — unconditionally, on every PR, even a docs-only one that cannot
+      # possibly change anything this job audits. This step computes whether
+      # that's true for THIS PR and, if so, sets an output the expensive steps
+      # below gate on.
+      #
+      # `pull_request`-only, on purpose. On `push` (to `main`) there is no
+      # base to diff against that means the same thing — main only moves
+      # forward — and a push to main is the actual production-build safety
+      # net, so it always gets the full audit regardless of what changed.
+      #
+      # This step must NEVER cause the job itself to be skipped (job-level
+      # `if:` or workflow-level `paths-ignore`) — see this file's header on
+      # why a required status check that never reports hangs a PR forever,
+      # which is strictly worse than a slow one. It only ever sets `skip` on
+      # an output that individual steps read; `checkout`/`setup-node`/
+      # `Install`/this step itself always run, so the job always executes and
+      # always reports a real pass/fail.
+      #
+      # "Safe" is a positive allow-list, deliberately narrow, checked against
+      # this job's actual concerns (build output, rendered HTML, a11y,
+      # Lighthouse budgets, e2e behavior) rather than "changes nothing
+      # important":
+      #   - specs/**/*.md                          (spec/task docs)
+      #   - AGENTS.md, CLAUDE.md
+      #   - .claude/**, except .claude/hooks/** and .claude/agents/** (those
+      #     two can plausibly change generated output/behavior; everything
+      #     else under .claude/ — commands, routing, settings — cannot)
+      #   - src/content/**/*.json                  (reference content entries)
+      # Anything else — src/pages, src/components, src/layouts, src/schemas,
+      # src/lib, src/i18n, astro.config.mjs, package.json/-lock.json,
+      # tsconfig.json, public/**, tests/**, scripts/**, .github/workflows/**,
+      # supabase/**, or any path not explicitly listed above — is treated as
+      # unsafe and runs the full audit. Getting this list wrong in the unsafe
+      # direction (skipping too much) is the failure mode that matters; a
+      # false "unsafe" only costs CI minutes.
+      #
+      # Real, acknowledged tradeoff, not an oversight: a content-only diff
+      # (a new/edited src/content/**/*.json entry) genuinely CAN regress
+      # accessibility (e.g. a new glossary entry missing something a template
+      # needs) or a Lighthouse budget (e.g. an unusually long title) — and the
+      # a11y/Lighthouse sample this job runs is only "one page per collection,
+      # first in path order, sorted" (`scripts/lib/audit-targets.mjs`). A
+      # newly-added entry that isn't the first-in-path sample for its
+      # collection was never going to be audited here anyway, skip or no
+      # skip. But even when it IS the sample, skipping this job here means it
+      # goes unaudited until some later, unrelated PR happens to touch a
+      # non-safe path and triggers a real run. That's a deliberate,
+      # owner-approved bet: content PRs are the majority of this repo's
+      # traffic, so the CI-time win outweighs the coverage gap for this
+      # specific, narrow slice of changes. Written down here so it can be
+      # found, not relitigated.
+      - name: Determine whether this PR's diff can skip the build/a11y/e2e audits
+        id: skip_check
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Fetch exactly the two commits needed to diff, rather than relying
+          # on the shallow `refs/pull/<pr>/merge` checkout already present
+          # (that merge commit's tree can differ from HEAD's, and its
+          # ancestors are not fetched at depth 1 anyway). GitHub's server
+          # supports fetching by bare commit SHA for a repo hosted there.
+          #
+          # Soft failure by design: if the fetch itself fails (network blip,
+          # a SHA that's aged out of the repo's reflog, anything), do not let
+          # that fail this required job — fall back to "not safe to skip" and
+          # run the full audit, same as any other unsafe diff.
+          set +e
+          git fetch --no-tags --depth=1 origin "$BASE_SHA" "$HEAD_SHA"
+          fetch_ok=$?
+          set -e
+
+          if [ "$fetch_ok" -ne 0 ]; then
+            echo "Could not fetch base ($BASE_SHA) or head ($HEAD_SHA) — running the full audit rather than guessing safe from an incomplete diff."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          echo "Changed files ($BASE_SHA..$HEAD_SHA):"
+          echo "$changed"
+
+          if [ -z "$changed" ]; then
+            # Empty diff (e.g. an empty commit) — nothing to be unsafe about,
+            # but nothing to gain from skipping either. Don't special-case it.
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          skip=true
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            # `case` pattern matching (unlike pathname globbing for file
+            # listing) has `*` match `/` too, so `specs/*.md` already covers
+            # `specs/**/*.md` — no separate deep-path pattern needed.
+            case "$f" in
+              specs/*.md) ;;
+              AGENTS.md|CLAUDE.md) ;;
+              .claude/hooks/*|.claude/agents/*) skip=false ;;
+              .claude/*) ;;
+              src/content/*.json) ;;
+              *) skip=false ;;
+            esac
+          done <<< "$changed"
+
+          echo "skip=$skip" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
@@ -182,6 +294,7 @@ jobs:
       # will run again) in the `verify` job and repeating it here buys nothing
       # but a slower gate.
       - name: Build site for audits
+        if: steps.skip_check.outputs.skip != 'true'
         run: npx astro build
 
       # 002 MIG-03 review finding: CI's only build was always the env-less one
@@ -205,6 +318,7 @@ jobs:
       # nothing. They live here in the open on purpose, not in a repository or
       # environment secret, because they are not one.
       - name: Build site for audits (configured — dummy Supabase credentials)
+        if: steps.skip_check.outputs.skip != 'true'
         env:
           PUBLIC_SUPABASE_URL: https://example.supabase.co
           # A throwaway, syntactically-valid anon-shaped JWT. Not a real key —
@@ -217,12 +331,15 @@ jobs:
         run: npx astro build --outDir dist-configured
 
       - name: Accessibility (Pa11y, WCAG2AA)
+        if: steps.skip_check.outputs.skip != 'true'
         run: npm run test:a11y
 
       - name: Accessibility, configured build (Pa11y, WCAG2AA)
+        if: steps.skip_check.outputs.skip != 'true'
         run: npm run test:a11y -- --dist dist-configured
 
       - name: Lighthouse budgets (a11y ≥ 95, performance ≥ 90)
+        if: steps.skip_check.outputs.skip != 'true'
         run: npm run test:lighthouse
 
       # SCF-06's budget on the pages that only exist once a project is
@@ -233,6 +350,7 @@ jobs:
       # investigate — never a reason to lower `BUDGETS` in
       # `scripts/check-lighthouse.mjs`.
       - name: Lighthouse budgets, configured build (a11y ≥ 95, performance ≥ 90)
+        if: steps.skip_check.outputs.skip != 'true'
         run: npm run test:lighthouse -- --dist dist-configured
 
       # T204 fills the constitution's e2e slot. It runs *here* rather than in a
@@ -259,6 +377,7 @@ jobs:
       # `dist/` a second time in this job for nothing — the same reasoning as
       # the `npx astro build` above.
       - name: End-to-end (Playwright, vehicle selector + locale switcher)
+        if: steps.skip_check.outputs.skip != 'true'
         run: npx playwright test
 
       # `tests/e2e/garage-unreachable.spec.ts` needs the *configured* build:
@@ -288,6 +407,7 @@ jobs:
       # cleanly, and so does `npm run test:e2e` locally.
       #
       - name: End-to-end (Playwright, garage unreachable — configured build)
+        if: steps.skip_check.outputs.skip != 'true'
         env:
           E2E_DIST: dist-configured
           E2E_PORT: 4323
@@ -326,6 +446,7 @@ jobs:
       # cleanly with no `E2E_EXPECT_CONFIGURED` set, and so does
       # `npm run test:e2e` locally.
       - name: End-to-end (Playwright, hidden-guard configured-only cases — configured build)
+        if: steps.skip_check.outputs.skip != 'true'
         env:
           E2E_DIST: dist-configured
           E2E_PORT: 4323
