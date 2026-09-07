@@ -39,6 +39,7 @@
  * refs specs/001-foundation (RM-01, RM-02)
  */
 import { describe, expect, it } from "vitest";
+import { collectionRoutePath } from "../../src/i18n/routes.ts";
 import {
   computeSyncPlan,
   SYNC_SEAM_NOT_IMPLEMENTED,
@@ -49,14 +50,27 @@ import {
  * A minimal, obviously-synthetic row. `TEST-` prefix on every id, in the
  * reserved test namespace `.claude/GRADER-PRINCIPLES.md`'s fixture
  * convention asks for — this can never collide with a real content slug.
+ *
+ * **`href` follows `locale` and `collection`.** The first version hard-coded
+ * `/en/glossary/…` whatever the overrides said, so `row({ locale: "es" })`
+ * produced a row claiming to be Spanish while pointing at an English URL —
+ * internally inconsistent in exactly the way that hides a locale bug from any
+ * grader that ever asserts on `href` (PR #139 review). The prefix and the
+ * translated segment both come from `src/i18n/routes.ts`, this repo's single
+ * source of truth for them, so an `es` fixture lands on `/es/glosario/…` and
+ * a `parts` fixture on `/…/repuestos/…` — not on a prefix swap that would
+ * still be wrong for every collection with a translated segment.
  */
 function row(
   overrides: Partial<ReferenceSearchRow> & { readonly entryId: string }
 ): ReferenceSearchRow {
+  const collection = overrides.collection ?? "glossary";
+  const locale = overrides.locale ?? "en";
+
   return {
-    collection: "glossary",
-    locale: "en",
-    href: `/en/glossary/${overrides.entryId}/`,
+    collection,
+    locale,
+    href: `/${locale}${collectionRoutePath(collection, locale)}${overrides.entryId.toLowerCase()}/`,
     title: `Test term ${overrides.entryId}`,
     subtitle: null,
     snippet: "A synthetic glossary entry used only by T801's graders.",
@@ -247,5 +261,48 @@ describe("fixtures are obviously synthetic", () => {
 
   it("a synthetic part number is also namespaced, not a plausible real OEM number", () => {
     expect(BRAKE_PADS.codes[0]).toMatch(/TEST/);
+  });
+
+  it("an EN row's href is an EN URL", () => {
+    expect(row({ entryId: "TEST-HREF", locale: "en" }).href).toBe(
+      "/en/glossary/test-href/"
+    );
+  });
+
+  it("an ES row's href is an ES URL, with the translated segment", () => {
+    // The defect this closes: `row({ locale: "es" })` used to return
+    // `/en/glossary/…`, a Spanish row carrying an English href. A grader that
+    // ever asserts on `href` would have been comparing against a fixture that
+    // was already wrong.
+    expect(row({ entryId: "TEST-HREF", locale: "es" }).href).toBe(
+      "/es/glosario/test-href/"
+    );
+  });
+
+  it("the collection's own translated segment is used, not glossary's", () => {
+    expect(
+      row({ entryId: "TEST-HREF", collection: "parts", locale: "es" }).href
+    ).toBe("/es/repuestos/test-href/");
+  });
+
+  it("every fixture's href prefix agrees with its own locale", () => {
+    for (const fixture of [
+      OIL_FILTER,
+      BRAKE_PADS,
+      row({ entryId: "TEST-BILINGUAL", locale: "es" }),
+    ]) {
+      expect(fixture.href, fixture.entryId).toMatch(
+        new RegExp(`^/${fixture.locale}/`)
+      );
+    }
+  });
+
+  it("an explicit href override still wins", () => {
+    // The one-directionality graders above rely on being able to hand-edit a
+    // row's href to simulate a Supabase-side edit; the locale-aware default
+    // must not take that away.
+    expect(
+      row({ entryId: "TEST-HREF", href: "/en/glossary/hand-edited/" }).href
+    ).toBe("/en/glossary/hand-edited/");
   });
 });

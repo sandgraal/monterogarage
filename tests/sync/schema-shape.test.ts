@@ -17,7 +17,8 @@
  * ## Two kinds of test in this file, and why only one kind is marked
  *
  * `describe("searchVectorLocaleIssues — …")`, `describe("hasGinIndexOn —
- * …")` and `describe("writeGrantIssues — …")` grade **this file's own
+ * …")`, `describe("primaryKeyColumns — …")` and
+ * `describe("writeGrantIssues — …")` grade **this file's own
  * instrument**, `tests/sync/rules.ts`, against hand-written sample SQL with a
  * known-correct and a known-wrong answer. They are unmarked and green today,
  * on purpose — the positive control `.claude/GRADER-PRINCIPLES.md` asks for
@@ -37,12 +38,12 @@ import {
 import {
   hasGinIndexOn,
   localeDictionaryConfigFor,
+  primaryKeyColumns,
   searchVectorLocaleIssues,
   writeGrantIssues,
 } from "./rules.ts";
 import {
   columnDefinition,
-  columnDefinitions,
   createTableBody,
   enablesRls,
   forcesRls,
@@ -199,6 +200,119 @@ describe("hasGinIndexOn — the positive and the negative", () => {
   });
 });
 
+/**
+ * The primary key `contract.ts` asks for, derived from the `primaryKey: true`
+ * flags rather than retyped — a fourth flagged column would move this and the
+ * grader below together, which is the point of deriving it.
+ */
+const EXPECTED_PRIMARY_KEY = SEARCH_INDEX_COLUMNS.filter(
+  (column) => column.primaryKey
+).map((column) => column.name);
+
+describe("primaryKeyColumns — the positive and the negative", () => {
+  const composite = normalizeSql(`
+    create table public.search_index_entries (
+      collection text not null,
+      entry_id text not null,
+      locale text not null,
+      title text not null,
+      primary key (collection, entry_id, locale)
+    );
+  `);
+  const namedConstraint = normalizeSql(`
+    create table public.search_index_entries (
+      collection text not null,
+      entry_id text not null,
+      locale text not null,
+      constraint search_index_entries_pkey primary key (collection, entry_id, locale)
+    );
+  `);
+  const boltedOn = normalizeSql(`
+    create table public.search_index_entries (
+      collection text not null,
+      entry_id text not null,
+      locale text not null
+    );
+    alter table only public.search_index_entries
+      add constraint search_index_entries_pkey primary key (collection, entry_id, locale);
+  `);
+  /** The exact defect the old presence-only assertion let through. */
+  const surrogateId = normalizeSql(`
+    create table public.search_index_entries (
+      id uuid primary key default gen_random_uuid(),
+      collection text not null,
+      entry_id text not null,
+      locale text not null
+    );
+  `);
+  /** The other one: a key that forgot the locale column. */
+  const missingLocale = normalizeSql(`
+    create table public.search_index_entries (
+      collection text not null,
+      entry_id text not null,
+      locale text not null,
+      primary key (collection, entry_id)
+    );
+  `);
+  const noKeyAtAll = normalizeSql(`
+    create table public.search_index_entries (
+      collection text not null,
+      entry_id text not null,
+      locale text not null
+    );
+  `);
+
+  it("reads a table-level composite key (positive control)", () => {
+    expect(primaryKeyColumns(composite, "search_index_entries")).toEqual([
+      "collection",
+      "entry_id",
+      "locale",
+    ]);
+  });
+
+  it("reads a NAMED table-level constraint the same way", () => {
+    expect(primaryKeyColumns(namedConstraint, "search_index_entries")).toEqual([
+      "collection",
+      "entry_id",
+      "locale",
+    ]);
+  });
+
+  it("reads an ALTER TABLE ONLY … ADD CONSTRAINT key — what pg_dump emits", () => {
+    expect(primaryKeyColumns(boltedOn, "search_index_entries")).toEqual([
+      "collection",
+      "entry_id",
+      "locale",
+    ]);
+  });
+
+  it("reports a surrogate id key as ['id'] — the shape a presence check missed", () => {
+    // All three real key columns are present in this DDL; only the *key* is
+    // wrong. A grader reading `columnDefinitions` alone scores it a pass.
+    expect(primaryKeyColumns(surrogateId, "search_index_entries")).toEqual([
+      "id",
+    ]);
+    expect(primaryKeyColumns(surrogateId, "search_index_entries")).not.toEqual(
+      EXPECTED_PRIMARY_KEY
+    );
+  });
+
+  it("reports a key missing `locale` as the two columns it really has", () => {
+    expect(primaryKeyColumns(missingLocale, "search_index_entries")).toEqual([
+      "collection",
+      "entry_id",
+    ]);
+  });
+
+  it("returns null when nothing declares a key — unknown is not an empty key", () => {
+    expect(primaryKeyColumns(noKeyAtAll, "search_index_entries")).toBeNull();
+  });
+
+  it("returns null for a table the migration never creates", () => {
+    expect(primaryKeyColumns(composite, "some_other_table")).toBeNull();
+  });
+});
+
 describe("writeGrantIssues — the positive and the negative", () => {
   const locked = normalizeSql(`
     create table public.search_index_entries (id uuid);
@@ -284,17 +398,23 @@ describe("every column RM-01/SRCH-01 asks for is declared", () => {
   });
 
   it.fails("the primary key is exactly (collection, entry_id, locale)", () => {
-    const body = searchIndexTableBody();
-    expect(body).not.toBeNull();
-    const names = columnDefinitions(body ?? "").map((column) => column.name);
+    // The *key*, not the columns. The first version of this asked only
+    // whether the three names appeared among `columnDefinitions`, which a
+    // surrogate `id uuid primary key` sitting beside three ordinary columns
+    // satisfied completely — as did a two-column key that forgot `locale`.
+    // RM-01's idempotent upsert needs `(collection, entry_id, locale)` to be a
+    // real conflict target, so that is what is read here.
+    //
+    // Membership and arity are graded; column *order* is not. Order is a real
+    // choice (it decides which prefix scans the implicit index can serve) and
+    // it is T802's to make — `contract.ts` lists the three in one order to be
+    // readable, not to rule on that.
+    const key = primaryKeyColumns(migrationSql(), SEARCH_INDEX_TABLE);
 
-    // The three key columns must all exist and none may be dropped from the
-    // shape — a fourth surrogate id would be a different design than the one
-    // `contract.ts` documents (one row keyed by what it indexes, not by an
-    // opaque id nothing else needs).
-    expect(names).toEqual(
-      expect.arrayContaining(["collection", "entry_id", "locale"])
-    );
+    // `null` is "no primary key is declared anywhere", which is a finding
+    // rather than a key with no columns.
+    expect(key, "no primary key declared on the table").not.toBeNull();
+    expect([...(key ?? [])].sort()).toEqual([...EXPECTED_PRIMARY_KEY].sort());
   });
 });
 
@@ -352,6 +472,17 @@ describe("the contract is internally coherent", () => {
     expect(names).toEqual(
       expect.arrayContaining(["collection", "entry_id", "locale"])
     );
+  });
+
+  it("flags exactly those three as primaryKey — nothing more, nothing less", () => {
+    // What the grader above actually compares against. If a fourth column
+    // ever carries `primaryKey: true`, or one of these three loses it, the
+    // key assertion silently changes shape — so the flags are graded too.
+    expect([...EXPECTED_PRIMARY_KEY].sort()).toEqual([
+      "collection",
+      "entry_id",
+      "locale",
+    ]);
   });
 
   it("declares search_vector as tsvector and not null", () => {

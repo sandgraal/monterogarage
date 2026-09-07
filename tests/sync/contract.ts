@@ -89,12 +89,38 @@ export const SEARCH_INDEX_TABLE = "search_index_entries";
 export const SEARCH_INDEX_COLLECTIONS: readonly SearchDocumentType[] =
   SEARCH_DOCUMENT_TYPES;
 
-/** Compile-time proof the two lists really are the same list, not two. */
-export type _AssertSameCollectionSet = [ReferenceSearchCollection] extends [
-  SearchDocumentType,
-]
-  ? true
-  : never;
+/**
+ * Compile-time proof the two lists really are the same list, not two.
+ *
+ * **Both directions, and load-bearing.** The first version of this checked
+ * `[ReferenceSearchCollection] extends [SearchDocumentType]` only, which is
+ * subset and not equality: adding a sixth member to `SEARCH_DOCUMENT_TYPES`
+ * (`procedures`, the day it has a route to link to) without adding it to
+ * `ReferenceSearchCollection` left this "proof" green while the two lists had
+ * actually drifted — the exact failure mode
+ * `src/lib/sync/reference-search.ts`'s docstring says RM-01/T803 cannot
+ * tolerate. `Equals` checks assignability *both* ways, so either list growing
+ * alone is a type error.
+ *
+ * A type alias resolving to `never` is not itself a compile error, so the
+ * alias alone proved nothing either — {@link SAME_COLLECTION_SET} is what
+ * makes it bite, because `const x: never = true` does not typecheck. Both are
+ * read by `astro check`, which covers `tests/**` (see `tsconfig.json`'s
+ * `include`).
+ */
+type Equals<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+
+export type _AssertSameCollectionSet =
+  Equals<ReferenceSearchCollection, SearchDocumentType> extends true
+    ? true
+    : never;
+
+/**
+ * The assignment that turns {@link _AssertSameCollectionSet} from a comment
+ * into a check. Exported so no lint rule can decide it is dead and remove the
+ * only thing holding the two collection lists together.
+ */
+export const SAME_COLLECTION_SET: _AssertSameCollectionSet = true;
 
 /** The two locales a row may be filed under. */
 export const SEARCH_INDEX_LOCALES = ["en", "es"] as const;
@@ -317,3 +343,17 @@ export const SYNC_SERVICE_KEY_ENV_VAR = "SUPABASE_SERVICE_ROLE_KEY";
 
 /** A forbidden env var name — the client-safe one, named for the sweep. */
 export const FORBIDDEN_CLIENT_KEY_ENV_VAR = "PUBLIC_SUPABASE_ANON_KEY";
+
+/**
+ * The prefix that makes an environment variable client-visible.
+ *
+ * Named separately from {@link FORBIDDEN_CLIENT_KEY_ENV_VAR} because the
+ * property RM-02 needs is about the *prefix*, not about one variable:
+ * `PUBLIC_SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}` exposes the
+ * write credential exactly as completely as putting it in the anon-key
+ * variable would, and a sweep that only knew the one name would miss it (PR
+ * #139 review). `tests/sync/rules.ts`'s `clientKeyLeakIssues` sweeps this
+ * prefix; `FORBIDDEN_CLIENT_KEY_ENV_VAR` remains the specific name the sync
+ * *script* must never read.
+ */
+export const CLIENT_VISIBLE_ENV_PREFIX = "PUBLIC_";

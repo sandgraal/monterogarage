@@ -26,7 +26,15 @@
  *
  * refs specs/001-foundation (RM-01, RM-02)
  */
-import { grants, rolePrivileges, type GrantState } from "../garage/sql.ts";
+import {
+  columnDefinitions,
+  createTableBody,
+  grants,
+  rolePrivileges,
+  statements,
+  tableConstraints,
+  type GrantState,
+} from "../garage/sql.ts";
 import {
   SEARCH_INDEX_WRITE_DENIED_ROLES,
   SEARCH_INDEX_WRITE_VERBS,
@@ -188,6 +196,202 @@ export function writeGrantIssues(
         `${identity}: ${role} holds ${heldWrites.join(", ")} — RM-02 forbids ` +
           `any writer but the CI sync job`
       );
+    }
+  }
+
+  return issues;
+}
+
+/* -------------------------------------------------------------------------
+ * The primary key, as the migration actually declares it
+ * ---------------------------------------------------------------------- */
+
+/**
+ * Same spelling `tests/garage/sql.ts`'s (non-exported) `alterTablePrefix`
+ * uses, and for the same reason: `pg_dump` writes `ALTER TABLE ONLY`, and a
+ * schema round-tripped through a dump is not less correct for it.
+ */
+function alterTablePrefix(table: string): string {
+  return `alter table (?:if exists )?(?:only )?(?:public\\.)?${table}\\b`;
+}
+
+const PRIMARY_KEY_LIST = /primary key\s*\(([^)]*)\)/;
+
+function splitColumnList(list: string): string[] {
+  return list
+    .split(",")
+    .map((name) => name.trim().replace(/^"|"$/g, ""))
+    .filter(Boolean);
+}
+
+/**
+ * The columns of `table`'s primary key **as finally declared**, or `null` when
+ * nothing in the migration directory declares one at all.
+ *
+ * ## Why this is not "are these three columns present"
+ *
+ * The grader this replaces read `columnDefinitions(body)` and asserted the
+ * three key columns appeared among them. That is a test of column *presence*,
+ * not of the key: a table with a surrogate `id uuid primary key` plus
+ * `collection`, `entry_id` and `locale` as ordinary nullable columns passed it
+ * unchanged, and so did a two-column key that forgot `locale` — the shape that
+ * makes `tests/sync/sync-plan.test.ts`'s "the same entry_id in two locales is
+ * two independent rows" impossible to satisfy at the storage layer, whatever
+ * `computeSyncPlan` decides in memory. RM-01's idempotent
+ * `insert … on conflict (collection, entry_id, locale) do update` needs that
+ * exact conflict target to exist as a real unique constraint; a `primary key`
+ * spelled any other way makes the upsert a duplicate-row insert.
+ *
+ * ## What is read, and in what order
+ *
+ * All three spellings Postgres accepts, in statement order, last declaration
+ * winning (a table has at most one primary key, so a later
+ * `alter table … add … primary key` is either the only one or an error the
+ * database itself rejects):
+ *
+ * 1. table-level inside `create table` — `primary key (a, b, c)` or
+ *    `constraint <name> primary key (a, b, c)`, via `tableConstraints`;
+ * 2. column-level inline — `id uuid primary key`, which is necessarily a
+ *    single-column key and is exactly the surrogate-id defect above;
+ * 3. `alter table … add [constraint <name>] primary key (a, b, c)`.
+ *
+ * `null` is deliberately distinct from `[]`
+ * (`.claude/GRADER-PRINCIPLES.md`, "unknown is not zero"): "this migration
+ * declares no primary key" is a finding, not a key with no columns.
+ */
+export function primaryKeyColumns(
+  normalized: string,
+  table: string
+): string[] | null {
+  let found: string[] | null = null;
+
+  const body = createTableBody(normalized, table);
+  if (body !== null) {
+    for (const constraint of tableConstraints(body)) {
+      const match = PRIMARY_KEY_LIST.exec(constraint);
+      if (match) found = splitColumnList(match[1]);
+    }
+    if (found === null) {
+      const inline = columnDefinitions(body).filter((column) =>
+        /\bprimary key\b/.test(column.definition)
+      );
+      // More than one column claiming an inline `primary key` is invalid SQL
+      // rather than a composite key; report it as declared so the caller sees
+      // the real shape instead of a tidied-up guess.
+      if (inline.length > 0) found = inline.map((column) => column.name);
+    }
+  }
+
+  const alterPattern = new RegExp(`^${alterTablePrefix(table)}\\b`);
+  for (const statement of statements(normalized)) {
+    if (!alterPattern.test(statement)) continue;
+    if (!/\badd\b/.test(statement)) continue;
+    const match = PRIMARY_KEY_LIST.exec(statement);
+    if (match) found = splitColumnList(match[1]);
+  }
+
+  return found;
+}
+
+/* -------------------------------------------------------------------------
+ * RM-02 — the write credential never reaches a client-visible variable
+ * ---------------------------------------------------------------------- */
+
+/** Assignment operators a workflow file can bind a name with. */
+const ASSIGNMENT = "(?::|=)";
+
+/**
+ * Every place `workflow` binds the service-role credential to a variable whose
+ * name would reach client code.
+ *
+ * ## The bug this exists to catch
+ *
+ * `src/lib/supabase/config.ts` treats the `PUBLIC_` prefix as the whole
+ * boundary between "safe in a browser bundle" and "must never leave CI". The
+ * first version of this rule lived inline in `tests/sync/ci-wiring.test.ts`
+ * and checked exactly one variable — it found the line containing
+ * `PUBLIC_SUPABASE_ANON_KEY` and asserted that *that line* did not also name
+ * the service-role secret. A workflow spelling
+ *
+ * ```yaml
+ * env:
+ *   PUBLIC_SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+ * ```
+ *
+ * leaked the identical credential into the identical client-visible prefix and
+ * passed, because the leak was not on the one line the rule looked at. The
+ * property is "no `PUBLIC_*` name is ever bound to the service key", not "this
+ * one `PUBLIC_*` name is not" — `.claude/GRADER-PRINCIPLES.md`, "grade
+ * behavior, not name lists".
+ *
+ * ## What counts as a binding
+ *
+ * Any `PUBLIC_…` identifier followed by `:` (YAML mapping) or `=` (shell
+ * assignment, including `echo "PUBLIC_X=$SECRET" >> $GITHUB_ENV`), whose value
+ * names `serviceKeyEnvVar` — which catches `${{ secrets.NAME }}`,
+ * `${{ env.NAME }}`, `$NAME` and `${NAME}` in one test, since all four contain
+ * the variable's name. A value on its own continuation line (an empty
+ * rest-of-line, or a `|`/`>` block scalar) is followed for as long as the
+ * indentation stays deeper than the key's.
+ *
+ * Deliberately **over-matching**: a commented-out leak is reported, and so is
+ * a `PUBLIC_*` binding in a step this job never runs. A spurious finding costs
+ * a reviewer five minutes; a missed one ships a service-role key to every
+ * browser that loads the site.
+ *
+ * What it does **not** catch, said out loud rather than left to be
+ * discovered: a *laundered* leak, where the secret is bound to a non-`PUBLIC_`
+ * name first and that name is then copied into a `PUBLIC_` one. Closing that
+ * needs dataflow through the workflow's env, not a text rule; the sweep below
+ * is the direct spelling, which is the one a rushed edit actually produces.
+ */
+export function clientKeyLeakIssues(
+  workflow: string,
+  serviceKeyEnvVar: string,
+  clientPrefix = "PUBLIC_"
+): string[] {
+  const issues: string[] = [];
+  const lines = workflow.split("\n");
+  // Not anchored at `^`: the binding can start mid-line inside a `run:` shell
+  // command. The leading class excludes `.` so `${{ secrets.PUBLIC_X }}` (a
+  // read of a secret that happens to be named PUBLIC_*) is not mistaken for a
+  // binding of one.
+  const binding = new RegExp(
+    `(?:^|[^A-Za-z0-9_.$])(${clientPrefix}[A-Za-z0-9_]*)\\s*${ASSIGNMENT}`,
+    "g"
+  );
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    binding.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = binding.exec(line)) !== null) {
+      const name = match[1];
+      const rest = line.slice(match.index + match[0].length);
+      let value = rest;
+
+      // A YAML value that lives on the following line(s): an empty
+      // rest-of-line, or a block-scalar indicator. Follow it while the
+      // indentation stays deeper than this key's.
+      if (/^\s*(?:[|>][-+]?\d*)?\s*$/.test(rest)) {
+        const indent = line.length - line.trimStart().length;
+        for (let ahead = index + 1; ahead < lines.length; ahead += 1) {
+          const next = lines[ahead];
+          if (next.trim() === "") continue;
+          const nextIndent = next.length - next.trimStart().length;
+          if (nextIndent <= indent) break;
+          value += `\n${next}`;
+        }
+      }
+
+      if (value.includes(serviceKeyEnvVar)) {
+        issues.push(
+          `${name} is bound to ${serviceKeyEnvVar} — a ${clientPrefix}-prefixed ` +
+            `variable is client-visible by construction ` +
+            `(src/lib/supabase/config.ts), and RM-02's write credential must ` +
+            `never be reachable from one`
+        );
+      }
     }
   }
 

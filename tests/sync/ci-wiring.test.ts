@@ -13,19 +13,28 @@
  * `.github/workflows/sync-reference-search.yml` exists yet — T802 ships
  * both, at the paths `tests/sync/contract.ts` names (`SYNC_SCRIPT_PATH`,
  * `SYNC_WORKFLOW_PATH`; renegotiable in one line, same as every other name
- * in that file). Every grader here is `it.fails`.
+ * in that file). Every grader that reads one of those two files is
+ * `it.fails`.
+ *
+ * `describe("clientKeyLeakIssues — …")` is the exception, and unmarked on
+ * purpose: it grades **this file's own instrument** against hand-written
+ * sample workflows with a known-correct and a known-wrong answer, the same
+ * positive control `schema-shape.test.ts` runs over `tests/sync/rules.ts`.
  *
  * refs specs/001-foundation (RM-01, RM-02)
  */
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  CLIENT_VISIBLE_ENV_PREFIX,
   FORBIDDEN_CLIENT_KEY_ENV_VAR,
   SYNC_SCRIPT_PATH,
   SYNC_SERVICE_KEY_ENV_VAR,
   SYNC_WORKFLOW_PATH,
 } from "./contract.ts";
+import { clientKeyLeakIssues } from "./rules.ts";
 
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 
@@ -33,7 +42,13 @@ const SEAM = "not implemented: T802";
 
 function readRepoFile(relativePath: string, what: string): string {
   try {
-    return readFileSync(`${REPO_ROOT}${relativePath}`, "utf8");
+    // `join`, not template concatenation: the previous spelling
+    // (`${REPO_ROOT}${relativePath}`) was correct only because
+    // `fileURLToPath` of a directory URL happens to keep its trailing
+    // separator today, and silently produced `…/monterogaroscripts/…` the
+    // moment anything trimmed it. `tests/garage/share-delivery.test.ts` is the
+    // established pattern in this repo.
+    return readFileSync(join(REPO_ROOT, relativePath), "utf8");
   } catch {
     throw new Error(
       `${SEAM} — ${what} does not exist at ${relativePath}. T801 [TEST] named ` +
@@ -55,6 +70,157 @@ describe("the CI wiring is honest about not existing yet", () => {
     expect(() => readRepoFile(SYNC_WORKFLOW_PATH, "the sync workflow")).toThrow(
       SEAM
     );
+  });
+
+  it("resolves a repo path with a separator, not by concatenation", () => {
+    // Guards the `join` in `readRepoFile`: this repo's own `package.json`
+    // is read through the same helper, so a path built by gluing REPO_ROOT to
+    // a relative path without a separator would throw the T802 seam here
+    // instead of returning the file.
+    expect(readRepoFile("package.json", "package.json")).toContain(
+      '"name": "monterogarage"'
+    );
+  });
+});
+
+/* =========================================================================
+ * The leak sweep, mutation-tested against hand-written workflows — UNMARKED
+ *
+ * Same role the instrument tests in `schema-shape.test.ts` play: prove
+ * `clientKeyLeakIssues` can both accept and reject before T802's real
+ * workflow exists to read. Every corpus below is synthetic YAML; none of it
+ * is a real credential.
+ * ====================================================================== */
+
+describe("clientKeyLeakIssues — the positive and the negative", () => {
+  /** The correct wiring: the secret only ever lands in a non-PUBLIC_ name. */
+  const CLEAN = `
+name: sync-reference-search
+on:
+  push:
+    branches: [main]
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      PUBLIC_SUPABASE_URL: \${{ secrets.PUBLIC_SUPABASE_URL }}
+      PUBLIC_SUPABASE_ANON_KEY: \${{ secrets.PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: \${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - run: node scripts/sync-reference-search.mjs
+`;
+
+  /** The defect the old one-line rule caught. */
+  const LEAK_INTO_ANON_KEY = `
+jobs:
+  sync:
+    env:
+      PUBLIC_SUPABASE_ANON_KEY: \${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+`;
+
+  /**
+   * The defect the old rule MISSED — the same credential, the same
+   * client-visible prefix, a different variable name.
+   */
+  const LEAK_INTO_OTHER_PUBLIC_VAR = `
+jobs:
+  sync:
+    env:
+      PUBLIC_SUPABASE_KEY: \${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+`;
+
+  /** Same leak, laundered through a shell assignment into $GITHUB_ENV. */
+  const LEAK_VIA_SHELL = `
+jobs:
+  sync:
+    steps:
+      - run: echo "PUBLIC_WRITE_KEY=$SUPABASE_SERVICE_ROLE_KEY" >> $GITHUB_ENV
+`;
+
+  /** Same leak, with the value on its own continuation line. */
+  const LEAK_ON_CONTINUATION_LINE = `
+jobs:
+  sync:
+    env:
+      PUBLIC_ANYTHING:
+        \${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+`;
+
+  it("ACCEPTS a workflow that keeps the secret out of PUBLIC_* (positive control)", () => {
+    expect(clientKeyLeakIssues(CLEAN, SYNC_SERVICE_KEY_ENV_VAR)).toEqual([]);
+  });
+
+  it("ACCEPTS a PUBLIC_* variable that merely reads a PUBLIC_* secret", () => {
+    // The narrow false-positive worth naming: `${{ secrets.PUBLIC_… }}` is a
+    // read of a client-safe secret, and must not be mistaken for a binding of
+    // the service key.
+    expect(
+      clientKeyLeakIssues(
+        "      PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}\n",
+        SYNC_SERVICE_KEY_ENV_VAR
+      )
+    ).toEqual([]);
+  });
+
+  it("REJECTS the service key assigned to the anon-key variable", () => {
+    const issues = clientKeyLeakIssues(
+      LEAK_INTO_ANON_KEY,
+      SYNC_SERVICE_KEY_ENV_VAR
+    );
+
+    expect(issues.length).toBeGreaterThan(0);
+    expect(issues.join(" ")).toContain(FORBIDDEN_CLIENT_KEY_ENV_VAR);
+  });
+
+  it("REJECTS the service key assigned to a DIFFERENTLY NAMED PUBLIC_ variable — the bug the one-line rule missed", () => {
+    const issues = clientKeyLeakIssues(
+      LEAK_INTO_OTHER_PUBLIC_VAR,
+      SYNC_SERVICE_KEY_ENV_VAR
+    );
+
+    expect(issues.length).toBeGreaterThan(0);
+    expect(issues.join(" ")).toContain("PUBLIC_SUPABASE_KEY");
+    // The old rule's exact bypass: the leaking line does not mention the one
+    // variable name that rule looked for.
+    expect(LEAK_INTO_OTHER_PUBLIC_VAR).not.toContain(
+      FORBIDDEN_CLIENT_KEY_ENV_VAR
+    );
+  });
+
+  it("REJECTS a shell assignment into $GITHUB_ENV", () => {
+    const issues = clientKeyLeakIssues(
+      LEAK_VIA_SHELL,
+      SYNC_SERVICE_KEY_ENV_VAR
+    );
+
+    expect(issues.join(" ")).toContain("PUBLIC_WRITE_KEY");
+  });
+
+  it("REJECTS a value that sits on the next line", () => {
+    const issues = clientKeyLeakIssues(
+      LEAK_ON_CONTINUATION_LINE,
+      SYNC_SERVICE_KEY_ENV_VAR
+    );
+
+    expect(issues.join(" ")).toContain("PUBLIC_ANYTHING");
+  });
+
+  it("names the credential and the reason, not just 'found a problem'", () => {
+    const issues = clientKeyLeakIssues(
+      LEAK_INTO_OTHER_PUBLIC_VAR,
+      SYNC_SERVICE_KEY_ENV_VAR
+    );
+
+    expect(issues.join(" ")).toContain(SYNC_SERVICE_KEY_ENV_VAR);
+    expect(issues.join(" ")).toContain("RM-02");
+  });
+
+  it("the prefix it sweeps is the one the forbidden variable carries", () => {
+    // Coherence: `CLIENT_VISIBLE_ENV_PREFIX` and
+    // `FORBIDDEN_CLIENT_KEY_ENV_VAR` must not drift apart.
+    expect(
+      FORBIDDEN_CLIENT_KEY_ENV_VAR.startsWith(CLIENT_VISIBLE_ENV_PREFIX)
+    ).toBe(true);
   });
 });
 
@@ -95,18 +261,22 @@ describe("RM-02 — the write credential is the CI job's alone", () => {
   );
 
   it.fails(
-    "the workflow never assigns the write credential to a PUBLIC_-prefixed variable",
+    "the workflow never assigns the write credential to ANY PUBLIC_-prefixed variable",
     () => {
       // src/lib/supabase/config.ts's whole design is that only PUBLIC_* reaches
       // client code. Naming the service-role secret into that prefix anywhere
       // in this workflow would make "no service key exists in this repo"
       // (that module's own docstring) false the moment this job runs.
+      //
+      // Every PUBLIC_* binding, not just `PUBLIC_SUPABASE_ANON_KEY`: the
+      // credential is no less exposed for being smuggled into a differently
+      // named client variable. See `clientKeyLeakIssues` for the shapes swept
+      // and the one (laundering through an intermediate name) that is not.
       const workflow = readRepoFile(SYNC_WORKFLOW_PATH, "the sync workflow");
-      const line = workflow
-        .split("\n")
-        .find((candidate) => candidate.includes(FORBIDDEN_CLIENT_KEY_ENV_VAR));
 
-      expect(line ?? "").not.toContain(SYNC_SERVICE_KEY_ENV_VAR);
+      expect(clientKeyLeakIssues(workflow, SYNC_SERVICE_KEY_ENV_VAR)).toEqual(
+        []
+      );
     }
   );
 
