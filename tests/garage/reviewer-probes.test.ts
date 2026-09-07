@@ -2555,6 +2555,29 @@ describe("declaredArgumentNames — PostgREST resolves by NAME (T2-404a)", () =>
     // The end-to-end half. Read off the migration that actually shipped, so a
     // parser that produced plausible-looking nonsense for synthetic input would
     // still be caught.
+    //
+    // Lifecycle RPCs only: `create_share_grant` and `revoke_share_grant` — the
+    // pair the migration's own header comment (20260906120100_share_grants.sql)
+    // names "the two authenticated lifecycle RPCs", distinct from
+    // `share_read_vehicle`/`_records`/`_receipts`, its "three security definer
+    // readers". `share-grants.test.ts`'s "both lifecycle RPCs take the argument
+    // names the graders send" uses the same two-RPC scope independently.
+    //
+    // `share_read_records`'s real argNames used to be asserted here too
+    // (`toEqual(["p_token"])`), but that pinned an exact, closed signature on a
+    // reader T2-404b (specs/002-montero-garage) is required to widen: the
+    // public showcase/work-log world-reader path serves a null token and has
+    // no token to look a vehicle up by, so it needs a way to name a handle and
+    // a vehicle id instead. It also proved nothing this test doesn't already
+    // prove without it — `revoke_share_grant(p_share_id uuid)` is the same
+    // single-arg, single-line, no-default, no-keyword shape, read from the
+    // same real migration, so the parser's ability to read a one-argument
+    // reader's real signature off shipped SQL is still exercised end-to-end.
+    // Removed 2026-09-06 (grader-defect fix, refs specs/002-montero-garage
+    // T2-404b) rather than widened to a guessed future signature, since this
+    // test's job is proving the parser against what already shipped, not
+    // pre-committing an implementation to argument names the spec does not
+    // name.
     const declared = functions(migrationSql());
     const named = (name: string) =>
       declared.find((routine) => routine.name === name)?.argNames;
@@ -2567,7 +2590,6 @@ describe("declaredArgumentNames — PostgREST resolves by NAME (T2-404a)", () =>
       "p_expires_in_hours",
     ]);
     expect(named("revoke_share_grant")).toEqual(["p_share_id"]);
-    expect(named("share_read_records")).toEqual(["p_token"]);
   });
 
   it("`header` still contains NO argument name — the defect, pinned", () => {
