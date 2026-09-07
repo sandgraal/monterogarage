@@ -1410,16 +1410,44 @@ export function anonSurfaceIssues(normalized: string): string[] {
  *   privilege that nearly shipped the hole);
  * - `authenticated` holding more than the four verbs the schema means to give
  *   it. `TRUNCATE` is the one that matters and the one RLS does not filter.
+ *
+ * ## `exempt` — a table this function should not be asked about at all
+ *
+ * Every check below assumes the table is user data: an anonymous role
+ * holding anything is a leak, full stop. `EXEMPT_PUBLIC_TABLES`
+ * (`search_index_entries`, RM-01/RM-02) names a table where that assumption
+ * is false — public reference content, where `anon`/`authenticated` holding
+ * `select` is the *correct* end state — so this function skips it entirely
+ * rather than special-casing "except `select`" into the loop below, in the
+ * same style `ungradedTableIssues` already exempts a table from its own
+ * sweep. Defaulting the parameter to `EXEMPT_PUBLIC_TABLES` means neither
+ * call site in `rls-deny-by-default.test.ts` nor `share-instrument.test.ts`
+ * has to filter `tables` itself to get the exemption; a synthetic map is only
+ * needed to probe the mechanism in isolation (`reviewer-probes.test.ts`, G28).
+ *
+ * **The gap this deliberately leaves open:** an exempt table's *write* grants
+ * are not checked here — this function has no opinion on whether
+ * `authenticated` can `insert` into `search_index_entries`, because RM-02's
+ * actual write-verb contract for that table lives in `tests/sync/rules.ts`'s
+ * `writeGrantIssues`, which is the suite that owns it. Exempting a table from
+ * this private-data sweep is not the same claim as "this table's ACL is
+ * unchecked" — it means "checked by the suite that knows the right answer for
+ * it".
  */
 export function tableGrantIssues(
   normalized: string,
-  tables: readonly string[]
+  tables: readonly string[],
+  options: { readonly exempt?: ReadonlyMap<string, string> } = {}
 ): string[] {
+  const exempt = options.exempt ?? EXEMPT_PUBLIC_TABLES;
   const state = grants(normalized);
   const issues: string[] = [];
   const expected = ["select", "insert", "update", "delete"];
 
   for (const table of tables) {
+    if (exempt.has(table)) {
+      continue;
+    }
     const identity = `public.${table}`;
 
     for (const role of ANONYMOUS_ROLES) {

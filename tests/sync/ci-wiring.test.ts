@@ -9,12 +9,15 @@
  * runs on pull requests from forks, a secret smuggled into a client-visible
  * variable, a script that also happens to write into `src/content/`.
  *
- * Neither `scripts/sync-reference-search.mjs` nor
- * `.github/workflows/sync-reference-search.yml` exists yet — T802 ships
- * both, at the paths `tests/sync/contract.ts` names (`SYNC_SCRIPT_PATH`,
- * `SYNC_WORKFLOW_PATH`; renegotiable in one line, same as every other name
- * in that file). Every grader that reads one of those two files is
- * `it.fails`.
+ * T802 shipped both `scripts/sync-reference-search.mjs` and
+ * `.github/workflows/sync-reference-search.yml`, at the paths
+ * `tests/sync/contract.ts` names (`SYNC_SCRIPT_PATH`, `SYNC_WORKFLOW_PATH`;
+ * renegotiable in one line, same as every other name in that file), and
+ * activated every grader below by deleting its `it.fails` marker. The two
+ * unmarked seam canaries that used to live here (`readRepoFile` throwing the
+ * T802 seam when either file was missing) are gone in the same change — the
+ * same convention `tests/garage/`'s `harness-contract.test.ts` documents for
+ * `seam-canary.test.ts`.
  *
  * `describe("clientKeyLeakIssues — …")` is the exception, and unmarked on
  * purpose: it grades **this file's own instrument** against hand-written
@@ -38,8 +41,6 @@ import { clientKeyLeakIssues } from "./rules.ts";
 
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 
-const SEAM = "not implemented: T802";
-
 function readRepoFile(relativePath: string, what: string): string {
   try {
     // `join`, not template concatenation: the previous spelling
@@ -49,34 +50,21 @@ function readRepoFile(relativePath: string, what: string): string {
     // moment anything trimmed it. `tests/garage/share-delivery.test.ts` is the
     // established pattern in this repo.
     return readFileSync(join(REPO_ROOT, relativePath), "utf8");
-  } catch {
+  } catch (cause) {
     throw new Error(
-      `${SEAM} — ${what} does not exist at ${relativePath}. T801 [TEST] named ` +
-        `the path; T802 [PLATFORM] creates the file (refs specs/001-foundation ` +
-        `RM-01, RM-02)`
+      `${what} does not exist at ${relativePath}: ${(cause as Error).message} ` +
+        `(refs specs/001-foundation RM-01, RM-02)`,
+      { cause }
     );
   }
 }
 
-describe("the CI wiring is honest about not existing yet", () => {
-  // Unmarked canary, same role as the one in `sync-plan.test.ts`.
-  it("names the T802 seam when the script is missing", () => {
-    expect(() => readRepoFile(SYNC_SCRIPT_PATH, "the sync script")).toThrow(
-      SEAM
-    );
-  });
-
-  it("names the T802 seam when the workflow is missing", () => {
-    expect(() => readRepoFile(SYNC_WORKFLOW_PATH, "the sync workflow")).toThrow(
-      SEAM
-    );
-  });
-
+describe("readRepoFile resolves a real repo path", () => {
   it("resolves a repo path with a separator, not by concatenation", () => {
     // Guards the `join` in `readRepoFile`: this repo's own `package.json`
     // is read through the same helper, so a path built by gluing REPO_ROOT to
-    // a relative path without a separator would throw the T802 seam here
-    // instead of returning the file.
+    // a relative path without a separator would fail to find it — the same
+    // way a run against a missing SYNC_SCRIPT_PATH/SYNC_WORKFLOW_PATH would.
     expect(readRepoFile("package.json", "package.json")).toContain(
       '"name": "monterogarage"'
     );
@@ -229,7 +217,7 @@ jobs:
  * ====================================================================== */
 
 describe("RM-01 — the sync runs only when content merges to main", () => {
-  it.fails("the workflow triggers on push to main", () => {
+  it("the workflow triggers on push to main", () => {
     const workflow = readRepoFile(SYNC_WORKFLOW_PATH, "the sync workflow");
     // A loose match on purpose: this asks "is `push` gated to `main`
     // somewhere in the trigger block", not "is the YAML formatted one
@@ -238,13 +226,10 @@ describe("RM-01 — the sync runs only when content merges to main", () => {
     expect(workflow).toMatch(/\bpush\s*:[\s\S]*?branches\s*:[\s\S]*?main/);
   });
 
-  it.fails(
-    "the workflow does NOT run on pull_request — a fork PR must never hold write credentials",
-    () => {
-      const workflow = readRepoFile(SYNC_WORKFLOW_PATH, "the sync workflow");
-      expect(workflow).not.toMatch(/\bpull_request\s*:/);
-    }
-  );
+  it("the workflow does NOT run on pull_request — a fork PR must never hold write credentials", () => {
+    const workflow = readRepoFile(SYNC_WORKFLOW_PATH, "the sync workflow");
+    expect(workflow).not.toMatch(/\bpull_request\s*:/);
+  });
 });
 
 /* =========================================================================
@@ -252,45 +237,34 @@ describe("RM-01 — the sync runs only when content merges to main", () => {
  * ====================================================================== */
 
 describe("RM-02 — the write credential is the CI job's alone", () => {
-  it.fails(
-    "the workflow reads the service-role key from a repository secret, not a literal",
-    () => {
-      const workflow = readRepoFile(SYNC_WORKFLOW_PATH, "the sync workflow");
-      expect(workflow).toContain(`secrets.${SYNC_SERVICE_KEY_ENV_VAR}`);
-    }
-  );
+  it("the workflow reads the service-role key from a repository secret, not a literal", () => {
+    const workflow = readRepoFile(SYNC_WORKFLOW_PATH, "the sync workflow");
+    expect(workflow).toContain(`secrets.${SYNC_SERVICE_KEY_ENV_VAR}`);
+  });
 
-  it.fails(
-    "the workflow never assigns the write credential to ANY PUBLIC_-prefixed variable",
-    () => {
-      // src/lib/supabase/config.ts's whole design is that only PUBLIC_* reaches
-      // client code. Naming the service-role secret into that prefix anywhere
-      // in this workflow would make "no service key exists in this repo"
-      // (that module's own docstring) false the moment this job runs.
-      //
-      // Every PUBLIC_* binding, not just `PUBLIC_SUPABASE_ANON_KEY`: the
-      // credential is no less exposed for being smuggled into a differently
-      // named client variable. See `clientKeyLeakIssues` for the shapes swept
-      // and the one (laundering through an intermediate name) that is not.
-      const workflow = readRepoFile(SYNC_WORKFLOW_PATH, "the sync workflow");
+  it("the workflow never assigns the write credential to ANY PUBLIC_-prefixed variable", () => {
+    // src/lib/supabase/config.ts's whole design is that only PUBLIC_* reaches
+    // client code. Naming the service-role secret into that prefix anywhere
+    // in this workflow would make "no service key exists in this repo"
+    // (that module's own docstring) false the moment this job runs.
+    //
+    // Every PUBLIC_* binding, not just `PUBLIC_SUPABASE_ANON_KEY`: the
+    // credential is no less exposed for being smuggled into a differently
+    // named client variable. See `clientKeyLeakIssues` for the shapes swept
+    // and the one (laundering through an intermediate name) that is not.
+    const workflow = readRepoFile(SYNC_WORKFLOW_PATH, "the sync workflow");
 
-      expect(clientKeyLeakIssues(workflow, SYNC_SERVICE_KEY_ENV_VAR)).toEqual(
-        []
-      );
-    }
-  );
+    expect(clientKeyLeakIssues(workflow, SYNC_SERVICE_KEY_ENV_VAR)).toEqual([]);
+  });
 
-  it.fails(
-    "the sync script itself never reads the PUBLIC_ anon-key variable",
-    () => {
-      // The write path authenticates as the service role, full stop — reaching
-      // for the anon key anywhere in the writer is a sign it is about to make
-      // an RLS-governed (and therefore rejectable, silently-partial) write
-      // instead of the unconditional one RM-02 assumes the CI job can make.
-      const script = readRepoFile(SYNC_SCRIPT_PATH, "the sync script");
-      expect(script).not.toContain(FORBIDDEN_CLIENT_KEY_ENV_VAR);
-    }
-  );
+  it("the sync script itself never reads the PUBLIC_ anon-key variable", () => {
+    // The write path authenticates as the service role, full stop — reaching
+    // for the anon key anywhere in the writer is a sign it is about to make
+    // an RLS-governed (and therefore rejectable, silently-partial) write
+    // instead of the unconditional one RM-02 assumes the CI job can make.
+    const script = readRepoFile(SYNC_SCRIPT_PATH, "the sync script");
+    expect(script).not.toContain(FORBIDDEN_CLIENT_KEY_ENV_VAR);
+  });
 });
 
 /* =========================================================================
@@ -298,37 +272,31 @@ describe("RM-02 — the write credential is the CI job's alone", () => {
  * ====================================================================== */
 
 describe("RM-01 — the sync script never writes back into git-authored content", () => {
-  it.fails(
-    "the script contains no write call whose path touches src/content",
-    () => {
-      // A structural sweep, not a claim about every possible spelling of
-      // "write a file" — `.claude/GRADER-PRINCIPLES.md`'s "known-pages sweep"
-      // caveat applies here in miniature: this enumerates the Node write APIs
-      // that actually exist (`writeFile`, `writeFileSync`, `appendFile`,
-      // `appendFileSync`, `rm`, `rmSync`, `unlink`, `unlinkSync`) rather than
-      // grading "the word content appears", so a read of `src/content/…` (the
-      // sync's whole job) does not trip it, and only a write naming that path
-      // does.
-      const script = readRepoFile(SYNC_SCRIPT_PATH, "the sync script");
-      const writeCallWithContentPath = new RegExp(
-        "\\b(writeFile(?:Sync)?|appendFile(?:Sync)?|rm(?:Sync)?|unlink(?:Sync)?)" +
-          "\\s*\\([^)]*(?:src/content|\\bcontent\\.config)"
-      );
+  it("the script contains no write call whose path touches src/content", () => {
+    // A structural sweep, not a claim about every possible spelling of
+    // "write a file" — `.claude/GRADER-PRINCIPLES.md`'s "known-pages sweep"
+    // caveat applies here in miniature: this enumerates the Node write APIs
+    // that actually exist (`writeFile`, `writeFileSync`, `appendFile`,
+    // `appendFileSync`, `rm`, `rmSync`, `unlink`, `unlinkSync`) rather than
+    // grading "the word content appears", so a read of `src/content/…` (the
+    // sync's whole job) does not trip it, and only a write naming that path
+    // does.
+    const script = readRepoFile(SYNC_SCRIPT_PATH, "the sync script");
+    const writeCallWithContentPath = new RegExp(
+      "\\b(writeFile(?:Sync)?|appendFile(?:Sync)?|rm(?:Sync)?|unlink(?:Sync)?)" +
+        "\\s*\\([^)]*(?:src/content|\\bcontent\\.config)"
+    );
 
-      expect(script).not.toMatch(writeCallWithContentPath);
-    }
-  );
+    expect(script).not.toMatch(writeCallWithContentPath);
+  });
 
-  it.fails(
-    "the script imports computeSyncPlan rather than re-implementing the diff inline",
-    () => {
-      // Not a style preference: `computeSyncPlan` is the ONLY thing
-      // `tests/sync/sync-plan.test.ts` can prove idempotent and
-      // one-directional without a live stack. A script that reimplements the
-      // same decision inline routes around every one of those proofs, and
-      // would still pass every other grader in this file while doing so.
-      const script = readRepoFile(SYNC_SCRIPT_PATH, "the sync script");
-      expect(script).toMatch(/computeSyncPlan/);
-    }
-  );
+  it("the script imports computeSyncPlan rather than re-implementing the diff inline", () => {
+    // Not a style preference: `computeSyncPlan` is the ONLY thing
+    // `tests/sync/sync-plan.test.ts` can prove idempotent and
+    // one-directional without a live stack. A script that reimplements the
+    // same decision inline routes around every one of those proofs, and
+    // would still pass every other grader in this file while doing so.
+    const script = readRepoFile(SYNC_SCRIPT_PATH, "the sync script");
+    expect(script).toMatch(/computeSyncPlan/);
+  });
 });

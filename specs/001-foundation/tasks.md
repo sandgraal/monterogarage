@@ -803,7 +803,7 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
   - **The implementation seam:** `src/lib/sync/reference-search.ts` exports the row/plan types and a `computeSyncPlan(gitRows, dbRows): SyncPlan` that throws `"not implemented: T802"`. T802 fills in the body only — the types are the contract, and `tests/sync/sync-plan.test.ts`'s idempotency/one-directionality proofs run unchanged once it does.
   - **Tier B / live-stack note:** no live-Supabase behavioural tier exists for this feature (unlike `tests/garage/`'s Tier A/B split) — everything here is Tier A (migration text + pure logic + file text), since T802 has not shipped a schema for a live stack to run against yet. Whether a Tier B belongs here (proving the GIN index actually serves `@@` queries, proving RLS behaviourally rather than declaratively) is a call for whoever scopes T802/T803, not invented on this branch.
   - **Open question for T802/T803, not decided here:** whether the sync's "built content" (RM-01) should read Astro's `getCollection()` output directly or a pre-built JSON artifact — orthogonal to every grader in this branch, since `computeSyncPlan` takes already-shaped `ReferenceSearchRow[]` and does not care where they came from.
-- [ ] **T802 [PLATFORM]** CI sync job git→Supabase (typed tables, en/es dictionaries), service key only in CI secrets. Activates T801 graders. Depends: T801 merged. *(RM-01, RM-02)*
+- [x] **T802 [PLATFORM]** CI sync job git→Supabase (typed tables, en/es dictionaries), service key only in CI secrets. Activates T801 graders. Depends: T801 merged. *(RM-01, RM-02)*
 - [ ] **T803 [PLATFORM]** Server-side search endpoint + site integration behind client-side fallback. Depends: T802. *(SRCH-01)*
 
 ## Phase-closing reviews
