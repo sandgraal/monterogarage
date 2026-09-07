@@ -1,0 +1,717 @@
+/**
+ * Graders — **the world reader's cover-photo gate.** Declared by T2-404d
+ * [TEST], against an RPC that already ships and a `<img>` seam that already
+ * exists but is never wired.
+ *
+ * > **GAR-01′** … A user SHALL be able to designate one uploaded photo as the
+ * > vehicle's **cover photo** … rendered wherever the vehicle is shown as a
+ * > single item — the garage vehicle list, and any future showcase-page card
+ * > (SHR-02).
+ * > **SHR-09** A grant SHALL NOT make a record eligible for the community
+ * > evidence surfacing of GAR-04′.
+ *
+ * ## What T2-404b shipped, and what it left as a seam
+ *
+ * `20260907130000_vehicle_cover_photo_public_bucket.sql` copies a designated
+ * cover into a **public** `vehicle-cover-photos` bucket the moment it is set,
+ * and removes the copy the moment it departs — the storage half, done and
+ * deployed. `20260907120000_public_pages.sql`'s `share_read_vehicle`, the
+ * world-reader RPC the showcase page calls, never learned about it: its
+ * `p_token is null` branch projects `id`, `display_name`, the taxonomy
+ * columns, and the two publication flags — never `cover_photo_path`. The
+ * showcase page's `<img data-showcase-cover>` is hidden and stays hidden,
+ * because nothing ever sets a `src` on it (see that page's own doc comment).
+ *
+ * ## The seam this file grades against, named so the implementer builds to it
+ *
+ * **The RPC returns the raw `cover_photo_path`, not a full URL** — the page
+ * already resolves `PUBLIC_SUPABASE_URL` (`SUPABASE_BROWSER_CONFIG`) and
+ * `src/lib/garage/showcase-view.ts`'s new `publicCoverPhotoUrl` seam turns a
+ * path into the public object URL in one place, so the database does not have
+ * to know its own project URL to answer "does this vehicle have a cover" —
+ * the same division `share_read_receipts` already draws between "resolve the
+ * path in Postgres" and "sign it in the Edge Function that knows the API
+ * origin" (`contract.ts`'s `RECEIPT_SIGNER_DIR`).
+ *
+ * **The gating flag is `is_showcase_public`, not the row-admitting OR**
+ * (`is_showcase_public is true or is_worklog_public is true`) that decides
+ * whether the vehicle is returned at all — see `contract.ts`'s
+ * `COVER_PUBLICATION_FLAG` for why treating the wider OR as the cover's own
+ * gate is the exact SHR-09 conflation ("the grant path and GAR-04′'s
+ * publication path must not meet") one surface over: a truck whose owner
+ * published *only* the work-log must not hand a cover photo to a page they
+ * never chose to publish.
+ *
+ * ## Two tiers, on purpose (the SHR-08 precedent, `share-grants.test.ts`)
+ *
+ * Tier A parses the migration text and can prove a *shape* — the column is
+ * mentioned only inside the `p_token is null` branch, and only behind its own
+ * `case when is_showcase_public …` gate, never riding along in the same
+ * object literal as the always-present identity fields. It cannot prove the
+ * database actually refuses to hand out a cover at runtime — GRADER-
+ * PRINCIPLES.md's own first lesson, "grade the end state, not the text." Tier
+ * B asks the real question of a real anonymous request: a worklog-public,
+ * showcase-**private** vehicle with a cover on file is the realistic,
+ * non-trivial case (a fully private vehicle is not returned at all, so its
+ * cover is trivially absent too — the parenthetical the task brief itself
+ * names). Both run; neither substitutes for the other.
+ *
+ * ## Expected-failure convention
+ *
+ * `it.fails`, one marker per test. Every marked assertion below was proved to
+ * fail for the *seam* — nothing exists yet that projects `cover_photo_path` on
+ * the world path — by scratch-implementing the gated projection locally
+ * against a live stack, watching every marker (and the negative guards below)
+ * go green for the right reason, and reverting before this file was
+ * committed. The negative guards are deliberately **unmarked**: they already
+ * pass today, because nothing exposes a cover to anyone yet, and that is the
+ * correct state for a feature that has not shipped. What makes an unmarked
+ * pass meaningful rather than vacuous is proved the same way — mutated
+ * locally into a leaking implementation, watched the same guards turn red,
+ * reverted.
+ *
+ * refs specs/002-montero-garage (GAR-01′, SHR-02, SHR-09)
+ */
+import { describe, expect, it } from "vitest";
+import {
+  COVER_PHOTO_COLUMN,
+  COVER_PUBLICATION_FLAG,
+  SHARE_READER_TOKEN_ARGUMENT,
+  TEST_TAXONOMY_IDENTITY,
+  testHandle,
+  testVehicleName,
+  testVehiclePhotoPath,
+} from "./contract.ts";
+import {
+  detectLiveStack,
+  insertRow,
+  liveTitle,
+  provisionScenario,
+  rpc,
+  stackOf,
+  teardownScenario,
+  updateRows,
+  type Scenario,
+} from "./harness.ts";
+import {
+  anonExecutableFunctions,
+  isContractRoutine,
+  tokenAbsentSpans,
+} from "./rules.ts";
+import {
+  balancedAt,
+  functions,
+  migrationSql,
+  normalizeSql,
+  type FunctionDefinition,
+} from "./sql.ts";
+
+const live = await detectLiveStack();
+
+/* =========================================================================
+ * The rule: is a cover-photo mention gated the way SHR-09/GAR-01′ require?
+ *
+ * Local to this file, in the style `cover-photo.test.ts` set for the same
+ * reason: a rule that answers one requirement about one column is easier to
+ * read, and easier to mutate on purpose, next to the graders that use it than
+ * three hundred lines away in `rules.ts` among the general-purpose ones.
+ * ====================================================================== */
+
+/**
+ * The start offset of the innermost `jsonb_build_object(…)` call whose
+ * parentheses enclose `at`, or `null` when `at` is not inside one.
+ *
+ * "Innermost" is the call with the **largest** start offset that still
+ * encloses `at` — a nested call necessarily starts later than the one
+ * enclosing it, so the largest qualifying start is the tightest fit.
+ */
+function jsonbCallStart(body: string, at: number): number | null {
+  const pattern = /jsonb_build_object\s*\(/g;
+  let best: number | null = null;
+  for (let hit = pattern.exec(body); hit; hit = pattern.exec(body)) {
+    const open = hit.index + hit[0].length - 1;
+    const group = balancedAt(body, open);
+    if (!group) continue;
+    if (hit.index <= at && at < group.close) {
+      if (best === null || hit.index > best) best = hit.index;
+    }
+  }
+  return best;
+}
+
+/**
+ * The start offsets of every `jsonb_build_object(…)` call that mentions
+ * `marker` somewhere in its argument list — used below to find the call(s)
+ * building a vehicle's always-present identity fields (`'display_name'`),
+ * so a cover mention sharing one of those calls can be recognised as riding
+ * along on a predicate that was never about the cover at all.
+ */
+function jsonbCallStartsContaining(body: string, marker: string): Set<number> {
+  const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(escaped, "g");
+  const starts = new Set<number>();
+  for (let hit = pattern.exec(body); hit; hit = pattern.exec(body)) {
+    const start = jsonbCallStart(body, hit.index);
+    if (start !== null) starts.add(start);
+  }
+  return starts;
+}
+
+/**
+ * `true` when the text immediately before `position` (whitespace aside) is
+ * `when <condition mentioning the gate flag> then`, and `condition` is read
+ * from the nearest preceding `when`.
+ *
+ * A narrow, bounded-text heuristic and not a full `case`/`end` parser — named
+ * as a limit rather than left to be found, the same discipline
+ * `capabilityGateIssues` states for its own "tested, not merely selected"
+ * check one file over. It recognises exactly the idiom
+ * `share_read_records` already ships for cost omission (`case when
+ * r.is_cost_public is true then jsonb_build_object(…) else '{}'::jsonb end`)
+ * applied to the showcase flag instead of the cost flag, and it does **not**
+ * recognise the logically-equivalent inverted form (`case when … is false
+ * then '{}'::jsonb else jsonb_build_object(…) end`) — a real gap, left named
+ * rather than chased, because Tier B below is what actually proves the
+ * runtime behaviour regardless of which spelling a correct implementation
+ * chooses.
+ */
+function isImmediatelyAfterGatedThen(
+  body: string,
+  position: number,
+  gateFlag: string
+): boolean {
+  const before = body.slice(0, position).trimEnd();
+  if (!/\bthen$/.test(before)) return false;
+  const whenIndex = before.lastIndexOf("when");
+  if (whenIndex === -1) return false;
+  const condition = before.slice(
+    whenIndex + "when".length,
+    before.length - "then".length
+  );
+  return new RegExp(`\\b${gateFlag}\\b`).test(condition);
+}
+
+/**
+ * Findings: does `routine` expose `COVER_PHOTO_COLUMN` anywhere it should
+ * not?
+ *
+ * Two, independent failure shapes, exactly as `capabilityGateIssues` and
+ * `publicationFlagGateIssues` separate theirs so a red suite says which one
+ * was missed:
+ *
+ * 1. **Outside the world path.** A share-grant holder resolves a *token*; the
+ *    cover is a showcase-page concern the token path never asked about, and a
+ *    routine that reads the column while resolving one is the SHR-09
+ *    conflation restated for a fourth column (`is_showcase_public`,
+ *    `is_worklog_public`, and now this one).
+ * 2. **Inside the world path, but not gated on `is_showcase_public`
+ *    specifically.** The row-admitting `(is_showcase_public is true or
+ *    is_worklog_public is true)` is not a gate on this *field* — see
+ *    `contract.ts`'s `COVER_PUBLICATION_FLAG`. A cover mention sharing the
+ *    same `jsonb_build_object(…)` call as the vehicle's always-present
+ *    `'display_name'` has inherited that wider predicate by construction; a
+ *    mention in a call of its own that is not immediately reached through a
+ *    `when … is_showcase_public … then` is treated the same way — narrowly
+ *    but honestly, see {@link isImmediatelyAfterGatedThen}'s own limits.
+ */
+function coverExposureIssues(
+  routine: FunctionDefinition,
+  tokenArgument: string = SHARE_READER_TOKEN_ARGUMENT
+): string[] {
+  const body = routine.body;
+  const occurrence = new RegExp(`\\b${COVER_PHOTO_COLUMN}\\b`, "g");
+  if (!occurrence.test(body)) return [];
+  occurrence.lastIndex = 0;
+
+  const worldSpans = tokenAbsentSpans(body, tokenArgument);
+  const identityCallStarts = jsonbCallStartsContaining(body, "'display_name'");
+
+  let sawOutsideWorld = false;
+  let sawUngated = false;
+
+  for (let hit = occurrence.exec(body); hit; hit = occurrence.exec(body)) {
+    const at = hit.index;
+    const inWorld = worldSpans.some(
+      (span) => at >= span.start && at < span.end
+    );
+    if (!inWorld) {
+      sawOutsideWorld = true;
+      continue;
+    }
+
+    const enclosing = jsonbCallStart(body, at);
+    if (enclosing === null || identityCallStarts.has(enclosing)) {
+      sawUngated = true;
+      continue;
+    }
+    if (!isImmediatelyAfterGatedThen(body, enclosing, COVER_PUBLICATION_FLAG)) {
+      sawUngated = true;
+    }
+  }
+
+  const issues: string[] = [];
+  if (sawOutsideWorld) {
+    issues.push(
+      `${routine.identity}: returns ${COVER_PHOTO_COLUMN} without requiring ` +
+        `\`${tokenArgument} is null\` on that path — a share-grant holder ` +
+        `must never receive a vehicle's cover through the token path (SHR-09)`
+    );
+  }
+  if (sawUngated) {
+    issues.push(
+      `${routine.identity}: returns ${COVER_PHOTO_COLUMN} on the world path ` +
+        `without gating it behind its own \`case when ${COVER_PUBLICATION_FLAG} ` +
+        `is true\` branch — the row-admitting OR (is_showcase_public or ` +
+        `is_worklog_public) is not a gate on this field, and a worklog-only ` +
+        `vehicle must not receive a cover through it (GAR-01′, SHR-09)`
+    );
+  }
+  return issues;
+}
+
+/* =========================================================================
+ * Corpus — the rule fires, and stays quiet when it should
+ *
+ * Unmarked: these grade `coverExposureIssues` itself against fixtures with a
+ * known answer, not the shipped migration, so they pass today regardless of
+ * whether the feature exists yet.
+ * ====================================================================== */
+
+function routineFrom(fixtureSql: string, name: string): FunctionDefinition {
+  const found = functions(normalizeSql(fixtureSql)).find((routine) =>
+    isContractRoutine(routine, name)
+  );
+  if (!found) {
+    throw new Error(`fixture does not declare public.${name}`);
+  }
+  return found;
+}
+
+/**
+ * The correctly-gated shape: cover rides in its **own** `jsonb_build_object`,
+ * reached only through `case when v.is_showcase_public is true then …`, and
+ * appended (`||`) to the always-present identity object rather than folded
+ * into it — the same `||`-merge idiom `share_read_records` already ships for
+ * `is_cost_public`.
+ */
+const GATED_CORRECTLY = `
+create function public.share_read_vehicle(
+  p_token text default null,
+  p_handle text default null,
+  p_vehicle_id uuid default null
+)
+returns setof jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_vehicle_id uuid;
+begin
+  if p_token is null then
+    return query
+      select jsonb_build_object(
+               'id', v.id,
+               'display_name', v.display_name,
+               'is_showcase_public', v.is_showcase_public,
+               'is_worklog_public', v.is_worklog_public
+             )
+             || case
+                  when v.is_showcase_public is true then
+                    jsonb_build_object('cover_photo_path', v.cover_photo_path)
+                  else '{}'::jsonb
+                end
+        from public.vehicles v
+        join public.profiles p on p.id = v.owner_id
+       where p_token is null
+         and lower(p.handle) = lower(btrim(p_handle))
+         and (v.is_showcase_public is true or v.is_worklog_public is true);
+    return;
+  end if;
+
+  select s.vehicle_id
+    into v_vehicle_id
+    from public.shares s
+   where s.token_hash = extensions.digest(p_token, 'sha256')
+     and s.revoked_at is null
+     and s.expires_at > now();
+
+  if not found then
+    raise insufficient_privilege using message = 'share unavailable';
+  end if;
+
+  return query
+    select jsonb_build_object('id', v.id, 'display_name', v.display_name)
+      from public.vehicles v
+     where v.id = v_vehicle_id;
+end;
+$$;
+`;
+
+/** `GATED_CORRECTLY`, with one thing broken. */
+function broken(fixture: string, replace: readonly [string, string]): string {
+  const [from, to] = replace;
+  expect(
+    fixture,
+    `mutation source \`${from}\` is not in the fixture`
+  ).toContain(from);
+  return fixture.replace(from, to);
+}
+
+describe("coverExposureIssues — fires on the realistic defect shapes, and only those", () => {
+  it("POSITIVE CONTROL: the gated shape reports nothing", () => {
+    expect(
+      coverExposureIssues(routineFrom(GATED_CORRECTLY, "share_read_vehicle"))
+    ).toEqual([]);
+  });
+
+  it("MUTATION: an unconditional cover in the SAME object as the identity fields is flagged", () => {
+    // The realistic mistake: the row is already gated by the OR, so folding
+    // the cover into the identity object *looks* gated and is not — it rides
+    // the OR, not `is_showcase_public` alone.
+    const leaking = broken(GATED_CORRECTLY, [
+      "'is_worklog_public', v.is_worklog_public\n             )\n             || case\n                  when v.is_showcase_public is true then\n                    jsonb_build_object('cover_photo_path', v.cover_photo_path)\n                  else '{}'::jsonb\n                end",
+      "'is_worklog_public', v.is_worklog_public,\n               'cover_photo_path', v.cover_photo_path\n             )",
+    ]);
+
+    const issues = coverExposureIssues(
+      routineFrom(leaking, "share_read_vehicle")
+    );
+    expect(issues).toEqual([
+      expect.stringContaining("without gating it behind its own"),
+    ]);
+  });
+
+  it("MUTATION: gated on is_worklog_public instead of is_showcase_public is flagged", () => {
+    // The exact security-critical bypass the task brief names: a worklog-
+    // public, showcase-PRIVATE vehicle must never receive a cover, and a gate
+    // on the wrong flag is precisely what would leak it.
+    const wrongFlag = broken(GATED_CORRECTLY, [
+      "when v.is_showcase_public is true then",
+      "when v.is_worklog_public is true then",
+    ]);
+
+    const issues = coverExposureIssues(
+      routineFrom(wrongFlag, "share_read_vehicle")
+    );
+    expect(issues).toEqual([
+      expect.stringContaining("without gating it behind its own"),
+    ]);
+  });
+
+  it("MUTATION: an unconditional `||` merge with no case/when at all is flagged", () => {
+    const bareMerge = broken(GATED_CORRECTLY, [
+      "|| case\n                  when v.is_showcase_public is true then\n                    jsonb_build_object('cover_photo_path', v.cover_photo_path)\n                  else '{}'::jsonb\n                end",
+      "|| jsonb_build_object('cover_photo_path', v.cover_photo_path)",
+    ]);
+
+    const issues = coverExposureIssues(
+      routineFrom(bareMerge, "share_read_vehicle")
+    );
+    expect(issues).toEqual([
+      expect.stringContaining("without gating it behind its own"),
+    ]);
+  });
+
+  it("MUTATION: exposing the cover on the TOKEN path is flagged, independently of the world gate", () => {
+    const onTokenPath = broken(GATED_CORRECTLY, [
+      "select jsonb_build_object('id', v.id, 'display_name', v.display_name)\n      from public.vehicles v\n     where v.id = v_vehicle_id;",
+      "select jsonb_build_object('id', v.id, 'display_name', v.display_name, 'cover_photo_path', v.cover_photo_path)\n      from public.vehicles v\n     where v.id = v_vehicle_id;",
+    ]);
+
+    const issues = coverExposureIssues(
+      routineFrom(onTokenPath, "share_read_vehicle")
+    );
+    expect(issues).toEqual([
+      expect.stringContaining("without requiring `p_token is null`"),
+    ]);
+  });
+
+  it("accepts the bare-boolean spelling of the gate (`when v.is_showcase_public then`)", () => {
+    // `is true` is not the only correct spelling of a boolean test in a CASE
+    // branch — `share_read_records`'s own `is_cost_public` gate uses the
+    // explicit form, but the bare column reference means the same thing and a
+    // rule that rejected it would fail a schema for no reason a requirement
+    // can name (the `foreignKeyFor` three-spellings precedent, one file over).
+    const bareBoolean = broken(GATED_CORRECTLY, [
+      "when v.is_showcase_public is true then",
+      "when v.is_showcase_public then",
+    ]);
+
+    expect(
+      coverExposureIssues(routineFrom(bareBoolean, "share_read_vehicle"))
+    ).toEqual([]);
+  });
+
+  it("reports both findings at once when both defects are present", () => {
+    const both = broken(
+      broken(GATED_CORRECTLY, [
+        "when v.is_showcase_public is true then",
+        "when v.is_worklog_public is true then",
+      ]),
+      [
+        "select jsonb_build_object('id', v.id, 'display_name', v.display_name)\n      from public.vehicles v\n     where v.id = v_vehicle_id;",
+        "select jsonb_build_object('id', v.id, 'display_name', v.display_name, 'cover_photo_path', v.cover_photo_path)\n      from public.vehicles v\n     where v.id = v_vehicle_id;",
+      ]
+    );
+
+    const issues = coverExposureIssues(routineFrom(both, "share_read_vehicle"));
+    expect(issues).toHaveLength(2);
+  });
+});
+
+/* =========================================================================
+ * Tier A — the shipped migration, both directions
+ * ====================================================================== */
+
+function requireVehicleReader(): FunctionDefinition {
+  const found = functions(migrationSql()).find((routine) =>
+    isContractRoutine(routine, "share_read_vehicle")
+  );
+  if (!found) {
+    throw new Error(
+      "no function named public.share_read_vehicle exists in " +
+        "supabase/migrations/ — this file assumes T2-404b's world-reader RPC, " +
+        "which already ships"
+    );
+  }
+  return found;
+}
+
+describe("share_read_vehicle: the cover gate, run against the shipped migration", () => {
+  it("no OTHER anon-reachable routine mentions the cover column at all", () => {
+    // Unmarked. If a future routine (a public index, a search RPC) starts
+    // naming this column, this is the sweep that notices — SHR-09's own
+    // reasoning ("must go through a reviewed world path") applies to a new
+    // column exactly as it does to the two publication flags.
+    const others = anonExecutableFunctions(migrationSql()).filter(
+      (routine) => !isContractRoutine(routine, "share_read_vehicle")
+    );
+    const leaking = others.filter((routine) =>
+      new RegExp(`\\b${COVER_PHOTO_COLUMN}\\b`).test(routine.body)
+    );
+    expect(leaking.map((routine) => routine.identity)).toEqual([]);
+  });
+
+  it("the anon surface exists to sweep — the check above is not vacuous", () => {
+    expect(anonExecutableFunctions(migrationSql()).length).toBeGreaterThan(0);
+  });
+
+  it("share_read_vehicle's own handling of the column, whatever it is today, is gated correctly", () => {
+    // Unmarked, and vacuously clean today: the routine mentions no cover
+    // column at all yet, so there is nothing for `coverExposureIssues` to
+    // object to. That is the correct state for an unshipped feature, and it
+    // is what keeps this guard from reporting the same finding twice once the
+    // it.fails positive control below is satisfied — this test starts
+    // catching a real leak the moment the column is added, and does so
+    // whether or not anyone remembers to update this file.
+    expect(coverExposureIssues(requireVehicleReader())).toEqual([]);
+  });
+
+  it.fails(
+    "POSITIVE CONTROL: the world path actually projects cover_photo_path (GAR-01′)",
+    () => {
+      // Without this, every clean report above is satisfied by a routine that
+      // never mentions the column — a showcase page that never shows a cover.
+      // Deleting this marker is the whole of this file's activation signal for
+      // the RPC half; the corpus and the two guards above do not move.
+      expect(requireVehicleReader().body).toMatch(
+        new RegExp(`\\b${COVER_PHOTO_COLUMN}\\b`)
+      );
+    }
+  );
+});
+
+/* =========================================================================
+ * Tier B — the real question, asked of a real anonymous request
+ * ====================================================================== */
+
+/** A vehicle with one photo, designated as its cover, owned by `actor`. */
+async function vehicleWithCover(
+  scenario: Scenario,
+  overrides: {
+    readonly isShowcasePublic: boolean;
+    readonly isWorklogPublic: boolean;
+  }
+): Promise<{ readonly vehicleId: string; readonly coverPath: string }> {
+  const created = await insertRow(scenario, scenario.ownerA, "vehicles", {
+    owner_id: scenario.ownerA.userId,
+    display_name: testVehicleName("a"),
+    ...TEST_TAXONOMY_IDENTITY,
+  });
+  const rows = Array.isArray(created.body) ? created.body : [];
+  const vehicleId = (rows[0] as { id?: string } | undefined)?.id;
+  if (!created.ok || !vehicleId) {
+    throw new Error(
+      `could not create vehicle: ${created.status} ${created.text}`
+    );
+  }
+
+  const coverPath = testVehiclePhotoPath(
+    scenario.ownerA.userId ?? "",
+    vehicleId,
+    "1"
+  );
+  const linked = await updateRows(
+    scenario,
+    scenario.ownerA,
+    "vehicles",
+    `id=eq.${vehicleId}`,
+    {
+      photo_paths: [coverPath],
+      cover_photo_path: coverPath,
+      is_showcase_public: overrides.isShowcasePublic,
+      is_worklog_public: overrides.isWorklogPublic,
+    }
+  );
+  if (!linked.ok) {
+    throw new Error(
+      `could not designate cover: ${linked.status} ${linked.text}`
+    );
+  }
+
+  return { vehicleId, coverPath };
+}
+
+/** Claim a handle for owner A, so the world reader has a name to resolve. */
+async function claimHandle(scenario: Scenario): Promise<string> {
+  const handle = testHandle("a", scenario.runId);
+  const claimed = await updateRows(
+    scenario,
+    scenario.ownerA,
+    "profiles",
+    `id=eq.${scenario.ownerA.userId}`,
+    { handle }
+  );
+  if (!claimed.ok) {
+    throw new Error(
+      `could not claim handle: ${claimed.status} ${claimed.text}`
+    );
+  }
+  return handle;
+}
+
+/** Read one vehicle as the world (no token), by handle and vehicle id. */
+async function readAsWorld(
+  scenario: Scenario,
+  handle: string,
+  vehicleId: string
+): Promise<Record<string, unknown> | undefined> {
+  const response = await rpc(scenario, scenario.anon, "share_read_vehicle", {
+    p_handle: handle,
+    p_vehicle_id: vehicleId,
+  });
+  const rows = Array.isArray(response.body) ? response.body : [];
+  expect(response.ok, response.text).toBe(true);
+  return rows[0] as Record<string, unknown> | undefined;
+}
+
+describe.skipIf(!live.available)(
+  liveTitle(
+    "the world reader exposes a cover only when the SHOWCASE page is public",
+    live
+  ),
+  () => {
+    it(
+      "a worklog-public, showcase-PRIVATE vehicle is returned with NO cover " +
+        "(security-critical negative)",
+      async () => {
+        const scenario = await provisionScenario(stackOf(live));
+        try {
+          const handle = await claimHandle(scenario);
+          const { vehicleId } = await vehicleWithCover(scenario, {
+            isShowcasePublic: false,
+            isWorklogPublic: true,
+          });
+
+          const row = await readAsWorld(scenario, handle, vehicleId);
+
+          // The vehicle IS returned — the work-log alone admits the row — so
+          // "no cover" below is not merely "the whole read failed" (AGENTS.md:
+          // a failure is not a zero).
+          expect(
+            row,
+            "the worklog-public vehicle was not returned at all"
+          ).toBeDefined();
+          expect(row?.is_worklog_public).toBe(true);
+          expect(Object.hasOwn(row ?? {}, COVER_PHOTO_COLUMN)).toBe(false);
+        } finally {
+          await teardownScenario(scenario);
+        }
+      }
+    );
+
+    it.fails(
+      "POSITIVE CONTROL: a showcase-PUBLIC vehicle's cover IS exposed, matching the stored path",
+      async () => {
+        // Without this, "no cover when showcase is private" above is
+        // satisfiable by a reader that never returns a cover to anyone —
+        // a showcase card that never shows one.
+        const scenario = await provisionScenario(stackOf(live));
+        try {
+          const handle = await claimHandle(scenario);
+          const { vehicleId, coverPath } = await vehicleWithCover(scenario, {
+            isShowcasePublic: true,
+            isWorklogPublic: false,
+          });
+
+          const row = await readAsWorld(scenario, handle, vehicleId);
+
+          expect(row).toBeDefined();
+          expect(Object.hasOwn(row ?? {}, COVER_PHOTO_COLUMN)).toBe(true);
+          expect(row?.[COVER_PHOTO_COLUMN]).toBe(coverPath);
+        } finally {
+          await teardownScenario(scenario);
+        }
+      }
+    );
+
+    it("a vehicle with neither flag public is not returned at all — the cover question is moot", async () => {
+      // The trivial case the task brief names in passing: nothing to expose
+      // because there is no row to expose it on. Asserted anyway, because a
+      // reader that returned the row with no cover for the wrong reason
+      // (a bug that always omits it) would still pass the two graders above.
+      const scenario = await provisionScenario(stackOf(live));
+      try {
+        const handle = await claimHandle(scenario);
+        const { vehicleId } = await vehicleWithCover(scenario, {
+          isShowcasePublic: false,
+          isWorklogPublic: false,
+        });
+
+        const row = await readAsWorld(scenario, handle, vehicleId);
+        expect(row).toBeUndefined();
+      } finally {
+        await teardownScenario(scenario);
+      }
+    });
+
+    it("a share-grant holder (token path) never receives a cover field either", async () => {
+      // The token path answers a different question (SHR-05's granted
+      // history) and has never returned photos or a cover — this pins that a
+      // cover fix does not accidentally widen the OTHER reader path while it
+      // is at it. Uses a nonsense token deliberately: the assertion is about
+      // the *shape* share_read_vehicle's token branch can produce, not about
+      // a live grant, and a routine that leaked the column would do so before
+      // ever checking the token's validity.
+      const scenario = await provisionScenario(stackOf(live));
+      try {
+        const response = await rpc(
+          scenario,
+          scenario.anon,
+          "share_read_vehicle",
+          {
+            p_token: `${testHandle("z", scenario.runId)}-not-a-real-token`,
+          }
+        );
+        const rows = Array.isArray(response.body) ? response.body : [];
+        expect(
+          rows.every((row) => !Object.hasOwn(row as object, COVER_PHOTO_COLUMN))
+        ).toBe(true);
+      } finally {
+        await teardownScenario(scenario);
+      }
+    });
+  }
+);

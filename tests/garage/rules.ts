@@ -2085,8 +2085,14 @@ function publicationFlagsIn(text: string): string[] {
  * A branch whose condition asserts the token is null contributes the span from
  * its `then` to whichever comes first: the next `elsif`/`else` at the same
  * depth, or the `end if` that closes its chain.
+ *
+ * Exported for `tests/garage/public-cover-photo.test.ts` (T2-404d), which
+ * needs the identical "is this position inside the world path" question for
+ * `cover_photo_path` that `publicationFlagGateIssues` already asks for the two
+ * publication flags — reusing this scanner rather than a second, differently
+ * -tested copy of the same `if p_token is null then … end if` recognizer.
  */
-function tokenAbsentSpans(
+export function tokenAbsentSpans(
   body: string,
   tokenArgument: string
 ): { readonly start: number; readonly end: number }[] {
