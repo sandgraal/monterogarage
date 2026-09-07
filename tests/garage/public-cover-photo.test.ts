@@ -95,6 +95,7 @@ import {
 } from "./harness.ts";
 import {
   anonExecutableFunctions,
+  impliesAtom,
   isContractRoutine,
   tokenAbsentSpans,
 } from "./rules.ts";
@@ -159,8 +160,36 @@ function jsonbCallStartsContaining(body: string, marker: string): Set<number> {
 
 /**
  * `true` when the text immediately before `position` (whitespace aside) is
- * `when <condition mentioning the gate flag> then`, and `condition` is read
- * from the nearest preceding `when`.
+ * `when <condition that IMPLIES gateFlag is asserted true> then`, and
+ * `condition` is read from the nearest preceding `when`.
+ *
+ * ## CLOSED (code review, HIGH): the OR-gated leak this rule exists to catch
+ *
+ * The original version asked whether `gateFlag` merely *appears* in the
+ * condition — `new RegExp('\\b' + gateFlag + '\\b').test(condition)` — which
+ * accepts any condition naming the flag anywhere, including as one branch of
+ * a wider `or`:
+ *
+ * ```sql
+ * -- The row-admitting OR, not a gate on this field at all (COVER_PUBLICATION_
+ * -- FLAG's own doc comment). `is_showcase_public` appears in the text, so the
+ * -- substring test accepted this — and a worklog-public, showcase-PRIVATE
+ * -- vehicle got its cover handed out through exactly this branch.
+ * when (v.is_showcase_public is true or v.is_worklog_public is true) then
+ *   jsonb_build_object('cover_photo_path', v.cover_photo_path)
+ * ```
+ *
+ * `condition` is now decomposed with {@link impliesAtom} — the exact
+ * algorithm `impliesTokenAbsent` (`rules.ts`) already uses for the identical
+ * structural question about `p_token is null` — so a top-level `or` is
+ * accepted only when **every** disjunct implies the flag, a top-level `and`
+ * needs only one conjunct to, and a negated atom implies nothing. The shape
+ * above now fails: its `is_worklog_public` disjunct does not name the
+ * showcase flag at all, so `.every()` is false and the condition does not
+ * imply the gate. See `coverExposureIssues`'s own corpus for this shape
+ * pinned as a mutation.
+ *
+ * ## What is still a named, accepted limit
  *
  * A narrow, bounded-text heuristic and not a full `case`/`end` parser — named
  * as a limit rather than left to be found, the same discipline
@@ -188,7 +217,9 @@ function isImmediatelyAfterGatedThen(
     whenIndex + "when".length,
     before.length - "then".length
   );
-  return new RegExp(`\\b${gateFlag}\\b`).test(condition);
+  return impliesAtom(condition, (atom) =>
+    new RegExp(`\\b${gateFlag}\\b`).test(atom)
+  );
 }
 
 /**
@@ -394,6 +425,28 @@ describe("coverExposureIssues — fires on the realistic defect shapes, and only
 
     const issues = coverExposureIssues(
       routineFrom(wrongFlag, "share_read_vehicle")
+    );
+    expect(issues).toEqual([
+      expect.stringContaining("without gating it behind its own"),
+    ]);
+  });
+
+  it("MUTATION: gated on the row-admitting OR (both flags) is flagged — the exact leak the HIGH-severity code review found", () => {
+    // The condition literally contains `\bis_showcase_public\b`, so a plain
+    // substring test on the whole condition — this rule's own defect before
+    // the fix — accepted it as "gated on the showcase flag". It is not: the
+    // OR's OTHER disjunct, is_worklog_public, is what actually admits a
+    // worklog-public/showcase-PRIVATE row, and that row would get a cover
+    // through this exact branch. `impliesAtom` requires EVERY top-level `or`
+    // disjunct to imply the flag; `is_worklog_public is true` does not, so the
+    // condition no longer implies the gate.
+    const orGated = broken(GATED_CORRECTLY, [
+      "when v.is_showcase_public is true then",
+      "when (v.is_showcase_public is true or v.is_worklog_public is true) then",
+    ]);
+
+    const issues = coverExposureIssues(
+      routineFrom(orGated, "share_read_vehicle")
     );
     expect(issues).toEqual([
       expect.stringContaining("without gating it behind its own"),
