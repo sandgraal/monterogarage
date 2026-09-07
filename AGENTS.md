@@ -61,8 +61,9 @@ Specs of record: `specs/001-foundation/spec.md` (reference platform),
 - `npm run lint` / `npm run format:check`
 - `npm test` — Vitest unit tests
 - `npm run test:e2e` — Playwright browser tests in `tests/e2e/` (landed with
-  T204). CI runs `npx playwright test` inside the Links + a11y job rather than
-  this script, so the build is not repeated.
+  T204). CI runs `npx playwright test` inside the weekly `a11y-lighthouse-e2e`
+  job (owner ruling 2026-09-07, see below) rather than this script, so the
+  build is not repeated there.
 - `npm run check:locales` — every entry has both `en` and `es` prose
 - `npm run check:citations` — every numeric spec carries a source
 - `npm run check:glossary` — translated prose uses canonical glossary terms
@@ -73,9 +74,16 @@ Specs of record: `specs/001-foundation/spec.md` (reference platform),
   content scale; a source fails only when both `url` and `archiveUrl` are
   unreachable — a dead original with a live archive is a gaps-report item)
 - `npm run gaps` — the gaps report that feeds the content backlog
-- `npm run verify` — every merge-blocking check except a11y (SCF-02's list);
-  merge-blocking CI is `verify` plus a11y (SCF-03) — link check is scheduled,
-  not merge-blocking (owner ruling 2026-08-30)
+- `npm run verify` — every merge-blocking check (SCF-02's list); merge-blocking
+  CI is `verify` alone, run inside the `Verify`/`Harness validation` jobs
+  (SCF-03, as amended). Pa11y, Lighthouse, and Playwright e2e run in the
+  weekly `a11y-lighthouse-e2e` job (owner ruling 2026-09-07 — the same
+  "too slow for every PR" reasoning as the 2026-08-30 link-check ruling
+  below, at the point content/traffic scale made the full two-build
+  audit+e2e run take real minutes on every PR regardless of what changed);
+  a failing run opens/updates a tracking issue rather than blocking a merge.
+  Link check is scheduled the same way, not merge-blocking (owner ruling
+  2026-08-30).
 
 `npm run verify` must pass before any commit.
 
