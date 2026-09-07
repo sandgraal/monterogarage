@@ -71,6 +71,7 @@ import {
   defaultPrivilegeGrantIssues,
   isAnonExecutable,
   presetBranchIssues,
+  publicationFlagIssues,
   refusalShapeIssues,
   revocationGatingIssues,
 } from "./rules.ts";
@@ -148,26 +149,53 @@ describe("no line hands FUTURE objects to an anonymous caller", () => {
 });
 
 describe("SHR-09: nothing in the schema lets a grant surface a record", () => {
-  it("no anon-reachable routine reads a vehicle's public work-log flag", () => {
+  it("no anon-reachable routine reads a publication flag on a token path", () => {
     // > **SHR-09** A grant SHALL NOT make a record eligible for the community
     // > evidence surfacing of GAR-04′.
     //
     // The two paths must not meet in SQL: the grant readers key on a token, and
-    // GAR-04′ keys on `is_worklog_public`. A routine that reads both is a
-    // routine that can conflate them, and the conflation puts a private
-    // work-log on a public problem page — which "will look like a feature
-    // working correctly right up until someone notices" (T2-403's scope guard).
+    // GAR-04′ keys on `is_worklog_public`. A routine that reads both **on one
+    // path** is a routine that can conflate them, and the conflation puts a
+    // private work-log on a public problem page — which "will look like a
+    // feature working correctly right up until someone notices" (T2-403's
+    // scope guard).
     //
-    // Vacuous today (nothing is anon-reachable) and pinned as such by the
-    // marked completeness half in `share-instrument.test.ts`. It starts paying
-    // the day T2-404 lands, which is the point of landing it first.
-    const offenders = anonExecutableFunctions(migrationSql())
-      .filter((routine) =>
-        /\bis_worklog_public\b|\bis_showcase_public\b/.test(routine.body)
-      )
-      .map((routine) => routine.identity);
+    // ## Narrowed 2026-09-06 by the owner's ruling (T2-404a)
+    //
+    // This used to reject *any* mention of either flag in *any* anon-reachable
+    // routine. That was right for a surface serving token holders alone, and it
+    // became unsatisfiable when the 2026-09-05 amendment folded the public
+    // showcase/work-log pages into the same anon reader — serving the world
+    // means consulting those flags. T2-404 recorded the contradiction rather
+    // than dodging it with a helper function or a fourth anon routine.
+    //
+    // The narrowing is one direction and no more: a **declared** share reader
+    // may consult the flags **only** where the token is absent. The same reader
+    // consulting them while resolving a real token is still a finding, and a
+    // routine that is not on the allow-list reading them at all is still a
+    // finding. Both halves are graded — see `publicationFlagGateIssues` for the
+    // three verdicts, and `reviewer-probes.test.ts` (G27) for the corpus that
+    // proves the accept case is accepted and the ungated case is not.
+    //
+    // Vacuous on the flag question today — the three shipped readers name no
+    // publication flag — and pinned as non-vacuous by the anon-surface control
+    // below, which fails the day `anonExecutableFunctions` stops finding them.
+    expect(publicationFlagIssues(migrationSql(), SHARE_READER_NAMES)).toEqual(
+      []
+    );
+  });
 
-    expect(offenders).toEqual([]);
+  it("the sweep has an anon surface to sweep — it is not vacuous", () => {
+    // The rule above returns `[]` both for "every reader is correctly gated"
+    // and for "there are no anon-reachable routines to look at". Those are
+    // different facts and only one of them is a guarantee. T2-404 shipped
+    // three readers; if the grant replay or the function parser stopped seeing
+    // them, the SHR-09 grader would go on reporting clean about nothing.
+    expect(
+      requireAnonSurface()
+        .map((routine) => routine.name)
+        .sort()
+    ).toEqual([...SHARE_READER_NAMES].sort());
   });
 });
 
@@ -209,41 +237,51 @@ describe("the grant lifecycle RPCs (SHR-05, SHR-08)", () => {
     ).toEqual([]);
   });
 
-  it.fails(
-    "both lifecycle RPCs take the argument names the graders send",
-    () => {
-      // ## T2-401 review, F3 — the argument list is contract, not detail
-      //
-      // PostgREST resolves an RPC overload **by argument name**. A call whose
-      // names match no function resolves to nothing and answers in a way a
-      // grader reading `response.ok` cannot tell from a refusal — so a revoke
-      // with the wrong parameter name revokes nothing, silently, and the SHR-08
-      // proof then compares a *live* grant against two refusals and fails for a
-      // fixture reason. That is the failure shape that gets an assertion
-      // loosened instead of fixed.
-      //
-      // So the names are pinned, and `share-fixtures.ts` builds every payload
-      // from the same lists. If T2-404 wants different names, this line and
-      // `contract.ts` move together and every call site follows.
-      const [create] = requireGrantRoutine(SHARE_CREATE_FUNCTION);
-      const [revoke] = requireGrantRoutine(SHARE_REVOKE_FUNCTION);
+  it("both lifecycle RPCs take the argument names the graders send", () => {
+    // ## T2-401 review, F3 — the argument list is contract, not detail
+    //
+    // PostgREST resolves an RPC overload **by argument name**. A call whose
+    // names match no function resolves to nothing and answers in a way a
+    // grader reading `response.ok` cannot tell from a refusal — so a revoke
+    // with the wrong parameter name revokes nothing, silently, and the SHR-08
+    // proof then compares a *live* grant against two refusals and fails for a
+    // fixture reason. That is the failure shape that gets an assertion
+    // loosened instead of fixed.
+    //
+    // So the names are pinned, and `share-fixtures.ts` builds every payload
+    // from the same lists. If a later task wants different names, this line and
+    // `contract.ts` move together and every call site follows.
+    //
+    // ## Why this reads `argNames` and not `header` (T2-404a)
+    //
+    // It used to read `header`, and it was **unsatisfiable as written**: `sql.ts`
+    // builds `header` from the text *after* the argument list's closing paren,
+    // so no argument name can ever appear in it. T2-404 shipped the correct
+    // signatures, this grader stayed red, and the marker was left in place with
+    // the defect recorded rather than worked around. `functions()` now parses
+    // the argument names out of the parens it already locates.
+    //
+    // Set membership, not substring containment: `header.includes("p_share_id")`
+    // would also have been satisfied by `p_share_id_v2`, by a local variable of
+    // that name, or by a comment.
+    const [create] = requireGrantRoutine(SHARE_CREATE_FUNCTION);
+    const [revoke] = requireGrantRoutine(SHARE_REVOKE_FUNCTION);
 
-      for (const name of SHARE_CREATE_ARGUMENTS) {
-        expect(
-          create.header,
-          `${SHARE_CREATE_FUNCTION} is missing ${name}`
-        ).toContain(name);
-      }
-      for (const name of SHARE_REVOKE_ARGUMENTS) {
-        expect(
-          revoke.header,
-          `${SHARE_REVOKE_FUNCTION} is missing ${name}`
-        ).toContain(name);
-      }
+    for (const name of SHARE_CREATE_ARGUMENTS) {
+      expect(
+        create.argNames,
+        `${SHARE_CREATE_FUNCTION} is missing ${name}`
+      ).toContain(name);
     }
-  );
+    for (const name of SHARE_REVOKE_ARGUMENTS) {
+      expect(
+        revoke.argNames,
+        `${SHARE_REVOKE_FUNCTION} is missing ${name}`
+      ).toContain(name);
+    }
+  });
 
-  it.fails("revocation is per-GRANT, not per-vehicle (SHR-08)", () => {
+  it("revocation is per-GRANT, not per-vehicle (SHR-08)", () => {
     // > Every grant SHALL be revocable **by its issuer** at any time.
     //
     // A grant, not a truck. An owner who issued one link to their mechanic and
@@ -251,10 +289,15 @@ describe("the grant lifecycle RPCs (SHR-05, SHR-08)", () => {
     // `revoke_share_grant(p_vehicle_id)` cannot express that. Graded as the
     // *absence* of a vehicle parameter, because a signature taking both is a
     // signature where the wrong one gets passed.
+    //
+    // The negative half is the one that needed a parsed list rather than
+    // `header` (T2-404a): `header` never contained *any* argument name, so
+    // `not.toContain("p_vehicle_id")` was trivially true and the assertion
+    // above it was trivially false. One field could not be both.
     const [revoke] = requireGrantRoutine(SHARE_REVOKE_FUNCTION);
 
-    expect(revoke.header).toContain("p_share_id");
-    expect(revoke.header).not.toContain("p_vehicle_id");
+    expect(revoke.argNames).toContain("p_share_id");
+    expect(revoke.argNames).not.toContain("p_vehicle_id");
   });
 
   it("the create RPC hands back the grant's id beside its token", () => {

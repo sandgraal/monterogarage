@@ -228,10 +228,45 @@ export function migrationSql(): string {
  * plpgsql body became a statement boundary.
  */
 export function statements(normalized: string): string[] {
-  const out: string[] = [];
+  return statementRanges(normalized).map((range) => range.text);
+}
+
+/** One statement, and where it sits in the text it was split out of. */
+export interface StatementRange {
+  /** Offset of the first character of the *untrimmed* statement. */
+  readonly start: number;
+  /** Offset one past its last character — the top-level `;`, or the end. */
+  readonly end: number;
+  /** The statement text, trimmed. What {@link statements} returns. */
+  readonly text: string;
+}
+
+/**
+ * {@link statements}, with offsets — one implementation, two shapes.
+ *
+ * Declared by T2-404a, which needs to ask *where in the body* a name occurs and
+ * not merely whether it occurs: SHR-09's narrowed rule turns on whether a
+ * publication flag is read inside a branch that requires the token to be
+ * absent, and "inside" is a question about positions. Searching for a
+ * statement's text with `indexOf` would have answered it wrongly for the shape
+ * that matters — a plpgsql `if … then <statement>` is one `;`-delimited chunk,
+ * so the chunk starts *before* the guard the statement runs under.
+ *
+ * Split out rather than copied for the reason `aclKnownFor` records: two
+ * implementations of the same scan mean a mutation that breaks one leaves the
+ * other's callers green, and neither probe notices.
+ */
+export function statementRanges(normalized: string): StatementRange[] {
+  const out: StatementRange[] = [];
   let depth = 0;
   let start = 0;
   let openTag: string | null = null;
+
+  const push = (from: number, to: number): void => {
+    const text = normalized.slice(from, to).trim();
+    if (text) out.push({ start: from, end: to, text });
+  };
+
   for (let index = 0; index < normalized.length; index += 1) {
     const tag = dollarTagAt(normalized, index);
     if (openTag === null && tag !== null) {
@@ -250,13 +285,11 @@ export function statements(normalized: string): string[] {
     if (char === "(") depth += 1;
     else if (char === ")") depth -= 1;
     else if (char === ";" && depth === 0) {
-      const statement = normalized.slice(start, index).trim();
-      if (statement) out.push(statement);
+      push(start, index);
       start = index + 1;
     }
   }
-  const tail = normalized.slice(start).trim();
-  if (tail) out.push(tail);
+  push(start, normalized.length);
   return out;
 }
 
@@ -999,6 +1032,74 @@ export function canonicalArgumentTypes(rawArguments: string): string[] {
 }
 
 /**
+ * One argument's **declared name**, or `null` when it has none.
+ *
+ * ## Why the name is a separate parse from the type (T2-404a)
+ *
+ * A signature is the key an ACL is filed under, so `canonicalArgumentType`
+ * throws the name away on purpose — `create function f(p_now timestamptz)` and
+ * `grant execute on function f(timestamp with time zone)` have to resolve to
+ * one identity. But PostgREST resolves an *RPC overload* by argument **name**:
+ * a call whose named arguments match no function resolves to nothing and
+ * answers in a way a grader reading `response.ok` cannot tell from a refusal
+ * (T2-401 review, F3). Both halves of a routine's argument list are contract,
+ * and only one of them was ever parsed.
+ *
+ * `out` parameters are excluded, exactly as they are from the type list. They
+ * are not part of a routine's identity and, more to the point here, they are
+ * not something a caller can name in a request body — accepting one would let
+ * `returns table (p_share_id uuid)` satisfy a grader asking whether the routine
+ * *takes* `p_share_id`. That is the unsafe direction, so it is closed.
+ *
+ * The name/type ambiguity is resolved the same way `canonicalArgumentType`
+ * resolves it — by {@link TYPE_FIRST_WORDS} — so the two cannot disagree about
+ * where the name stops and the type starts. An unnamed multi-word type
+ * (`timestamp with time zone`) yields `null` rather than the word `timestamp`.
+ *
+ * Identifier quotes are stripped, for the reason `parseRoles` gives at length:
+ * `"p_token"` is the same identifier as `p_token`, and `normalizeSql` has
+ * already case-folded everything, so keeping the quotes could only produce a
+ * name that matches nothing.
+ */
+export function declaredArgumentName(rawArgument: string): string | null {
+  let argument = rawArgument
+    .trim()
+    // `default …` and `= …` are not part of the name.
+    .replace(/\s+(?:default\s+|=\s*)[\s\S]*$/, "")
+    .trim();
+
+  const mode = /^(in|out|inout|variadic)\s+/.exec(argument);
+  if (mode) {
+    // OUT parameters are not arguments a caller can name.
+    if (mode[1] === "out") return null;
+    argument = argument.slice(mode[0].length).trim();
+  }
+
+  const words = argument.split(/\s+/).filter(Boolean);
+  // One word is a bare type (`uuid`); a first word that opens a multi-word type
+  // spelling is that type and not a name.
+  if (words.length < 2 || TYPE_FIRST_WORDS.has(words[0])) return null;
+
+  const name = words[0].replace(/"/g, "").trim();
+  return name === "" ? null : name;
+}
+
+/**
+ * A routine's argument list, reduced to the **names** a caller may send.
+ *
+ * Unnamed and `out` arguments are dropped rather than held as holes, so this
+ * list is **not index-aligned** with {@link canonicalArgumentTypes} for a
+ * routine that mixes named and unnamed arguments. Every caller asks
+ * set-membership questions ("does it take `p_share_id`?", "does it take
+ * `p_vehicle_id`?"), which is what the argument list is contract *for*.
+ */
+export function declaredArgumentNames(rawArguments: string): string[] {
+  return splitTopLevelCommas(rawArguments)
+    .map(declaredArgumentName)
+    .filter((name): name is string => name !== null);
+}
+
+/**
  * `public.purge_expired_accounts(timestamptz)` — the key an ACL is filed under.
  */
 export function functionIdentity(
@@ -1019,6 +1120,28 @@ export interface FunctionDefinition {
   readonly name: string;
   /** Canonical IN/INOUT argument types, in order. */
   readonly argTypes: readonly string[];
+  /**
+   * The declared IN/INOUT argument **names**, in order, `out` and unnamed
+   * arguments dropped — so this is not index-aligned with `argTypes` for a
+   * routine that mixes named and unnamed arguments.
+   *
+   * ## Why this field exists (T2-404a)
+   *
+   * `header` is built from `statement.slice(group.close + 1)` — everything
+   * *after* the argument list's closing paren — so **no argument name can ever
+   * appear in it**. Two graders in `share-grants.test.ts` asserted argument
+   * names against `header` and were therefore unsatisfiable as written:
+   * verified against the shipped migration, `create.statement.includes(
+   * "p_vehicle_id")` is `true` and `create.header.includes("p_vehicle_id")` is
+   * `false` (T2-404's recorded grader defect). Asserting against `statement`
+   * instead would have been a substring test over a whole `create function`
+   * body — `p_share_id` matches a local variable, a comment, or a column of a
+   * different name that contains it. A parsed list makes the question exact.
+   *
+   * PostgREST resolves an RPC overload by argument name, so this is contract
+   * and not detail — see {@link declaredArgumentName}.
+   */
+  readonly argNames: readonly string[];
   /** `public.name(type, type)` — matches the spelling a `grant` uses. */
   readonly identity: string;
   /**
@@ -1090,6 +1213,10 @@ export function functions(normalized: string): FunctionDefinition[] {
       const schema = created[1] ?? "public";
       const name = created[2];
       const argTypes = canonicalArgumentTypes(group.inner);
+      // Parsed from *inside* the parens `group` already located. `tail` below
+      // starts after `group.close`, so nothing derived from it can carry an
+      // argument name — which is precisely the defect T2-404a closes.
+      const argNames = declaredArgumentNames(group.inner);
       const tail = statement.slice(group.close + 1);
 
       // The body, by dollar tag. `as $$ … $$` and `as $function$ … $function$`
@@ -1126,6 +1253,7 @@ export function functions(normalized: string): FunctionDefinition[] {
         schema,
         name,
         argTypes,
+        argNames,
         identity: functionIdentity(schema, name, argTypes),
         returns: returnsClause(header),
         language: /\blanguage\s+([a-z0-9_]+)/.exec(header)?.[1] ?? "",
