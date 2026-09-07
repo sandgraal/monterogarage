@@ -1321,7 +1321,80 @@ describe("the showcase page's own <script> (T2-404d)", () => {
  * change what is checked, and a page that dropped the hook entirely fails
  * loudly on "no such tag" rather than the `hidden` check silently matching
  * nothing.
+ *
+ * The `hidden` check itself must match the **discrete HTML boolean
+ * attribute**, not a substring of the tag text — a bot review on PR #163
+ * (review thread r3952734102) found the original `/\bhidden\b/` scores a
+ * false positive on `aria-hidden="true"` and `data-hidden-reason="…"`
+ * because `\b` also matches at a hyphen. `aria-hidden` hides an element from
+ * assistive tech but does **not** hide it visually, so a regression that
+ * swapped this page's real boolean `hidden` for `aria-hidden` — breaking the
+ * "no cover renders the placeholder, not a broken `<img>`" behavior this
+ * test exists to pin — would have left `/\bhidden\b/` green.
+ * `hasStandaloneHiddenAttribute` and its self-tests below close that gap.
  */
+function hasStandaloneHiddenAttribute(tag: string): boolean {
+  // `hidden` bounded on the left by start-of-string or whitespace (never a
+  // hyphen, which is what let `aria-hidden`/`data-hidden-*` through) and on
+  // the right by whitespace, `=` (the `hidden=""` / `hidden="hidden"`
+  // serializations are equally valid HTML), `/`, or `>` — i.e. an attribute
+  // token, not any substring containing the six letters "hidden".
+  return /(?:^|\s)hidden(?=[\s=/>]|$)/.test(tag);
+}
+
+describe("hasStandaloneHiddenAttribute — helper self-test (mutation-proofing the probe)", () => {
+  // Decoupled from any file on disk, section 6/7's own convention (see
+  // `coverElementVariable`/`coverIsWiredToSeam` self-tests above): a broken
+  // regex is caught here, against fixtures with a known answer, never
+  // discovered only by the real-page assertion below failing — or passing —
+  // for the wrong reason.
+  const HIDDEN_ATTRIBUTE_TOKEN_CASES: readonly {
+    readonly label: string;
+    readonly tag: string;
+    readonly expected: boolean;
+  }[] = [
+    {
+      label: "a bare boolean `hidden` — the real page's current shape",
+      tag: `<img data-showcase-cover alt="" hidden />`,
+      expected: true,
+    },
+    {
+      label: "`hidden` first, before the other attributes",
+      tag: `<img hidden data-showcase-cover alt="" />`,
+      expected: true,
+    },
+    {
+      label: '`hidden=""`, an equally valid boolean-attribute serialization',
+      tag: `<img data-showcase-cover alt="" hidden="" />`,
+      expected: true,
+    },
+    {
+      label: "aria-hidden only — the bot's exact false-positive shape",
+      tag: `<img data-showcase-cover alt="" aria-hidden="true" />`,
+      expected: false,
+    },
+    {
+      label: "data-hidden-reason only, no standalone hidden anywhere",
+      tag: `<img data-showcase-cover alt="" data-hidden-reason="no-cover" />`,
+      expected: false,
+    },
+    {
+      label: "neither hidden nor any hidden-* attribute present",
+      tag: `<img data-showcase-cover alt="" />`,
+      expected: false,
+    },
+    {
+      label: "aria-hidden AND a standalone hidden both present",
+      tag: `<img data-showcase-cover alt="" aria-hidden="true" hidden />`,
+      expected: true,
+    },
+  ];
+
+  it.each(HIDDEN_ATTRIBUTE_TOKEN_CASES)("$label", ({ tag, expected }) => {
+    expect(hasStandaloneHiddenAttribute(tag)).toBe(expected);
+  });
+});
+
 describe("the showcase page's cover <img> ships hidden by default in the server-rendered markup (GAR-01′, SHR-02)", () => {
   it("the [data-showcase-cover] element carries the `hidden` attribute before any client script runs", () => {
     const source = readFileSync(
@@ -1335,6 +1408,6 @@ describe("the showcase page's cover <img> ships hidden by default in the server-
       coverTag,
       "expected an <img> tag carrying data-showcase-cover in the page's static markup"
     ).toBeDefined();
-    expect(/\bhidden\b/.test(coverTag as string)).toBe(true);
+    expect(hasStandaloneHiddenAttribute(coverTag as string)).toBe(true);
   });
 });
