@@ -114,35 +114,113 @@ export interface SyncPlan {
 }
 
 /**
- * The seam message. Every `tests/sync/sync-plan.test.ts` grader is expected
- * to fail today with *this* — not a typo, not an import error — so the
- * `it.fails` markers there are honest about what they are waiting for.
+ * The composite primary key, as one string safe to use as a `Map`/`Set` key.
+ *
+ * `JSON.stringify` of the three-element tuple, rather than a hand-joined
+ * string with a separator: `entryId` is free text (a content author's own
+ * slug), and a hand-joined separator has to be a character provably absent
+ * from every one of the three parts to avoid the class of bug
+ * `tests/garage/sql.ts`'s `qualify()` documents. `collection` and `locale`
+ * are both closed sets today, but `JSON.stringify` needs no such proof at
+ * all — it escapes whatever the string actually contains — so this key
+ * cannot collide regardless of what a future `entryId` contains.
+ *
+ * ## Note on the seam this function's caller replaces
+ *
+ * `SYNC_SEAM_NOT_IMPLEMENTED` (the `"not implemented: T802"` message the
+ * stub used to throw) and the one `tests/sync/sync-plan.test.ts` test that
+ * asserted it are both gone as of this change — the same convention
+ * `tests/garage/`'s `harness-contract.test.ts` documents for
+ * `seam-canary.test.ts`: a canary proving "the real tests fail for the right
+ * reason" has nothing left to prove once the reason is gone, and left in
+ * place it would itself become a false failure the moment
+ * {@link computeSyncPlan} stopped throwing.
  */
-export const SYNC_SEAM_NOT_IMPLEMENTED = "not implemented: T802";
+function keyOf(row: ReferenceSearchKey): string {
+  return JSON.stringify([row.collection, row.entryId, row.locale]);
+}
+
+/** Same-length, same-order string-array equality — `badges`/`codes`/`extra`. */
+function sameStrings(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((value, index) => value === b[index]);
+}
+
+/**
+ * Whether `gitRow` and `dbRow` are the same row in every field RM-01 asks the
+ * sync to keep in step — not just the key. A key match with a stale `title`
+ * or `snippet` is exactly the "converged" state idempotency requires the
+ * second run to close, so every field short of `search_vector` (which the
+ * database computes and the sync never supplies — see this file's own
+ * `ReferenceSearchRow` docs) is compared.
+ */
+function sameRow(
+  gitRow: ReferenceSearchRow,
+  dbRow: ReferenceSearchRow
+): boolean {
+  return (
+    gitRow.collection === dbRow.collection &&
+    gitRow.entryId === dbRow.entryId &&
+    gitRow.locale === dbRow.locale &&
+    gitRow.href === dbRow.href &&
+    gitRow.title === dbRow.title &&
+    gitRow.subtitle === dbRow.subtitle &&
+    gitRow.snippet === dbRow.snippet &&
+    sameStrings(gitRow.badges, dbRow.badges) &&
+    sameStrings(gitRow.codes, dbRow.codes) &&
+    sameStrings(gitRow.extra, dbRow.extra)
+  );
+}
 
 /**
  * Decide what {@link SyncPlan} brings `dbRows` into line with `gitRows`.
  *
- * **Not implemented.** T801 [TEST] declares the contract this function must
- * satisfy — see `tests/sync/sync-plan.test.ts` for the idempotency and
- * one-directionality properties every future implementation is graded
- * against — and T802 [PLATFORM] writes the body. Until then this throws, so
- * a test that calls it fails for a reason a human can read rather than for a
- * wrong number silently produced by a function nobody wrote yet.
+ * A pure diff over two already-shaped row lists — no Supabase client, no
+ * `getCollection`, no I/O (see this module's docstring for why that split is
+ * what makes the RM-01 properties gradable at all without a live stack).
+ *
+ * **Idempotency**: a `gitRow` that already has an identical `dbRow` at its
+ * key (every field {@link sameRow} compares, not just the key) produces
+ * neither an upsert nor a delete — so re-running the plan the sync job just
+ * applied finds nothing left to do (`tests/sync/sync-plan.test.ts`'s
+ * "running the plan's own upserts back through as `dbRows` converges to a
+ * no-op").
+ *
+ * **One-directionality**: `upserts` is always `gitRow` itself, verbatim,
+ * never a value merged with what `dbRows` held at that key — a hand-edited or
+ * stray-inserted `dbRow` is corrected or removed, never read from. `deletes`
+ * is every key `dbRows` holds that no `gitRow` claims, by the full
+ * `(collection, entryId, locale)` key — so the same `entryId` in two locales
+ * is two independent rows, and dropping one locale's translation from git
+ * deletes only that locale's row.
  */
 export function computeSyncPlan(
   gitRows: readonly ReferenceSearchRow[],
   dbRows: readonly ReferenceSearchRow[]
 ): SyncPlan {
-  // Referenced so a strict linter does not flag unused parameters on a
-  // deliberately unimplemented function — the seam throws before either is
-  // read, but the signature is the contract.
-  void gitRows;
-  void dbRows;
-  throw new Error(
-    `${SYNC_SEAM_NOT_IMPLEMENTED} — computeSyncPlan has no implementation. ` +
-      `T801 [TEST] declared the git→Supabase read-model sync contract; T802 ` +
-      `[PLATFORM] ships the diff logic that satisfies it ` +
-      `(refs specs/001-foundation RM-01, RM-02)`
-  );
+  const dbByKey = new Map<string, ReferenceSearchRow>();
+  for (const dbRow of dbRows) dbByKey.set(keyOf(dbRow), dbRow);
+
+  const gitKeys = new Set<string>();
+  const upserts: ReferenceSearchRow[] = [];
+  for (const gitRow of gitRows) {
+    const key = keyOf(gitRow);
+    gitKeys.add(key);
+    const dbRow = dbByKey.get(key);
+    if (dbRow === undefined || !sameRow(gitRow, dbRow)) {
+      upserts.push(gitRow);
+    }
+  }
+
+  const deletes: ReferenceSearchKey[] = [];
+  for (const dbRow of dbRows) {
+    if (gitKeys.has(keyOf(dbRow))) continue;
+    deletes.push({
+      collection: dbRow.collection,
+      entryId: dbRow.entryId,
+      locale: dbRow.locale,
+    });
+  }
+
+  return { upserts, deletes };
 }
