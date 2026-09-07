@@ -8,24 +8,23 @@
  * > **RM-02** THE Supabase read-model SHALL never be written by any process
  * > other than the CI sync job.
  *
- * No migration for `search_index_entries` exists yet — T802 [PLATFORM] ships
- * it. Every DDL-reading grader below is `it.fails`; T802 activates one by
- * deleting exactly that line, the same convention `tests/garage/` uses
- * throughout (see `schema-shape.test.ts` there for the precedent this file
- * follows).
+ * T802 [PLATFORM] shipped the migration
+ * (`supabase/migrations/20260906120200_search_index_entries.sql`) and
+ * activated every DDL-reading grader below by deleting its `it.fails` line,
+ * the same convention `tests/garage/` uses throughout (see
+ * `schema-shape.test.ts` there for the precedent this file follows).
  *
- * ## Two kinds of test in this file, and why only one kind is marked
+ * ## Two kinds of test in this file, and why only one kind was ever marked
  *
  * `describe("searchVectorLocaleIssues — …")`, `describe("hasGinIndexOn —
  * …")`, `describe("primaryKeyColumns — …")` and
  * `describe("writeGrantIssues — …")` grade **this file's own
  * instrument**, `tests/sync/rules.ts`, against hand-written sample SQL with a
- * known-correct and a known-wrong answer. They are unmarked and green today,
- * on purpose — the positive control `.claude/GRADER-PRINCIPLES.md` asks for
- * ("Mutation-test the probe corpus itself"), proving the rule can both accept
- * and reject before a single line of T802's migration exists to read. Every
- * other `describe` in this file reads the real, currently-nonexistent
- * migration directory and is `it.fails`.
+ * known-correct and a known-wrong answer. They are unmarked and green — the
+ * positive control `.claude/GRADER-PRINCIPLES.md` asks for ("Mutation-test
+ * the probe corpus itself"), proving the rule can both accept and reject
+ * independent of whatever the real migration says. Every other `describe` in
+ * this file reads the real migration directory and was `it.fails` until T802.
  *
  * refs specs/001-foundation (RM-01, RM-02, SRCH-01)
  */
@@ -356,13 +355,13 @@ function searchIndexTableBody(): string | null {
 }
 
 describe("the table exists", () => {
-  it.fails(`public.${SEARCH_INDEX_TABLE} is created`, () => {
+  it(`public.${SEARCH_INDEX_TABLE} is created`, () => {
     expect(searchIndexTableBody()).not.toBeNull();
   });
 });
 
 describe("every column RM-01/SRCH-01 asks for is declared", () => {
-  it.fails.each(
+  it.each(
     SEARCH_INDEX_COLUMNS.map(
       (column) => [column.name, column.requirement] as const
     )
@@ -372,7 +371,7 @@ describe("every column RM-01/SRCH-01 asks for is declared", () => {
     expect(columnDefinition(body ?? "", name)).not.toBeNull();
   });
 
-  it.fails.each(
+  it.each(
     SEARCH_INDEX_COLUMNS.filter((column) => column.type !== undefined).map(
       (column) => [column.name, column] as const
     )
@@ -384,7 +383,7 @@ describe("every column RM-01/SRCH-01 asks for is declared", () => {
     expect(definition?.definition ?? "").toMatch(column.type as RegExp);
   });
 
-  it.fails.each(
+  it.each(
     SEARCH_INDEX_COLUMNS.filter((column) => column.notNull).map(
       (column) => [column.name] as const
     )
@@ -397,7 +396,7 @@ describe("every column RM-01/SRCH-01 asks for is declared", () => {
     );
   });
 
-  it.fails("the primary key is exactly (collection, entry_id, locale)", () => {
+  it("the primary key is exactly (collection, entry_id, locale)", () => {
     // The *key*, not the columns. The first version of this asked only
     // whether the three names appeared among `columnDefinitions`, which a
     // surrogate `id uuid primary key` sitting beside three ordinary columns
@@ -419,25 +418,22 @@ describe("every column RM-01/SRCH-01 asks for is declared", () => {
 });
 
 describe("RM-01 — the tsvector column uses per-language dictionaries", () => {
-  it.fails(
-    "the shipped search_vector definition names both dictionaries correctly",
-    () => {
-      const normalized = migrationSql();
-      const body = createTableBody(normalized, SEARCH_INDEX_TABLE);
-      const columnText =
-        (body
-          ? columnDefinition(body, SEARCH_VECTOR_COLUMN_NAME)?.definition
-          : null) ?? "";
-      const triggerText = functions(normalized)
-        .map((fn) => fn.body)
-        .join(" ");
+  it("the shipped search_vector definition names both dictionaries correctly", () => {
+    const normalized = migrationSql();
+    const body = createTableBody(normalized, SEARCH_INDEX_TABLE);
+    const columnText =
+      (body
+        ? columnDefinition(body, SEARCH_VECTOR_COLUMN_NAME)?.definition
+        : null) ?? "";
+    const triggerText = functions(normalized)
+      .map((fn) => fn.body)
+      .join(" ");
 
-      const issues = searchVectorLocaleIssues(`${columnText} ${triggerText}`);
-      expect(issues).toEqual([]);
-    }
-  );
+    const issues = searchVectorLocaleIssues(`${columnText} ${triggerText}`);
+    expect(issues).toEqual([]);
+  });
 
-  it.fails("a GIN index exists on search_vector", () => {
+  it("a GIN index exists on search_vector", () => {
     expect(
       hasGinIndexOn(
         migrationSql(),
@@ -449,18 +445,15 @@ describe("RM-01 — the tsvector column uses per-language dictionaries", () => {
 });
 
 describe("RM-02 — no write access outside the CI sync job", () => {
-  it.fails(
-    "no anon/public/authenticated role holds insert, update, or delete",
-    () => {
-      expect(writeGrantIssues(migrationSql(), SEARCH_INDEX_TABLE)).toEqual([]);
-    }
-  );
+  it("no anon/public/authenticated role holds insert, update, or delete", () => {
+    expect(writeGrantIssues(migrationSql(), SEARCH_INDEX_TABLE)).toEqual([]);
+  });
 
-  it.fails("row level security is enabled", () => {
+  it("row level security is enabled", () => {
     expect(enablesRls(migrationSql(), SEARCH_INDEX_TABLE)).toBe(true);
   });
 
-  it.fails("row level security is FORCED", () => {
+  it("row level security is FORCED", () => {
     expect(forcesRls(migrationSql(), SEARCH_INDEX_TABLE)).toBe(true);
   });
 });
