@@ -304,7 +304,7 @@ jobs:
             "$LIGHTHOUSE_PLAIN_CODE" "$LIGHTHOUSE_CONFIGURED_CODE" \
             "$E2E_ALL_CODE" "$E2E_GARAGE_UNREACHABLE_CODE" "$E2E_HIDDEN_GUARD_CODE"
           do
-            if [ -n "$code" ] && [ "$code" != "0" ]; then
+            if [ "$code" != "0" ]; then
               failed=true
             fi
           done
