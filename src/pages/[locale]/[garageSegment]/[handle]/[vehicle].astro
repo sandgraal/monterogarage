@@ -36,15 +36,18 @@
  * a secret, so this is not SHR-08's oracle case, it is simply that a reader has
  * one thing to do about any of them.
  *
- * ## The cover photo is the no-cover placeholder, on purpose (for now)
+ * ## The cover photo (T2-404d)
  *
- * The public-cover-photo bucket is a separate branch; the world reader does not
- * return a cover URL yet, so this renders the same placeholder a photo-less
- * vehicle gets (GAR-01′). The `[data-showcase-cover]` image is the seam a public
- * cover URL slots into later with no rewrite here, and `data-string-cover-alt`
- * (`publicCoverAltTemplate`) is the alt-text half of that same forward seam:
- * plumbed to the DOM now, read by the client only once that branch fills the
- * image, so it lands adding no markup here.
+ * The world reader (`share_read_vehicle`, null-token path) projects
+ * `cover_photo_path` once — and only once — `is_showcase_public` is true
+ * (`tests/garage/contract.ts`'s `COVER_PUBLICATION_FLAG`, never the wider
+ * row-admitting OR). `publicCoverPhotoUrl` (`showcase-view.ts`) turns that raw
+ * path into the public storage URL; a `null` result — no cover designated, or
+ * the flag was closed and the RPC omitted the field — leaves the
+ * `[data-showcase-cover]` image exactly as shipped: `hidden`, with the same
+ * placeholder panel a photo-less vehicle gets (GAR-01′). Its `alt` comes from
+ * `data-string-cover-alt` (`publicCoverAltTemplate`), `{name}`-templated with
+ * the vehicle's own display name — this script composes no prose of its own.
  *
  * refs specs/002-montero-garage (SHR-02, SHR-04, SHR-01, GAR-01′, MIG-03),
  * specs/001-foundation (SCF-01, I18N-01, I18N-04, I18N-08),
@@ -203,9 +206,11 @@ const generationLabelsJson = JSON.stringify(generationLabels).replaceAll(
 <script>
   import { isLocale, localeHref, type Locale } from "../../../../i18n/routing";
   import { SITE_NAME } from "../../../../site";
+  import { SUPABASE_BROWSER_CONFIG } from "../../../../lib/supabase/config";
   import { readPublicVehicle } from "../../../../lib/supabase/shares";
   import {
     applyResolvedShowcaseLinks,
+    publicCoverPhotoUrl,
     resolveShowcasePage,
     showcaseRoutePaths,
     worklogRoutePath,
@@ -230,7 +235,10 @@ const generationLabelsJson = JSON.stringify(generationLabels).replaceAll(
     const worklogLink = root.querySelector<HTMLAnchorElement>(
       "[data-showcase-worklog-link]"
     );
-    if (!message || !body || !name || !identity || !worklogLink) return;
+    const cover = root.querySelector<HTMLImageElement>("[data-showcase-cover]");
+    if (!message || !body || !name || !identity || !worklogLink || !cover) {
+      return;
+    }
 
     const text = { ...root.dataset };
     const localeTag = text.locale || "en";
@@ -316,14 +324,15 @@ const generationLabelsJson = JSON.stringify(generationLabels).replaceAll(
       }
 
       // A full row for the decision function. The world reader hands back
-      // identity and the two publication flags; the fields it never returns —
-      // owner id, photos, cover — are filled with the world's own view of them
+      // identity, the two publication flags, and — once the showcase page is
+      // public (T2-404d) — a cover path; the fields it never returns at all —
+      // owner id, photos — are filled with the world's own view of them
       // (`visibility.ts` reads none of them for the world principal).
       const vehicle: VehicleRow = {
         ...result.value,
         owner_id: "",
         photo_paths: [],
-        cover_photo_path: null,
+        cover_photo_path: result.value.cover_photo_path ?? null,
       };
       const profile: PublicProfileDirectory = {
         handle: params.handle,
@@ -345,6 +354,25 @@ const generationLabelsJson = JSON.stringify(generationLabels).replaceAll(
 
       setNoindex(false);
       const resolved = resolution.vehicle;
+
+      // The cover photo (T2-404d, GAR-01′). `publicCoverPhotoUrl` is the one
+      // place that knows the public-bucket URL shape; a `null` result means
+      // either no cover was designated or the world reader omitted the field
+      // (the showcase page was not the flag that was open), and either way
+      // the placeholder markup already shipped stays exactly as it is —
+      // never unhidden with no `src` to show.
+      const coverUrl = publicCoverPhotoUrl({
+        supabaseUrl: SUPABASE_BROWSER_CONFIG?.url ?? "",
+        coverPath: resolved.cover_photo_path,
+      });
+      if (coverUrl) {
+        cover!.src = coverUrl;
+        cover!.alt = (text.stringCoverAlt ?? "").replace(
+          "{name}",
+          resolved.display_name
+        );
+        cover!.hidden = false;
+      }
 
       name!.textContent = resolved.display_name;
       name!.setAttribute("role", "heading");

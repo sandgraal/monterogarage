@@ -159,10 +159,20 @@ export interface SharedVehicle {
  * decision, never a private one; `20260907120000_public_pages.sql` and
  * T2-404a's per-occurrence rule are what keep any other reader from consulting
  * them.
+ *
+ * `cover_photo_path` (T2-404d) is **optional**, not nullable: the world reader
+ * only ever includes the key at all once `is_showcase_public` is true
+ * (`tests/garage/contract.ts`'s `COVER_PUBLICATION_FLAG` — gated on that flag
+ * specifically, never the wider row-admitting OR), so its *absence* is the
+ * showcase-private case and a bare `null` is reserved for "published, but no
+ * cover was designated." `Object.hasOwn`, not a nullable field, is the correct
+ * way to ask "did the world get a cover at all" — the same shape SHR-06's cost
+ * omission already uses on this same reader's sibling, `share_read_records`.
  */
 export interface PublicVehicle extends SharedVehicle {
   readonly is_showcase_public: boolean;
   readonly is_worklog_public: boolean;
+  readonly cover_photo_path?: string | null;
 }
 
 function failed<T>(): ShareResult<T> {
