@@ -1610,7 +1610,7 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   cleared every sweep. The old `app.settings.storage_internal_url` GUC is out of
   the picture entirely.
 
-- [ ] **T2-403 [PLATFORM]** Community evidence surfacing: opt-in per-record
+- [x] **T2-403 [PLATFORM]** Community evidence surfacing: opt-in per-record
   first-hand evidence on problem pages (001 GAR-04 re-cut). Depends: T2-402,
   001-T401. *(GAR-04′, SHR-09)*
   <br>**Scope guard added 2026-08-31 — read this before implementing.** GAR-04′
@@ -1620,6 +1620,28 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   for community surfacing** (SHR-09). Getting this wrong puts a private
   work-log on a public problem page, and it will look like a feature working
   correctly right up until someone notices.
+  <br>**Shipped.** The eligibility predicate `isEligibleForCommunityEvidence`
+  (WORLD-keyed, principal-independent) was already filled by T2-402 and is
+  graded by `public-pages.test.ts`; this task adds the surface on top of it:
+  `src/lib/garage/community-evidence.ts` (the pure second-wall selector/masker,
+  unit-tested in `community-evidence.test.ts`), `CommunityEvidence.astro`
+  (a bilingual, testimony-framed section wired into `[problemSlug].astro`,
+  rendered only when Supabase is configured and a source is registered, hidden
+  until the browser finds ≥1 eligible record), and a discovery seam
+  `community-evidence-sources.ts`. Surfacing is **client-side** — the only path
+  live user data reaches this static site (mirrors the T2-404 showcase/work-log
+  pages, uses the same anon world reader `share_read_records`); **no new anon
+  routine, no schema change, no service key**, so the SHR-09 anon-surface
+  graders (`share-instrument`/`share-grants`) stay green.
+  <br>**Deliberately left as a stop-and-ask (data flow, not code):** cross-owner
+  *enumeration* — "every published truck that named this problem" — has no
+  reachable path here (the anon surface is three per-vehicle readers by design;
+  no service key exists; the site is static). The seam is a curated list of
+  published `{handle, vehicleId}`, empty until owners are registered — Gitana
+  Blanca's hosted `vehicleId` (MIG-04) is not a git value to invent. A scalable
+  answer is a world-masked read-model populated by CI (RM-01/RM-02 shape,
+  enumerated in `contract.ts`'s table map), which is a schema + contract change
+  for an owner/test-writer decision.
 
 ## Superseded from 001
 

@@ -659,6 +659,23 @@ export interface UiStrings
   readonly worklogPageHistoryEmpty: string;
   /** Link from the work-log back to this truck's showcase, shown only when it is public. */
   readonly worklogPageShowcaseLink: string;
+  /* Community first-hand evidence on a problem page — T2-403, GAR-04′ */
+  /**
+   * The heading over records other owners published from their own trucks and
+   * linked to this problem (GAR-04′). Rendered only when there is at least one.
+   */
+  readonly problemCommunityEvidenceHeading: string;
+  /**
+   * The line framing that surface as owners' own accounts of their own trucks,
+   * not reference facts. AGENTS.md: user-entered records are the user's own
+   * testimony, never presented as site-verified — and a reader who arrived at a
+   * problem page is likelier to mistake one for the other.
+   */
+  readonly problemCommunityEvidenceNote: string;
+  /** The polite status shown while first-hand evidence is being looked up. */
+  readonly problemCommunityEvidenceLoading: string;
+  /** Link from one piece of evidence to the truck's own published work log. */
+  readonly problemCommunityEvidenceSourceLink: string;
   /* Records and receipts — T2-302, GAR-02′ / GAR-05′ */
   /**
    * The line that frames every record on the page as the owner's own account
@@ -1487,6 +1504,11 @@ const en: UiStrings = {
   worklogPageHistoryEmpty:
     "The owner has not published any work on this truck yet.",
   worklogPageShowcaseLink: "See this truck's page",
+  problemCommunityEvidenceHeading: "First-hand evidence from owners",
+  problemCommunityEvidenceNote:
+    "Records that owners published from their own trucks and linked to this problem. These are their own accounts of their own trucks, kept as they wrote them — the site does not check them and never presents them as reference facts.",
+  problemCommunityEvidenceLoading: "Looking for first-hand evidence…",
+  problemCommunityEvidenceSourceLink: "See this truck's work log",
   garageRecordsTestimonyNote:
     "These are your own notes about your own truck, kept as you wrote them. The site does not check them and never presents them as reference facts.",
   garageRecordAdd: "Add a record",
@@ -2192,6 +2214,11 @@ const es: UiStrings = {
   worklogPageHistoryEmpty:
     "La persona dueña todavía no ha publicado ningún trabajo en este carro.",
   worklogPageShowcaseLink: "Ver la página de este carro",
+  problemCommunityEvidenceHeading: "Testimonios de personas dueñas",
+  problemCommunityEvidenceNote:
+    "Fichas que las personas dueñas publicaron de sus propios carros y enlazaron con este problema. Son sus propias anotaciones sobre sus propios carros, tal como ellas las escribieron; el sitio no las verifica ni las presenta nunca como datos de referencia.",
+  problemCommunityEvidenceLoading: "Buscando testimonios de primera mano…",
+  problemCommunityEvidenceSourceLink: "Ver el historial de este carro",
   garageRecordsTestimonyNote:
     "Estas son sus propias anotaciones sobre su propio carro, tal como usted las escribió. El sitio no las verifica ni las presenta nunca como datos de referencia.",
   garageRecordAdd: "Agregar una ficha",
