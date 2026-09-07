@@ -672,8 +672,6 @@ export interface UiStrings
    * problem page is likelier to mistake one for the other.
    */
   readonly problemCommunityEvidenceNote: string;
-  /** The polite status shown while first-hand evidence is being looked up. */
-  readonly problemCommunityEvidenceLoading: string;
   /** Link from one piece of evidence to the truck's own published work log. */
   readonly problemCommunityEvidenceSourceLink: string;
   /* Records and receipts — T2-302, GAR-02′ / GAR-05′ */
@@ -1507,7 +1505,6 @@ const en: UiStrings = {
   problemCommunityEvidenceHeading: "First-hand evidence from owners",
   problemCommunityEvidenceNote:
     "Records that owners published from their own trucks and linked to this problem. These are their own accounts of their own trucks, kept as they wrote them — the site does not check them and never presents them as reference facts.",
-  problemCommunityEvidenceLoading: "Looking for first-hand evidence…",
   problemCommunityEvidenceSourceLink: "See this truck's work log",
   garageRecordsTestimonyNote:
     "These are your own notes about your own truck, kept as you wrote them. The site does not check them and never presents them as reference facts.",
@@ -2217,7 +2214,6 @@ const es: UiStrings = {
   problemCommunityEvidenceHeading: "Testimonios de personas dueñas",
   problemCommunityEvidenceNote:
     "Fichas que las personas dueñas publicaron de sus propios carros y enlazaron con este problema. Son sus propias anotaciones sobre sus propios carros, tal como ellas las escribieron; el sitio no las verifica ni las presenta nunca como datos de referencia.",
-  problemCommunityEvidenceLoading: "Buscando testimonios de primera mano…",
   problemCommunityEvidenceSourceLink: "Ver el historial de este carro",
   garageRecordsTestimonyNote:
     "Estas son sus propias anotaciones sobre su propio carro, tal como usted las escribió. El sitio no las verifica ni las presenta nunca como datos de referencia.",
