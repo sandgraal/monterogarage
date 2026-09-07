@@ -339,6 +339,24 @@ Stop and ask before any of these:
   render grader reproducing it (#157) and a one-line implementer fix that
   activated it (#158). The lesson is coverage-shaped, not a separation breach:
   a per-page invariant graded on one page and not its sibling is the gap.
+  **T2-404d [PLATFORM] (#161, 2026-09-07) retired an unmarked render-grader
+  canary while activating.** Building the cover-display half, the implementer
+  removed the `it.fails` markers (allowed) and also deleted an unmarked "TODAY"
+  documentation test in `showcase-worklog.render.test.ts` that asserted the
+  pre-activation "no cover query" shape — legitimate per the test's own in-test
+  retirement comment and the T2-404b seam-canary / T802 precedent (an
+  opposite-reading canary that cannot co-describe the shipped page), and an
+  independent opus review (which also proved the world-reader cover gate live)
+  confirmed no real assertion was weakened. But it is again the [PLATFORM] role
+  touching a grader beyond pure marker deletion, and the same review flagged a
+  coverage gap it opened (the cover img's `hidden`-by-default property is now
+  ungraded). Per this section's standing rule, the next change to these files'
+  cover coverage — including that re-pinning assertion — is a test-writer's.
+  Also of note: this feature's Tier-A cover-exposure gate needed **three**
+  hardening passes (an opus review, a Copilot-bot finding, and a second opus
+  review each caught a distinct privacy-leak spelling) before it was an
+  allowlist that fails safe — a reminder that a trust-boundary grader should be
+  an affirmative allowlist, not a negation denylist, from the start.
 - A clean fact-check, a clean bilingual edit, and all required branch-protection
   checks authorize the `pr-shepherd` to merge without another confirmation.
 - Never `--no-verify`, never a bare force-push, never `gh pr merge --admin`,
