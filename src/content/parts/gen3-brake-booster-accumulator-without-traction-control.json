@@ -1,0 +1,34 @@
+{
+  "id": "gen3-brake-booster-accumulator-without-traction-control",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2003,
+      "to": 2006
+    },
+    "engines": ["6g75"]
+  },
+  "oemNumber": "MR977223",
+  "system": "brakes",
+  "quantityPerVehicle": 1,
+  "confidence": "anecdotal",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen3 NP Brake Booster Accumulator (4630A012): the product note stating that Monteros without traction control use this smaller, black, round accumulator instead",
+      "url": "https://lusooverland.com/VP-MMC-4630A012",
+      "archiveUrl": "https://web.archive.org/web/20260907003520/https://lusooverland.com/VP-MMC-4630A012",
+      "accessed": "2026-09-06",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Brake booster accumulator, trucks without traction control",
+      "summary": "The smaller, black, round accumulator fitted to the later Gen 3 trucks that do not have traction control. It does the same job as the large silver cylinder used on the traction-control trucks and it is not the same part. Read the confidence tier on this page carefully: unlike almost everything else in this wave, this number was not read off a catalogue listing for the part itself — it appears in a sentence on the page for the other accumulator, and no second source could be opened to confirm it. That is enough to write the number down and not enough to buy on. On a brake part, take this page to the counter as a starting point, have them look the number up against your chassis number, and have a qualified mechanic confirm which accumulator your truck actually carries before anything is ordered or fitted."
+    },
+    "es": {
+      "title": "Depósito de presión del booster de freno, sin control de tracción",
+      "summary": "El depósito más pequeño, negro y redondo que montan los vehículos de tercera generación tardíos que no traen control de tracción. Hace el mismo trabajo que el cilindro plateado grande de los vehículos con control de tracción y no es la misma pieza. Lea con cuidado el nivel de confianza de esta página: a diferencia de casi todo lo demás de esta tanda, este número no se leyó en una ficha de catálogo de la pieza misma — aparece en una frase dentro de la página del otro depósito, y no se logró abrir una segunda fuente que lo confirmara. Eso alcanza para anotar el número y no alcanza para comprar con él. Tratándose de frenos, lleve esta página al mostrador como punto de partida, pida que busquen el número contra el número de chasis de su vehículo, y haga que un mecánico calificado confirme cuál depósito trae realmente su vehículo antes de pedir o montar nada."
+    }
+  }
+}

@@ -92,32 +92,37 @@
  * fitment-aware results follows a result to its own collection page, which
  * already carries the vehicle filter.
  *
+ * ## The four adapters live in `src/lib/search-corpus.ts`, not here (T802)
+ *
+ * The per-collection mapping from a content entry to searchable text (title,
+ * snippet, badges, codes, "extra" chips) used to be four inline `.map()`
+ * blocks in this file. T802 (RM-01, RM-02) needed the exact same mapping a
+ * second time, for `src/pages/search-index.json.ts`'s Supabase read-model
+ * export — so the four adapters moved to `src/lib/search-corpus.ts`, and this
+ * page now only adds what is specific to the client-side `SearchDocument`
+ * shape (the `id`/`type` tag, and the prefixed `href` `docHref` below
+ * builds). See that module's docstring for the full reasoning.
+ *
  * refs specs/001-foundation (SRCH-01, SRCH-02, GLO-03, I18N-01, I18N-04, I18N-08)
  */
 import { getCollection } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import {
-  LOCALES,
   LOCALE_BCP47,
   isLocale,
   localeHref,
   type Locale,
 } from "../../i18n/routing";
+import { collectionRouteParams, collectionRoutePaths } from "../../i18n/routes";
+import { searchTypeLabel, t } from "../../i18n/ui";
+import { formatCount } from "../../lib/glossary-filter";
 import {
-  COLLECTION_ROUTE_SEGMENTS,
-  collectionRoutePath,
-  collectionRouteParams,
-  collectionRoutePaths,
-  entryRoutePath,
-} from "../../i18n/routes";
-import {
-  glossarySystemLabel,
-  problemSeverityLabel,
-  searchTypeLabel,
-  t,
-} from "../../i18n/ui";
-import { formatCount, glossaryTermDomId } from "../../lib/glossary-filter";
-import { problemRoutePath } from "../../lib/problems";
+  glossaryCorpusRows,
+  modsCorpusRows,
+  partsCorpusRows,
+  problemsCorpusRows,
+  type SearchCorpusRow,
+} from "../../lib/search-corpus";
 import {
   EXTRA_MAX_LENGTH,
   SEARCH_DOCUMENT_TYPES,
@@ -142,8 +147,6 @@ const collator = new Intl.Collator(LOCALE_BCP47[locale], {
   sensitivity: "base",
 });
 
-const otherLocales = LOCALES.filter((candidate) => candidate !== locale);
-
 /**
  * `doc.href` is unprefixed and already this locale's own route (the same
  * contract `entryRoutePath` and `collectionRoutePath` promise elsewhere on
@@ -156,106 +159,47 @@ function docHref(routePath: string | null): string | null {
 }
 
 /* -------------------------------------------------------------------------
- * One adapter per indexed collection — the only collection-specific code on
- * this page. Each maps that collection's own already-typed entries into the
- * shared `SearchDocument` shape; `src/lib/search.ts`'s matching functions
- * never see which collection a document came from.
+ * One `SearchDocument` mapping per indexed collection — the shared
+ * `src/lib/search-corpus.ts` adapter plus this page's own `id`/`type` tag and
+ * prefixed `href`. See that module's docstring for why the per-collection
+ * mapping itself lives there and not here.
  * ---------------------------------------------------------------------- */
 
+function toSearchDocuments(
+  type: SearchDocumentType,
+  rows: readonly SearchCorpusRow[]
+): SearchDocument[] {
+  return rows.map((row) => ({
+    id: `${type}:${row.entryId}`,
+    type,
+    // Unprefixed — SearchDocument.href's own contract. The render loop below
+    // calls `docHref` (this page's local prefixer) once per document.
+    href: row.routePath,
+    title: row.title,
+    subtitle: row.subtitle,
+    snippet: row.snippet,
+    badges: row.badges,
+    codes: row.codes,
+    extra: row.extra,
+  }));
+}
+
 const glossaryEntries = await getCollection("glossary");
-const glossaryDocuments: SearchDocument[] = glossaryEntries.map((entry) => {
-  const { system, aliases } = entry.data;
-  const gloss = otherLocales
-    .map((other) => entry.data.prose[other].title)
-    .filter((term) => term.length > 0);
-
-  return {
-    id: `glossary:${entry.id}`,
-    type: "glossary",
-    href: `${collectionRoutePath("glossary", locale)}#${glossaryTermDomId(entry.id)}`,
-    title: entry.data.prose[locale].title,
-    subtitle: gloss.length > 0 ? gloss.join(" / ") : null,
-    snippet: entry.data.prose[locale].summary,
-    badges: [glossarySystemLabel(strings, system)],
-    codes: [],
-    /**
-     * SRCH-02: every alias renders on the canonical entry's own card, term
-     * and countries together (`rin (CR/MX)`) — the same text
-     * `[glossarySegment].astro`'s alias chips show, so a reader who searches
-     * `balatas` finds this card exactly because it already says `balatas`.
-     */
-    extra: aliases.map(
-      (alias) => `${alias.term} (${alias.countries.join("/")})`
-    ),
-  };
-});
-
-const problemsSegment = COLLECTION_ROUTE_SEGMENTS.problems[locale];
 const problemEntries = await getCollection("problems");
-const problemDocuments: SearchDocument[] = problemEntries.map((entry) => {
-  const { data } = entry;
-  const prose = data.prose[locale];
-
-  return {
-    id: `problems:${entry.id}`,
-    type: "problems",
-    href: problemRoutePath(problemsSegment, prose.slug),
-    title: prose.title,
-    subtitle: null,
-    snippet: prose.summary,
-    badges: [
-      glossarySystemLabel(strings, data.system),
-      problemSeverityLabel(strings, data.severity),
-    ],
-    codes: [],
-    /** SRCH-01's "symptoms" — the same resolved text the problems index shows. */
-    extra: data.symptoms.map((id) => prose.symptoms[id] ?? id),
-  };
-});
-
 const partsEntries = await getCollection("parts");
-const partsDocuments: SearchDocument[] = partsEntries.map((entry) => {
-  const { id, oemNumber, system, crossReferences } = entry.data;
-  const local = entry.data.prose[locale];
-  const crossRefs = crossReferences ?? [];
-
-  return {
-    id: `parts:${id}`,
-    type: "parts",
-    href: entryRoutePath("parts", id, locale),
-    title: local.title,
-    subtitle: null,
-    snippet: local.summary,
-    badges: [glossarySystemLabel(strings, system)],
-    /** SRCH-01's "part numbers": the OEM number and every cross-referenced one. */
-    codes: [oemNumber, ...crossRefs.map((cross) => cross.partNumber)],
-    extra: crossRefs.map((cross) => `${cross.brand} ${cross.partNumber}`),
-  };
-});
-
 const modsEntries = await getCollection("mods");
-const modsDocuments: SearchDocument[] = modsEntries.map((entry) => {
-  const { id, system } = entry.data;
-  const local = entry.data.prose[locale];
-
-  return {
-    id: `mods:${id}`,
-    type: "mods",
-    href: entryRoutePath("mods", id, locale),
-    title: local.title,
-    subtitle: null,
-    snippet: local.summary,
-    badges: [glossarySystemLabel(strings, system)],
-    codes: [],
-    extra: [],
-  };
-});
 
 const documents = [
-  ...glossaryDocuments,
-  ...problemDocuments,
-  ...partsDocuments,
-  ...modsDocuments,
+  ...toSearchDocuments(
+    "glossary",
+    glossaryCorpusRows(glossaryEntries, locale, strings)
+  ),
+  ...toSearchDocuments(
+    "problems",
+    problemsCorpusRows(problemEntries, locale, strings)
+  ),
+  ...toSearchDocuments("parts", partsCorpusRows(partsEntries, locale, strings)),
+  ...toSearchDocuments("mods", modsCorpusRows(modsEntries, locale, strings)),
 ].sort((a, b) => collator.compare(a.title, b.title));
 
 /** Only types with at least one document get a pill (the glossary page's rule). */
