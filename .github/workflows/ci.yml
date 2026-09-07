@@ -226,7 +226,12 @@ jobs:
           # Soft failure by design: if the fetch itself fails (network blip,
           # a SHA that's aged out of the repo's reflog, anything), do not let
           # that fail this required job — fall back to "not safe to skip" and
-          # run the full audit, same as any other unsafe diff.
+          # run the full audit, same as any other unsafe diff. The same
+          # guarantee has to hold for the `git diff` call right below: it's
+          # a second command that can fail independently of the fetch (e.g.
+          # a shallow-history edge case the fetch's own success didn't rule
+          # out), so `set +e` stays in effect across both, and both check
+          # their own exit code before deciding to proceed.
           set +e
           git fetch --no-tags --depth=1 origin "$BASE_SHA" "$HEAD_SHA"
           fetch_ok=$?
@@ -238,7 +243,30 @@ jobs:
             exit 0
           fi
 
+          # Two-dot (raw tree comparison), not three-dot / merge-base-relative
+          # (`$BASE_SHA...$HEAD_SHA`). This is a deliberate trade against the
+          # shallow, bare-SHA fetch above: with only the two named commits
+          # fetched (no shared ancestry), three-dot has no merge-base to find
+          # — `git diff` would exit non-zero on essentially every PR, and via
+          # the fallback below that means *always* falling back to the full
+          # audit, silently disabling this optimization entirely. Two-dot is
+          # directionally safe in the meantime: it can only see MORE changed
+          # files than the PR's actual diff (pushing toward skip=false, never
+          # toward an unsafe skip=true) on a PR that's behind main — it just
+          # under-delivers the skip on those PRs rather than mis-delivering.
+          # Tightening this to three-dot would need the fetch step to also
+          # pull enough shared history to resolve a merge-base.
+          set +e
           changed="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          diff_ok=$?
+          set -e
+
+          if [ "$diff_ok" -ne 0 ]; then
+            echo "Could not diff $BASE_SHA..$HEAD_SHA after a successful fetch — running the full audit rather than guessing safe from a failed diff."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           echo "Changed files ($BASE_SHA..$HEAD_SHA):"
           echo "$changed"
 
@@ -258,6 +286,10 @@ jobs:
             case "$f" in
               specs/*.md) ;;
               AGENTS.md|CLAUDE.md) ;;
+              # Known latent gap: these are literal path-segment matches, so a
+              # differently-named future directory (e.g. `.claude/agents-experimental/`)
+              # falls through to the safe `.claude/*` catch-all below undetected. No
+              # such directory exists today; revisit if one is ever added.
               .claude/hooks/*|.claude/agents/*) skip=false ;;
               .claude/*) ;;
               src/content/*.json) ;;
