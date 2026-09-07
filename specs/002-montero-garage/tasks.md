@@ -1602,10 +1602,13 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   (`cover_storage_url`), env-settable, falling back to the local kong gateway —
   so the hosted value lives in Vault (seeded out-of-band by the conductor), not
   a hardcoded function body, and a re-deploy can no longer revert it. A
-  config-table attempt was abandoned first when it tripped `ungradedTableIssues`
-  (a private-config-table category the contract has no grader for); Vault adds
-  no `public` table and cleared every sweep. The old
-  `app.settings.storage_internal_url` GUC is out of the picture entirely.
+  config-table attempt was abandoned first: it introduced a new `public` table,
+  which `ungradedTableIssues` requires be enumerated/exempted in `contract.ts`
+  (`USER_TABLES`/`EXEMPT_PUBLIC_TABLES`), and this private zero-grant table fit
+  no existing entry — adding a category for it is a test-writer/contract change
+  an implementer can't make unilaterally. Vault adds no `public` table, so it
+  cleared every sweep. The old `app.settings.storage_internal_url` GUC is out of
+  the picture entirely.
 
 - [ ] **T2-403 [PLATFORM]** Community evidence surfacing: opt-in per-record
   first-hand evidence on problem pages (001 GAR-04 re-cut). Depends: T2-402,
