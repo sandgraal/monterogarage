@@ -1217,10 +1217,12 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   **parameterised by principal**, not written once for "the public". T2-404
   needs the same masking for a different audience, and a second copy of a
   privacy rule is a second place for it to drift.
-  <br>**Partly landed 2026-09-05, and deliberately left unchecked.** Four of
-  the five deliverables shipped; the fifth — the public *pages* themselves — is
-  blocked on a decision that is not an implementer's to make, so the box stays
-  open rather than being ticked on four fifths.
+  <br>**Four-fifths landed 2026-09-05; completed and ticked 2026-09-07** when
+  the public *pages* — the deferred fifth deliverable — shipped as T2-404b (see
+  below). At the 2026-09-05 point only four of the five deliverables had
+  shipped; the fifth was blocked on a decision that was not an implementer's to
+  make (the one-reviewed-reader question), so the box was held open rather than
+  ticked on four fifths until T2-404b resolved it.
   <br>*Shipped:* the principal-parameterised masking (`src/lib/garage/
   visibility.ts` — `maskRecordForPrincipal`, `maskRecordsForPrincipal`,
   `visibleReceipts`, `isEligibleForCommunityEvidence`, over an `owner | world |
@@ -1327,11 +1329,12 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   keyspace, guessing is not the threat. What matters and is gradeable: uniform
   refusal across unknown/expired/revoked (SHR-08), and a failure path no more
   expensive than the success path.
-  <br>**Partly landed 2026-09-06, and deliberately left unchecked.** The typed
-  grant surface shipped whole; the public showcase/work-log pages the
-  2026-09-05 amendment folded in did not, because they are blocked on a grader
-  the amendment did not see. Same shape as T2-402's own partial landing, and
-  for a related reason.
+  <br>**Typed grant surface landed 2026-09-06; completed and ticked 2026-09-07**
+  when the public showcase/work-log pages the 2026-09-05 amendment folded in
+  shipped as T2-404b (see below). At the 2026-09-06 point only the typed grant
+  surface had shipped; the pages were then blocked on a grader the amendment
+  did not see (resolved by T2-404a/T2-404c). Same shape as T2-402's own partial
+  landing, and for a related reason.
   <br>*Shipped:* `20260906120100_share_grants.sql` — the `shares` table (forced
   RLS, owner-scoped through `vehicle_id`, `revoke`-then-`grant` ACL, cascade),
   `create_share_grant` / `revoke_share_grant` (authenticated, definer,
@@ -1503,8 +1506,9 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   `is_worklog_public`/`is_showcase_public` per T2-404a's narrowed grader,
   and the showcase/work-log page templates themselves (stable handle URLs,
   HANDOFF-DESIGN.md chrome, hreflang) — the last piece of SHR-02..04 and the
-  reason T2-402's and T2-404's boxes are still unchecked. Check both those
-  boxes, not just this line's, once this ships. Depends: T2-404a merged.
+  reason T2-402's and T2-404's boxes were still unchecked. Check both those
+  boxes, not just this line's, once this ships (done 2026-09-07 — see the
+  closure note below). Depends: T2-404a merged.
   *(SHR-02..04, SHR-09)*
   <br>**First attempt (2026-09-07) found a real grader defect and stopped
   correctly, per AGENTS.md's separation rule.**
