@@ -502,13 +502,16 @@ const configured = SUPABASE_BROWSER_CONFIG !== null;
       if (email === null) return; // Accountless holder — the SHR-07 path.
 
       bindBox.hidden = false;
-      bindButton.addEventListener(
-        "click",
-        () => {
-          void runBinding(token);
-        },
-        { once: true }
-      );
+      // Registered once and left attached — deliberately *not* `{ once: true }`.
+      // The `failed` path re-arms this button for a retry (a mechanic on bad
+      // wifi tries again), and a listener removed after the first click would
+      // make that retry dead. Double-submit while a bind is in flight is guarded
+      // instead by the button's `disabled` state — a disabled `<button>`
+      // dispatches no click — which `runBinding` sets synchronously before it
+      // awaits and clears again only on the retryable `failed` path.
+      bindButton.addEventListener("click", () => {
+        void runBinding(token);
+      });
     }
 
     /** Bind the open link to this account, and say what happened. */
@@ -522,9 +525,11 @@ const configured = SUPABASE_BROWSER_CONFIG !== null;
         if (bindMessage) bindMessage.textContent = text.stringBindDone ?? "";
         return;
       }
-      // A refusal is a real "not your account"; anything else is an outage.
-      // Either way the reader keeps the link, so the button comes back for a
-      // retry on the outage path.
+      // A refusal is a real "not your account"; anything else is an outage the
+      // reader can retry. Both keep the link open. On `refused` the button is
+      // hidden and stays disabled — a terminal dead end, no live retry. On
+      // `failed` it is re-enabled and its still-attached listener makes a second
+      // click actually bind again.
       if (bindMessage) {
         bindMessage.textContent =
           outcome.reason === "refused"

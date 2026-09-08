@@ -207,6 +207,34 @@ function serverAnswered(error: { readonly code?: string } | null): boolean {
   return typeof error?.code === "string" && error.code !== "";
 }
 
+/**
+ * PostgreSQL's SQLSTATE for an authorization/policy denial — the
+ * `insufficient_privilege` a `security definer` function raises when it refuses
+ * to act. On the bind path it is the one and only "no, this grant is not for
+ * this account": `bind_share_grant`'s definer refusal carries `42501` when
+ * `auth.email()` is not the grant's addressee, or the grant is already bound,
+ * expired, or revoked.
+ */
+const INSUFFICIENT_PRIVILEGE = "42501";
+
+/**
+ * Was this a genuine authorization refusal, or a transient/unknown failure?
+ *
+ * `serverAnswered` above asks the coarser question the *read* path can afford —
+ * did Postgres answer at all — because those readers raise **only** 42501, so
+ * any SQLSTATE they return is that one. The bind path cannot make that
+ * assumption. `bind_share_grant` is an atomic `UPDATE`, so a statement timeout
+ * (`57014`), a serialization failure or deadlock (`40001` / `40P01`), a
+ * connection drop, or any 5xx can surface with its own SQLSTATE — none of which
+ * mean "not your grant." Only `42501` is the refusal a mechanic must read as a
+ * dead end ("this binding isn't yours"); every other server error is `failed`, a
+ * transient/unknown condition they can retry (AGENTS.md: a failure is not a
+ * zero, and an outage reported as somebody's decision strands a valid user).
+ */
+function refusedByPolicy(error: { readonly code?: string } | null): boolean {
+  return error?.code === INSUFFICIENT_PRIVILEGE;
+}
+
 /* -------------------------------------------------------------------------
  * The owner's end (SHR-05, SHR-08)
  * ---------------------------------------------------------------------- */
@@ -400,9 +428,11 @@ export interface RosterEntry {
  *
  * `refused` is its own outcome, because a link sent to someone else is a real
  * "no, not your account", not an outage — the caller renders it as "this cannot
- * be added to your roster" while still letting the reader read the link. A
- * dropped connection is `failed`, never a refusal (the same line every reader
- * here draws).
+ * be added to your roster" while still letting the reader read the link. Only
+ * the definer's `42501` (`refusedByPolicy`) is that refusal; a dropped
+ * connection, a statement timeout, a 5xx, or any other unexpected SQLSTATE is
+ * `failed` — a retryable condition, never a refusal (the same line every reader
+ * here draws, drawn tighter because this is a contendable `UPDATE`).
  */
 export async function bindShareGrant(
   token: string
@@ -412,7 +442,7 @@ export async function bindShareGrant(
   const { error } = await open.value.rpc("bind_share_grant", {
     p_token: token,
   });
-  if (error) return serverAnswered(error) ? refused() : failed();
+  if (error) return refusedByPolicy(error) ? refused() : failed();
   return { ok: true, value: true };
 }
 
