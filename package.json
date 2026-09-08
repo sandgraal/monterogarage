@@ -16,6 +16,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:garage": "GARAGE_LIVE=1 GARAGE_LIVE_REQUIRED=1 vitest run tests/garage",
+    "test:shop": "GARAGE_LIVE=1 GARAGE_LIVE_REQUIRED=1 vitest run tests/shop",
     "test:e2e": "astro build && playwright test",
     "test:a11y": "node scripts/check-a11y.mjs",
     "test:lighthouse": "node scripts/check-lighthouse.mjs",
@@ -62,6 +63,7 @@
   "notes": {
     "typescript": "Pinned to ^5.9.3, not the ^7.x line currently resolvable: @astrojs/check's peerDependency is '^5.0.0 || ^6.0.0' and typescript-eslint's is '>=4.8.4 <6.1.0' — both exclude TS 7 as of this writing. Bump this pin only once those peer ranges do.",
     "test:garage": "T2-201's behavioural RLS tier. Needs a local Supabase stack (`supabase start`, which needs Docker) and nothing else — no hosted project, no key. GARAGE_LIVE_REQUIRED=1 makes a missing stack an error rather than a skip, which is the point of running it deliberately. Plain `npm test` and `npm run verify` skip the same suites with a named reason. See tests/garage/harness.ts.",
+    "test:shop": "003's behavioural tier, the exact `test:garage` shape one directory over (tests/shop reuses tests/garage/harness.ts). Its Tier-B graders — bind-to-the-addressed-account-and-no-other, first-open-binds-then-no-rebind, roster liveness on revoke/expire, SHP-04 isolation, the extend lifecycle — are `describe.skipIf(!live.available)`, so with the stack up they run and (pre-T3-102) fail-as-expected, and with no stack they skip with a named reason. Runs in the same `tier-b` CI job as `test:garage`, against the one `supabase start` (T3-101a/F1).",
     "pg": "A devDependency, and only tests/garage/db.ts imports it. T2-401 needed two questions PostgREST structurally cannot answer: what the end-state ACL actually is (read from pg_class.relacl — the privilege that nearly shipped a hole in T2-202 was one nobody granted, so it appears in no migration text), and whether `authenticated` can TRUNCATE a user table (RLS does not filter TRUNCATE, and there is no PostgREST verb for it, so a grader could not even attempt the attack). The connection is loopback-only, checks the migration ledger to confirm it is this project's stack, and every probe that mutates anything runs inside a transaction that is always rolled back."
   }
 }

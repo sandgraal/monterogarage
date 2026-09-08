@@ -18,12 +18,29 @@ entitlements are hard-Opus. The billing webhook is `secrets-or-deploy`.
 - [x] **T3-101 [TEST]** Roster and grant-binding graders: a grant issued to an
   email binds to that account on first authenticated open and to no other; an
   unbound grant is readable by its bearer and invisible to every roster; a
-  revoked or expired grant leaves the roster on the next request; a shop member
-  cannot see a grant issued to an individual (SHP-04). Depends: 002-T2-404
+  revoked or expired grant leaves the roster on the next request; and the
+  data-layer floor of SHP-04 — `is_shop_visible` is private by default, and an
+  individual grant reaches only the bound account's roster and no other. (The
+  shop-roster-excludes-individual-grants half of SHP-04 is T3-201's, once a
+  shop roster exists to union `is_shop_visible` grants.) Depends: 002-T2-404
   merged. *(MEC-05, MEC-06, SHP-03, SHP-04)*
+- [x] **T3-101a [TEST]** T3-101 follow-ups from independent code review, and a
+  hard prerequisite for T3-102 — **must merge before T3-102**, so the
+  roster/grant-binding security graders actually enforce and T3-102 cannot
+  self-grade its own security property. (F1) Run `tests/shop`'s Tier B in CI: a
+  `test:shop` script mirroring `test:garage`, added to the one `tier-b` job so
+  the bind-to-the-addressed-account-and-no-other, first-open-binds-then-no-
+  rebind, roster-liveness-on-revoke/expire, SHP-04 isolation, and extend-
+  lifecycle proofs run against a live stack instead of nowhere. (F2) Grade
+  `shares.bound_account_id`'s FK as `on delete set null` (002 ACC-03: a mechanic
+  must be able to delete their own account while holding a live binding —
+  unbind, never cascade-delete the owner's grant, never no-action/restrict which
+  would block the deletion), extending the shared FK parser additively to expose
+  the on-delete action. (F3) The T3-101-line wording fix above. Depends: T3-101
+  merged. Blocks: T3-102. *(MEC-05, MEC-06, SHP-03, SHP-04; 002 ACC-03)*
 - [ ] **T3-102 [PLATFORM]** Mechanic roster: authenticated grant-holder view,
   one place, bilingual per 002 ACC-02. Owner-side "extend to until-revoked" and
-  revoke controls. Activates T3-101. Depends: T3-101 merged. *(MEC-05, MEC-06)*
+  revoke controls. Activates T3-101. Depends: T3-101 and T3-101a merged. *(MEC-05, MEC-06)*
 
 ## Phase S2 — Shops
 

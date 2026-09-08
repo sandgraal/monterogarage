@@ -786,6 +786,104 @@ export function foreignKeyFor(
 }
 
 /**
+ * A Postgres referential action a foreign key can take when the row it
+ * references is deleted — the `on delete …` clause, or its default `no action`.
+ *
+ * ## Why this exists alongside `cascades` (T3-101a, refs specs/003-shop-tools)
+ *
+ * `foreignKey`/`foreignKeyFor` expose a `cascades` boolean, which answers only
+ * "is the action `cascade`?" — it cannot tell `set null` (an *unbind*) apart
+ * from `no action`/`restrict` (which instead *block* the delete). 003's
+ * `shares.bound_account_id` must be `on delete set null`: 002 ACC-03 forbids
+ * gating account deletion, so a mechanic deleting their own account has to
+ * unbind their live grant — never cascade-delete the owner's grant row, and
+ * never be blocked by a `restrict`/`no action`. That is a three-way distinction
+ * a boolean cannot carry, so this reads the action itself.
+ *
+ * **Purely additive.** `foreignKey.cascades` and `foreignKeyFor` are unchanged;
+ * their exact-match self-tests (`harness-contract`, `reviewer-probes` C2–C4)
+ * still hold. `cascades` is exactly `onDeleteActionOf(clause) === "cascade"`.
+ */
+export type OnDeleteAction =
+  "no action" | "restrict" | "cascade" | "set null" | "set default";
+
+/**
+ * The `on delete` action declared anywhere in a `references …` clause (or a
+ * whole column/constraint definition that contains one), defaulting to
+ * Postgres's own `no action` when there is no `on delete` clause.
+ *
+ * Reads only the *delete* action: an `on update …` clause in the same reference
+ * is ignored, so `references auth.users on update cascade on delete set null`
+ * yields `set null`. Input is expected already normalised (lower-cased,
+ * whitespace-collapsed) by {@link normalizeSql}, exactly as `foreignKey`'s is.
+ */
+export function onDeleteActionOf(referencesClause: string): OnDeleteAction {
+  const match =
+    /on delete (cascade|restrict|no action|set null|set default)/.exec(
+      referencesClause ?? ""
+    );
+  return (match?.[1] as OnDeleteAction | undefined) ?? "no action";
+}
+
+/**
+ * The `on delete` action of the foreign key on `table.column`, across every FK
+ * spelling the T3-101 core grader accepts, or `null` when the column carries no
+ * foreign key at all.
+ *
+ * `null` (no FK) is deliberately a different answer from `"no action"` (an FK
+ * with no `on delete` clause), so a grader can tell "there is no binding FK to
+ * grade" apart from "the FK exists but takes the wrong action" — the
+ * unknown-is-not-zero distinction this repo has paid for.
+ *
+ * Covers all four spellings a binding can arrive in:
+ *  1. inline `references … on delete …` on the column's **end-state**
+ *     definition — replay-aware via {@link columnDefinitionFor}, so a column
+ *     added by `alter table … add column … references …` (the spelling T3-102
+ *     uses) is seen. This is the same source the T3-101 core FK grader reads
+ *     through `foreignKey(columnDefinitionFor(...))`;
+ *  2. a table-level `constraint … foreign key (col) references …` in `create
+ *     table`;
+ *  3. `alter table … add constraint … foreign key (col) references …`.
+ *
+ * The table-level scans here mirror those in {@link foreignKeyFor}; they are
+ * duplicated rather than shared because factoring them would change
+ * `foreignKeyFor`'s body, and this task's cross-lineage rule is to leave the
+ * 002 FK parser's behaviour byte-for-byte untouched. The duplication is guarded
+ * by this function's own boundary-table positive control in
+ * `tests/shop/binding-ondelete.test.ts` (the "mutation-test the probe corpus"
+ * discipline), so a mutation to either copy is caught.
+ */
+export function foreignKeyOnDeleteFor(
+  normalized: string,
+  table: string,
+  column: string
+): OnDeleteAction | null {
+  const def = columnDefinitionFor(normalized, table, column);
+  if (def && foreignKey(def.definition) !== null) {
+    return onDeleteActionOf(def.definition);
+  }
+
+  const body = createTableBody(normalized, table);
+  if (body) {
+    for (const constraint of tableConstraints(body)) {
+      const match = /foreign key\s*\(([^)]*)\)([\s\S]*)$/.exec(constraint);
+      if (!match) continue;
+      const columns = match[1].split(",").map((name) => name.trim());
+      if (columns.includes(column)) return onDeleteActionOf(match[2]);
+    }
+  }
+
+  for (const statement of statements(normalized)) {
+    if (!new RegExp(`^${alterTablePrefix(table)}`).test(statement)) continue;
+    const match = /foreign key\s*\(([^)]*)\)([\s\S]*)$/.exec(statement);
+    if (!match) continue;
+    const columns = match[1].split(",").map((name) => name.trim());
+    if (columns.includes(column)) return onDeleteActionOf(match[2]);
+  }
+  return null;
+}
+
+/**
  * `true` when `table.column` cannot be null.
  *
  * **`primary key` implies `NOT NULL`** — in Postgres it is not an extra
