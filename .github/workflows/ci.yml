@@ -229,9 +229,17 @@ jobs:
   #
   #  • `npm run test:garage` **and `npm run test:shop`**, not hand-rolled vitest
   #    invocations. Both scripts carry `GARAGE_LIVE=1 GARAGE_LIVE_REQUIRED=1`
-  #    (package.json), which is what makes "the stack did not come up" red
-  #    instead of green-with-skips. Both must run against the one `supabase
-  #    start` below; do not split them across stacks or drop either.
+  #    (package.json), and — since T3-101a/F2's follow-up — each test tree
+  #    carries its **own** co-located consumer of that flag: the fail-closed
+  #    guard in `tests/garage/harness-contract.test.ts` for `test:garage`, and
+  #    the mirror in `tests/shop/harness-contract.test.ts` for `test:shop`. That
+  #    is what makes "the stack did not come up" red instead of green-with-skips,
+  #    and it makes each script fail-closed **on its own** — `test:shop` no
+  #    longer depends on the `test:garage` step running first (before that mirror
+  #    existed, `GARAGE_LIVE_REQUIRED` had a single consumer that `test:shop`
+  #    never ran, so a missing stack against `tests/shop` alone exited 0 with the
+  #    Tier-B markers silently skipped). Both must still run against the one
+  #    `supabase start` below; do not split them across stacks or drop either.
   #  • The CLI version stays pinned and checksum-verified. A merge-path job
   #    that silently follows `latest` breaks on someone else's release
   #    schedule.
@@ -340,8 +348,11 @@ jobs:
         run: npm run test:garage
 
       # 003's shop surface, against the same warm stack (T3-101a/F1). Separate
-      # step so a red one names which lineage's live proofs broke; both are
-      # fail-closed on a missing stack via GARAGE_LIVE_REQUIRED=1 in the script.
+      # step so a red one names which lineage's live proofs broke, and safe to
+      # be separate: `test:shop` is fail-closed on a missing stack *on its own*,
+      # because `tests/shop/harness-contract.test.ts` consumes the
+      # GARAGE_LIVE_REQUIRED=1 the script sets (T3-101a/F2 follow-up) — it does
+      # not rely on the `test:garage` step above having run first.
       - name: Tier-B graders — shop surface (npm run test:shop, fail-closed)
         run: npm run test:shop
 
