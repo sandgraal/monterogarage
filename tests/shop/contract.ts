@@ -257,3 +257,224 @@ export const ACCOUNT_ONLY_FUNCTIONS = [
   MECHANIC_ROSTER_FUNCTION,
   SHARE_EXTEND_FUNCTION,
 ] as const;
+
+/* =========================================================================
+ * T3-201 [TEST] — shops, membership, roster isolation, the directory claim
+ *
+ * Everything below is **additive** and lives in its own section so the
+ * concurrent `test/003-t3-102-rebind-grader` branch (which touches
+ * `roster.test.ts` and the T3-101 names above) rebases trivially: nothing here
+ * renames or re-orders anything above this banner.
+ *
+ * As with the T3-101 block, every table / column / function / argument name is
+ * a **decision this file makes on the spec's behalf** so the T3-201 graders can
+ * be concrete (the T2-201 / T3-101 precedent). A name is one line to
+ * renegotiate with the conductor if T3-202 / T3-203 prefer another; the
+ * *behaviour* graded around these names — invite-only membership with no open
+ * join, a shop member seeing exactly the shop's grants and no others, an
+ * unverified claim rendering nothing, and a directory whose order and inclusion
+ * are a pure function of git content — is SHP-01..05 verbatim and is not
+ * renegotiable.
+ *
+ * It reuses the 002/003 grant vocabulary rather than minting a parallel one:
+ * the shop roster reads 002's `shares` filtered by 003's `is_shop_visible`
+ * (`SHOP_VISIBLE_COLUMN` above) and by shop membership; it does not invent a
+ * second grant model.
+ *
+ * refs specs/003-shop-tools (SHP-01..05), specs/002-montero-garage (SHR-05..09)
+ * ====================================================================== */
+
+/* -------------------------------------------------------------------------
+ * Seams — every T3-201 declaration-tier grader fails TODAY with one of these,
+ * or with a named "column/argument absent", never with an import error.
+ * ---------------------------------------------------------------------- */
+
+/** Seam for the membership surface T3-202 has not built. */
+export const SEAM_SHOP = "not implemented: T3-202";
+
+/** The seam error for a shop / membership object T3-202 has not shipped. */
+export function shopSeam(what: string): Error {
+  return new Error(
+    `${SEAM_SHOP} — ${what}. T3-201 [TEST] declared the shop-membership and ` +
+      `roster-isolation contract as graders; T3-202 [PLATFORM] ships the ` +
+      `migration — \`${SHOPS_TABLE}\`, \`${SHOP_MEMBERS_TABLE}\`, ` +
+      `\`${SHOP_INVITES_TABLE}\`, and the RPCs \`${CREATE_SHOP_FUNCTION}\`, ` +
+      `\`${INVITE_TO_SHOP_FUNCTION}\`, \`${ACCEPT_SHOP_INVITE_FUNCTION}\`, ` +
+      `\`${SHOP_ROSTER_FUNCTION}\` — that satisfies it ` +
+      `(refs specs/003-shop-tools SHP-01, SHP-03, SHP-04)`
+  );
+}
+
+/** Seam for the directory-claim surface T3-203 has not built. */
+export const SEAM_DIRECTORY = "not implemented: T3-203";
+
+/** The seam error for a directory-claim object/module T3-203 has not shipped. */
+export function directorySeam(what: string): Error {
+  return new Error(
+    `${SEAM_DIRECTORY} — ${what}. T3-201 [TEST] declared the directory-claim ` +
+      `and directory-neutrality contract as graders; T3-203 [PLATFORM] ships ` +
+      `the \`${DIRECTORY_CLAIMS_TABLE}\` migration and the pure render modules ` +
+      `(\`${DIRECTORY_ORDER_MODULE}\`, \`${DIRECTORY_CLAIM_MODULE}\`) that ` +
+      `satisfy it (refs specs/003-shop-tools SHP-02, SHP-05)`
+  );
+}
+
+/* -------------------------------------------------------------------------
+ * The membership tables (SHP-01, SHP-03)
+ * ---------------------------------------------------------------------- */
+
+/** A named business with one or more member accounts (spec §2, SHP-01). */
+export const SHOPS_TABLE = "shops";
+
+/**
+ * The join table between an account and a shop. One row = one live membership.
+ *
+ * Its **write path is the whole of SHP-01's "no open join"**: a row here is
+ * created only by `accept_shop_invite` (a security-definer routine that first
+ * consults a matching invite), never by a caller inserting its own row. So the
+ * graders assert `authenticated` holds **no direct `insert`** on this table —
+ * the same definer-RPC write posture 002/003 give `shares` — which is the
+ * affirmative way to state "there is no path for an account to add itself".
+ */
+export const SHOP_MEMBERS_TABLE = "shop_members";
+
+/**
+ * An outstanding invitation, addressed to an email by an existing member.
+ * Membership comes only from accepting one of these (SHP-01).
+ */
+export const SHOP_INVITES_TABLE = "shop_invites";
+
+/** The account that holds a membership / an invite's addressee, per table. */
+export const SHOP_MEMBER_ACCOUNT_COLUMN = "account_id";
+
+/** The shop a membership row belongs to. */
+export const SHOP_MEMBER_SHOP_ID_COLUMN = "shop_id";
+
+/** The email an invite is addressed to (the SHP-01 "invitation" addressee). */
+export const SHOP_INVITE_EMAIL_COLUMN = "invitee_email";
+
+/* -------------------------------------------------------------------------
+ * The membership RPCs (SHP-01)
+ * ---------------------------------------------------------------------- */
+
+/** Create a shop; the caller becomes its first member. Returns the shop id. */
+export const CREATE_SHOP_FUNCTION = "create_shop";
+export const CREATE_SHOP_ARGUMENTS = ["p_name"] as const;
+export const CREATE_SHOP_RESULT_ID_FIELD = "shop_id";
+
+/**
+ * Invite an account into a shop, addressed by email. Restricted to an
+ * **existing member** of that shop (SHP-01: "invitation from an existing
+ * member") — so its body must consult `shop_members` to prove the inviter
+ * belongs. Returns the invite id.
+ */
+export const INVITE_TO_SHOP_FUNCTION = "invite_to_shop";
+export const INVITE_TO_SHOP_ARGUMENTS = [
+  "p_shop_id",
+  "p_invitee_email",
+] as const;
+export const INVITE_RESULT_ID_FIELD = "invite_id";
+
+/**
+ * Accept an invite addressed to the caller's own email, becoming a member.
+ * The one write path into `shop_members`. Its body must read the invite (and
+ * check `auth.email()` matches the addressee) before writing the membership —
+ * the same "consult the addressee, then write" shape `bind_share_grant` uses,
+ * and the reason a non-invited account cannot self-join.
+ */
+export const ACCEPT_SHOP_INVITE_FUNCTION = "accept_shop_invite";
+export const ACCEPT_SHOP_INVITE_ARGUMENTS = ["p_invite_id"] as const;
+
+/* -------------------------------------------------------------------------
+ * The shop roster (SHP-03, SHP-04) — the half T3-101 deferred
+ * ---------------------------------------------------------------------- */
+
+/**
+ * The one place a shop's members see the shop's grants (SHP-03), keyed on the
+ * shop id and gated on the caller's own membership.
+ *
+ * The SHP-04 isolation floor is the whole point: it returns a grant held by a
+ * shop member **only when `is_shop_visible` is true**, so an individual grant
+ * (the private-by-default value) never reaches it. Its body must therefore
+ * consult `is_shop_visible` and `shop_members`, filter on the caller's
+ * membership (`auth.uid()`), and — like `mechanic_roster` — return only live
+ * grants (`revoked_at is null`, `expires_at > now()`). The row carries
+ * `ROSTER_VEHICLE_ID_FIELD` so a grader can ask "is this vehicle on the shop
+ * roster?".
+ */
+export const SHOP_ROSTER_FUNCTION = "shop_roster";
+export const SHOP_ROSTER_ARGUMENTS = ["p_shop_id"] as const;
+
+/**
+ * The account surface a mechanic reaches only *as* an account (spec §1: "the
+ * accountless path is read-only because it has no auth.uid()"). No anon/public
+ * execute on any of them; `authenticated` execute on all. Graded both ways,
+ * because a closed door nobody can open is as broken as one that will not shut.
+ */
+export const SHOP_ACCOUNT_ONLY_FUNCTIONS = [
+  CREATE_SHOP_FUNCTION,
+  INVITE_TO_SHOP_FUNCTION,
+  ACCEPT_SHOP_INVITE_FUNCTION,
+  SHOP_ROSTER_FUNCTION,
+] as const;
+
+/* -------------------------------------------------------------------------
+ * The directory claim (SHP-02)
+ *
+ * A claim is a **database row pointing at a git-owned community `shop` entry by
+ * its content id** — never an edit to the entry. The community collection stays
+ * read-only (tasks.md T3-203). The claim is invisible to a reader until it is
+ * verified: an unverified claim changes nothing anyone sees (SHP-02).
+ * ---------------------------------------------------------------------- */
+
+export const DIRECTORY_CLAIMS_TABLE = "directory_claims";
+
+/** The claiming shop. */
+export const CLAIM_SHOP_ID_COLUMN = "shop_id";
+
+/**
+ * The content id of the community `shop` entry being claimed — a `text`
+ * pointer at git-owned content (e.g. `veinsa-motors-mitsubishi-costa-rica`),
+ * not a foreign key into any user table. This is what makes a claim a pointer
+ * rather than an edit.
+ */
+export const CLAIM_ENTRY_ID_COLUMN = "community_entry_id";
+
+/**
+ * When the claim was verified — **nullable**, `null` meaning unverified. The
+ * single fact that decides whether the directory renders a claimed badge
+ * (SHP-02); its absence is what makes an unverified claim render nothing.
+ */
+export const CLAIM_VERIFIED_AT_COLUMN = "verified_at";
+
+/* -------------------------------------------------------------------------
+ * The directory render seams (T3-203)
+ *
+ * SHP-02's "renders nothing" and SHP-05's "order/inclusion is a pure function
+ * of content" are render properties, best graded as extracted pure functions —
+ * the exact reason `src/lib/community-filter.ts` was split out of the directory
+ * `.astro` page (its own docstring). T3-203 ships these modules; the graders
+ * load them by dynamic import and, until they exist, fail with `directorySeam`
+ * rather than an import error. Module paths are relative to `tests/shop/`.
+ * ---------------------------------------------------------------------- */
+
+/**
+ * The neutral-ordering module (SHP-05). Exports `directoryListing(entries,
+ * context)`: the ordered list of entry ids the directory shows, which must be a
+ * pure function of the git-owned `entries` and provably independent of the
+ * `context` (viewer account, claims, memberships, plans). The context argument
+ * exists precisely so the grader can prove the output ignores every field in it
+ * — an affirmative "here is everything that could tempt a ranking, and it
+ * changes nothing".
+ */
+export const DIRECTORY_ORDER_MODULE =
+  "../../src/lib/directory/neutral-order.ts";
+export const DIRECTORY_LISTING_EXPORT = "directoryListing";
+
+/**
+ * The claimed-badge module (SHP-02). Exports `resolveClaimBadges(claims)`: the
+ * set/map of community entry ids that show a claimed badge — which must include
+ * a claim only when it is verified. An unverified claim contributes nothing.
+ */
+export const DIRECTORY_CLAIM_MODULE = "../../src/lib/directory/claim-badge.ts";
+export const RESOLVE_CLAIM_BADGES_EXPORT = "resolveClaimBadges";
