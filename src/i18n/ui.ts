@@ -583,11 +583,21 @@ export interface UiStrings
    * blank, the link is a plain 002 bearer link anyone it is sent to can open.
    * `shareShopVisibleHint` is SHP-04's consent line in prose: sharing with a
    * person is not sharing with their business, so the switch is off by default.
+   *
+   * `shareShopVisibleConsent` / `shareShopVisibleUseIndividual` are the T3-202
+   * reactive half of SHP-04: when the owner turns shop-visibility on for a
+   * named account, this consent callout appears — a shop-visible grant reaches
+   * everyone at that person's shop, not just them — and offers a one-tap way to
+   * keep it to the individual. The database defaults `is_shop_visible` to the
+   * conservative value (T3-101); this makes the shop-visible choice a conscious
+   * one at the moment it is made.
    */
   readonly shareEmailLabel: string;
   readonly shareEmailHint: string;
   readonly shareShopVisibleLabel: string;
   readonly shareShopVisibleHint: string;
+  readonly shareShopVisibleConsent: string;
+  readonly shareShopVisibleUseIndividual: string;
   readonly shareExtend: string;
   readonly shareExtending: string;
   readonly shareError: string;
@@ -1498,6 +1508,9 @@ const en: UiStrings = {
   shareShopVisibleLabel: "Also let their shop see it",
   shareShopVisibleHint:
     "Off by default. A link sent to someone who works at a shop stays between you and that person unless you turn this on. Sharing with a person is not sharing with their business.",
+  shareShopVisibleConsent:
+    "Heads up: if this person works at a shop, everyone at that shop will be able to see this truck's history — not just them. Sharing with a business is a separate choice from sharing with the person who works there.",
+  shareShopVisibleUseIndividual: "Keep it to this person only",
   shareExtend: "Extend until revoked",
   shareExtending: "Extending…",
   shareError:
@@ -2230,6 +2243,9 @@ const es: UiStrings = {
   shareShopVisibleLabel: "Permitir también que su taller lo vea",
   shareShopVisibleHint:
     "Desactivado por defecto. Un enlace enviado a alguien que trabaja en un taller queda entre usted y esa persona, a menos que usted lo active. Compartir con una persona no es compartir con su negocio.",
+  shareShopVisibleConsent:
+    "Tome en cuenta: si esta persona trabaja en un taller, todo el personal de ese taller podrá ver el historial de este carro, no solo ella. Compartir con un negocio es una decisión aparte de compartir con la persona que trabaja ahí.",
+  shareShopVisibleUseIndividual: "Dejarlo solo para esta persona",
   shareExtend: "Extender hasta revocar",
   shareExtending: "Extendiendo…",
   shareError:

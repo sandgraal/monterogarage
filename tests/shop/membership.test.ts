@@ -152,22 +152,19 @@ function requireShopRoutine(name: string): FunctionDefinition {
  * ====================================================================== */
 
 describe("the membership tables ship with row-level security (SHP-01)", () => {
-  it.fails.each(SHOP_TABLES)(
-    "%s enables AND forces row level security",
-    (table) => {
-      // AGENTS.md, Boundaries: "every user table ships with row-level security
-      // proven by graders before content flows." `enable` alone exempts the
-      // table owner (which Supabase migrations run as); `force` closes it. Both
-      // are required, and they are graded separately because `force` is the one
-      // most often missed.
-      requireShopTable(table);
-      const sql = migrationSql();
-      expect(enablesRls(sql, table), `${table} does not enable RLS`).toBe(true);
-      expect(forcesRls(sql, table), `${table} does not force RLS`).toBe(true);
-    }
-  );
+  it.each(SHOP_TABLES)("%s enables AND forces row level security", (table) => {
+    // AGENTS.md, Boundaries: "every user table ships with row-level security
+    // proven by graders before content flows." `enable` alone exempts the
+    // table owner (which Supabase migrations run as); `force` closes it. Both
+    // are required, and they are graded separately because `force` is the one
+    // most often missed.
+    requireShopTable(table);
+    const sql = migrationSql();
+    expect(enablesRls(sql, table), `${table} does not enable RLS`).toBe(true);
+    expect(forcesRls(sql, table), `${table} does not force RLS`).toBe(true);
+  });
 
-  it.fails("no anonymous role reaches any membership table", () => {
+  it("no anonymous role reaches any membership table", () => {
     // The whole membership surface is account-only (spec §1). `tableGrantIssues`
     // flags anon holding anything, and — the "unknown is not zero" hazard —
     // flags a table whose inherited anon privileges are never revoked (Supabase
@@ -179,7 +176,7 @@ describe("the membership tables ship with row-level security (SHP-01)", () => {
 });
 
 describe("membership is invite-only: no open join (SHP-01)", () => {
-  it.fails("authenticated holds no direct insert on shop_members", () => {
+  it("authenticated holds no direct insert on shop_members", () => {
     // The structural floor under "there is no path for an account to add itself
     // to a shop". A membership row is written only by the security-definer
     // `accept_shop_invite` (which first consults a matching invite) — the same
@@ -203,34 +200,29 @@ describe("membership is invite-only: no open join (SHP-01)", () => {
     ).toBe("none");
   });
 
-  it.fails(
-    "accept_shop_invite reads the invite before writing the membership",
-    () => {
-      // "Membership comes only from an accepted invite." The body must consult the
-      // invite (the addressee — `invitee_email` / the invites table) *and* write
-      // the membership (`shop_members`). An accept that never reads the invite
-      // admits whoever calls it; one that never writes shop_members admits nobody.
-      // The email match itself is proved on the wire in Tier B; this pins the two
-      // seams it needs — the same shape roster.test.ts pins for `bind_share_grant`.
-      const accept = requireShopRoutine(ACCEPT_SHOP_INVITE_FUNCTION);
-      expect(
-        accept.body,
-        `${ACCEPT_SHOP_INVITE_FUNCTION} never consults the invite`
-      ).toMatch(
-        new RegExp(`${SHOP_INVITES_TABLE}|${SHOP_INVITE_EMAIL_COLUMN}`)
-      );
-      expect(
-        accept.body,
-        `${ACCEPT_SHOP_INVITE_FUNCTION} never writes ${SHOP_MEMBERS_TABLE}`
-      ).toContain(SHOP_MEMBERS_TABLE);
-      expect(
-        accept.body,
-        `${ACCEPT_SHOP_INVITE_FUNCTION} never checks the caller is the addressee`
-      ).toMatch(/auth\.email\(\)/);
-    }
-  );
+  it("accept_shop_invite reads the invite before writing the membership", () => {
+    // "Membership comes only from an accepted invite." The body must consult the
+    // invite (the addressee — `invitee_email` / the invites table) *and* write
+    // the membership (`shop_members`). An accept that never reads the invite
+    // admits whoever calls it; one that never writes shop_members admits nobody.
+    // The email match itself is proved on the wire in Tier B; this pins the two
+    // seams it needs — the same shape roster.test.ts pins for `bind_share_grant`.
+    const accept = requireShopRoutine(ACCEPT_SHOP_INVITE_FUNCTION);
+    expect(
+      accept.body,
+      `${ACCEPT_SHOP_INVITE_FUNCTION} never consults the invite`
+    ).toMatch(new RegExp(`${SHOP_INVITES_TABLE}|${SHOP_INVITE_EMAIL_COLUMN}`));
+    expect(
+      accept.body,
+      `${ACCEPT_SHOP_INVITE_FUNCTION} never writes ${SHOP_MEMBERS_TABLE}`
+    ).toContain(SHOP_MEMBERS_TABLE);
+    expect(
+      accept.body,
+      `${ACCEPT_SHOP_INVITE_FUNCTION} never checks the caller is the addressee`
+    ).toMatch(/auth\.email\(\)/);
+  });
 
-  it.fails("invite_to_shop restricts inviting to an existing member", () => {
+  it("invite_to_shop restricts inviting to an existing member", () => {
     // SHP-01: "Membership is by invitation from an existing member." An invite
     // routine that never consults `shop_members` lets any account invite into
     // any shop — a second open-join route wearing the invite path's clothes.
@@ -244,7 +236,7 @@ describe("membership is invite-only: no open join (SHP-01)", () => {
 });
 
 describe("the membership RPCs exist with their pinned signatures (SHP-01)", () => {
-  it.fails(`ships ${CONTRACT_SCHEMA}.${CREATE_SHOP_FUNCTION}`, () => {
+  it(`ships ${CONTRACT_SCHEMA}.${CREATE_SHOP_FUNCTION}`, () => {
     const create = requireShopRoutine(CREATE_SHOP_FUNCTION);
     for (const name of CREATE_SHOP_ARGUMENTS) {
       expect(
@@ -254,7 +246,7 @@ describe("the membership RPCs exist with their pinned signatures (SHP-01)", () =
     }
   });
 
-  it.fails(`ships ${CONTRACT_SCHEMA}.${INVITE_TO_SHOP_FUNCTION}`, () => {
+  it(`ships ${CONTRACT_SCHEMA}.${INVITE_TO_SHOP_FUNCTION}`, () => {
     const invite = requireShopRoutine(INVITE_TO_SHOP_FUNCTION);
     for (const name of INVITE_TO_SHOP_ARGUMENTS) {
       expect(
@@ -264,7 +256,7 @@ describe("the membership RPCs exist with their pinned signatures (SHP-01)", () =
     }
   });
 
-  it.fails(`ships ${CONTRACT_SCHEMA}.${ACCEPT_SHOP_INVITE_FUNCTION}`, () => {
+  it(`ships ${CONTRACT_SCHEMA}.${ACCEPT_SHOP_INVITE_FUNCTION}`, () => {
     const accept = requireShopRoutine(ACCEPT_SHOP_INVITE_FUNCTION);
     for (const name of ACCEPT_SHOP_INVITE_ARGUMENTS) {
       expect(
@@ -274,7 +266,7 @@ describe("the membership RPCs exist with their pinned signatures (SHP-01)", () =
     }
   });
 
-  it.fails(`ships ${CONTRACT_SCHEMA}.${SHOP_ROSTER_FUNCTION}, per shop`, () => {
+  it(`ships ${CONTRACT_SCHEMA}.${SHOP_ROSTER_FUNCTION}, per shop`, () => {
     const roster = requireShopRoutine(SHOP_ROSTER_FUNCTION);
     for (const name of SHOP_ROSTER_ARGUMENTS) {
       expect(
@@ -286,7 +278,7 @@ describe("the membership RPCs exist with their pinned signatures (SHP-01)", () =
 });
 
 describe("the shop surface is account-only, and reachable by an account (spec §1)", () => {
-  it.fails("no shop routine is reachable without an account", () => {
+  it("no shop routine is reachable without an account", () => {
     // §1: "the accountless path is read-only because it has no auth.uid()."
     // Creating a shop, inviting, accepting, and the shop roster are all things
     // you can only do *as* an account, so an anon/public caller holds no
@@ -300,7 +292,7 @@ describe("the shop surface is account-only, and reachable by an account (spec §
     expect(reachable).toEqual([]);
   });
 
-  it.fails("every shop routine is reachable by an authenticated caller", () => {
+  it("every shop routine is reachable by an authenticated caller", () => {
     // The other direction, so "not anon" is not satisfied by a routine nobody
     // can reach at all — a closed door nobody can open is as broken as one that
     // will not shut.
@@ -317,7 +309,7 @@ describe("the shop surface is account-only, and reachable by an account (spec §
     expect(unreachable).toEqual([]);
   });
 
-  it.fails("every security-definer shop routine pins search_path = ''", () => {
+  it("every security-definer shop routine pins search_path = ''", () => {
     // A definer routine resolves unqualified names through the caller's search
     // path; `set search_path = ''` forces every name schema-qualified. Reused
     // 002 rule, scoped to these routines — an invoker routine is not required to
@@ -334,50 +326,41 @@ describe("the shop surface is account-only, and reachable by an account (spec §
 });
 
 describe("the shop roster returns exactly the shop's live shop-visible grants (SHP-03, SHP-04)", () => {
-  it.fails(
-    "shop_roster consults is_shop_visible, shop_members, and the caller",
-    () => {
-      // The SHP-04 isolation floor, structurally: a roster that never reads
-      // `is_shop_visible` cannot exclude an individual grant, one that never reads
-      // `shop_members` cannot scope to a shop, and one that never reads
-      // `auth.uid()` cannot gate on the caller's own membership — any of the three
-      // would hand a member grants they must not see. The behaviour is proved in
-      // Tier B; this is the cheap check that fails on the merge path.
-      const roster = requireShopRoutine(SHOP_ROSTER_FUNCTION);
-      expect(
-        roster.body,
-        `${SHOP_ROSTER_FUNCTION} never reads ${SHOP_VISIBLE_COLUMN} — it cannot ` +
-          `exclude individual grants`
-      ).toContain(SHOP_VISIBLE_COLUMN);
-      expect(
-        roster.body,
-        `${SHOP_ROSTER_FUNCTION} never reads ${SHOP_MEMBERS_TABLE} — it cannot ` +
-          `scope to one shop`
-      ).toContain(SHOP_MEMBERS_TABLE);
-      expect(roster.body).toMatch(/auth\.uid\(\)/);
-    }
-  );
+  it("shop_roster consults is_shop_visible, shop_members, and the caller", () => {
+    // The SHP-04 isolation floor, structurally: a roster that never reads
+    // `is_shop_visible` cannot exclude an individual grant, one that never reads
+    // `shop_members` cannot scope to a shop, and one that never reads
+    // `auth.uid()` cannot gate on the caller's own membership — any of the three
+    // would hand a member grants they must not see. The behaviour is proved in
+    // Tier B; this is the cheap check that fails on the merge path.
+    const roster = requireShopRoutine(SHOP_ROSTER_FUNCTION);
+    expect(
+      roster.body,
+      `${SHOP_ROSTER_FUNCTION} never reads ${SHOP_VISIBLE_COLUMN} — it cannot ` +
+        `exclude individual grants`
+    ).toContain(SHOP_VISIBLE_COLUMN);
+    expect(
+      roster.body,
+      `${SHOP_ROSTER_FUNCTION} never reads ${SHOP_MEMBERS_TABLE} — it cannot ` +
+        `scope to one shop`
+    ).toContain(SHOP_MEMBERS_TABLE);
+    expect(roster.body).toMatch(/auth\.uid\(\)/);
+  });
 
-  it.fails(
-    "shop_roster tests revoked_at — a revoked grant leaves the shop roster",
-    () => {
-      // The likeliest defect: a roster that never re-reads revoked_at, so a
-      // revoked grant lingers for a whole shop. 002's `revocationCheckIssues` is
-      // exactly this question, one surface over.
-      expect(
-        revocationCheckIssues(requireShopRoutine(SHOP_ROSTER_FUNCTION))
-      ).toEqual([]);
-    }
-  );
+  it("shop_roster tests revoked_at — a revoked grant leaves the shop roster", () => {
+    // The likeliest defect: a roster that never re-reads revoked_at, so a
+    // revoked grant lingers for a whole shop. 002's `revocationCheckIssues` is
+    // exactly this question, one surface over.
+    expect(
+      revocationCheckIssues(requireShopRoutine(SHOP_ROSTER_FUNCTION))
+    ).toEqual([]);
+  });
 
-  it.fails(
-    "shop_roster tests expires_at — an expired grant leaves the shop roster",
-    () => {
-      expect(
-        expiryCheckIssues(requireShopRoutine(SHOP_ROSTER_FUNCTION))
-      ).toEqual([]);
-    }
-  );
+  it("shop_roster tests expires_at — an expired grant leaves the shop roster", () => {
+    expect(expiryCheckIssues(requireShopRoutine(SHOP_ROSTER_FUNCTION))).toEqual(
+      []
+    );
+  });
 });
 
 /* =========================================================================
@@ -403,7 +386,7 @@ describe.skipIf(!live.available)(
     live
   ),
   () => {
-    it.fails.each([
+    it.each([
       ["the addressee accepts and becomes a member", true],
       ["a stranger holding the invite id cannot accept it", false],
     ] as const)("%s", async (_label, callerIsAddressee) => {
@@ -442,71 +425,64 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails(
-      "a non-member cannot write its own membership row (no open join)",
-      async () => {
-        // The absence of a self-join route, proved rather than asserted: a
-        // stranger tries to insert its own `shop_members` row directly and is
-        // refused. The positive control is the whole point of the test — the same
-        // stranger, once invited and accepted, IS a member and can then invite a
-        // third account (a capability SHP-01 reserves for members). So the refusal
-        // above is "no open join", not "membership is broken for everyone".
-        const scenario = await provisionScenario(stackOf(live));
-        const owner = await makeAuthedActor(scenario, "o");
-        const stranger = await makeAuthedActor(scenario, "s");
-        const third = await makeAuthedActor(scenario, "t");
-        try {
-          const { shopId } = await createShop(
-            scenario,
-            owner,
-            "TEST-SHOP-beta"
-          );
+    it("a non-member cannot write its own membership row (no open join)", async () => {
+      // The absence of a self-join route, proved rather than asserted: a
+      // stranger tries to insert its own `shop_members` row directly and is
+      // refused. The positive control is the whole point of the test — the same
+      // stranger, once invited and accepted, IS a member and can then invite a
+      // third account (a capability SHP-01 reserves for members). So the refusal
+      // above is "no open join", not "membership is broken for everyone".
+      const scenario = await provisionScenario(stackOf(live));
+      const owner = await makeAuthedActor(scenario, "o");
+      const stranger = await makeAuthedActor(scenario, "s");
+      const third = await makeAuthedActor(scenario, "t");
+      try {
+        const { shopId } = await createShop(scenario, owner, "TEST-SHOP-beta");
 
-          // No invite: a direct self-insert must be refused.
-          const openJoin = await selfJoinAttempt(scenario, stranger, shopId);
-          expect(openJoin.ok).toBe(false);
-          // And the stranger, still a non-member, cannot invite either.
-          const invalidInvite = await inviteToShop(
-            scenario,
-            stranger,
-            shopId,
-            third.email as string
-          );
-          expect(invalidInvite.ok).toBe(false);
+        // No invite: a direct self-insert must be refused.
+        const openJoin = await selfJoinAttempt(scenario, stranger, shopId);
+        expect(openJoin.ok).toBe(false);
+        // And the stranger, still a non-member, cannot invite either.
+        const invalidInvite = await inviteToShop(
+          scenario,
+          stranger,
+          shopId,
+          third.email as string
+        );
+        expect(invalidInvite.ok).toBe(false);
 
-          // Positive control: invited + accepted, the stranger becomes a member
-          // and can now invite the third account.
-          const invited = await inviteToShop(
-            scenario,
-            owner,
-            shopId,
-            stranger.email as string
-          );
-          expect(invited.ok).toBe(true);
-          expect(
-            (
-              await acceptShopInvite(
-                scenario,
-                stranger,
-                inviteIdOf(invited) as string
-              )
-            ).ok
-          ).toBe(true);
-          const memberInvite = await inviteToShop(
-            scenario,
-            stranger,
-            shopId,
-            third.email as string
-          );
-          expect(memberInvite.ok).toBe(true);
-        } finally {
-          await dropAuthedActor(scenario, owner);
-          await dropAuthedActor(scenario, stranger);
-          await dropAuthedActor(scenario, third);
-          await teardownScenario(scenario);
-        }
+        // Positive control: invited + accepted, the stranger becomes a member
+        // and can now invite the third account.
+        const invited = await inviteToShop(
+          scenario,
+          owner,
+          shopId,
+          stranger.email as string
+        );
+        expect(invited.ok).toBe(true);
+        expect(
+          (
+            await acceptShopInvite(
+              scenario,
+              stranger,
+              inviteIdOf(invited) as string
+            )
+          ).ok
+        ).toBe(true);
+        const memberInvite = await inviteToShop(
+          scenario,
+          stranger,
+          shopId,
+          third.email as string
+        );
+        expect(memberInvite.ok).toBe(true);
+      } finally {
+        await dropAuthedActor(scenario, owner);
+        await dropAuthedActor(scenario, stranger);
+        await dropAuthedActor(scenario, third);
+        await teardownScenario(scenario);
       }
-    );
+    });
   }
 );
 
@@ -543,136 +519,125 @@ describe.skipIf(!live.available)(
       return { m1, m2, shopId };
     }
 
-    it.fails(
-      "a shopmate's shop-visible grant appears on the shop roster (SHP-03)",
-      async () => {
-        const scenario = await provisionScenario(stackOf(live));
-        const { m1, m2, shopId } = await shopWithTwoMembers(scenario);
-        try {
-          const vehicleId = await ownedVehicleId(scenario);
-          const grant = await issueNamedGrant(
-            scenario,
-            scenario.ownerA,
-            vehicleId,
-            {
-              granteeEmail: m2.email,
-              shopVisible: true,
-            }
-          );
-          expect((await bindGrant(scenario, m2, grant.token)).ok).toBe(true);
+    it("a shopmate's shop-visible grant appears on the shop roster (SHP-03)", async () => {
+      const scenario = await provisionScenario(stackOf(live));
+      const { m1, m2, shopId } = await shopWithTwoMembers(scenario);
+      try {
+        const vehicleId = await ownedVehicleId(scenario);
+        const grant = await issueNamedGrant(
+          scenario,
+          scenario.ownerA,
+          vehicleId,
+          {
+            granteeEmail: m2.email,
+            shopVisible: true,
+          }
+        );
+        expect((await bindGrant(scenario, m2, grant.token)).ok).toBe(true);
 
-          const roster = await readShopRoster(scenario, m1, shopId);
-          expect(roster.ok).toBe(true);
-          expect(rosterHasVehicle(roster, vehicleId)).toBe(true);
-        } finally {
-          await dropAuthedActor(scenario, m1);
-          await dropAuthedActor(scenario, m2);
-          await teardownScenario(scenario);
-        }
+        const roster = await readShopRoster(scenario, m1, shopId);
+        expect(roster.ok).toBe(true);
+        expect(rosterHasVehicle(roster, vehicleId)).toBe(true);
+      } finally {
+        await dropAuthedActor(scenario, m1);
+        await dropAuthedActor(scenario, m2);
+        await teardownScenario(scenario);
       }
-    );
+    });
 
-    it.fails(
-      "a shopmate's individual grant is withheld from the shop roster (SHP-04)",
-      async () => {
-        // SHP-04: "Consent to share with a business is not implied by consent to
-        // share with a person who works there." An individual grant
-        // (is_shop_visible = false) bound to M2 must not reach M1 through the shop
-        // roster. The positive control gives M2 a *second*, shop-visible grant on
-        // another vehicle, so the roster is proven to work — M1 sees the
-        // shop-visible one and not the individual one is the isolation asserted.
-        const scenario = await provisionScenario(stackOf(live));
-        const { m1, m2, shopId } = await shopWithTwoMembers(scenario);
-        try {
-          const individualVehicle = await ownedVehicleId(scenario, "1");
-          const sharedVehicle = await ownedVehicleId(scenario, "2");
+    it("a shopmate's individual grant is withheld from the shop roster (SHP-04)", async () => {
+      // SHP-04: "Consent to share with a business is not implied by consent to
+      // share with a person who works there." An individual grant
+      // (is_shop_visible = false) bound to M2 must not reach M1 through the shop
+      // roster. The positive control gives M2 a *second*, shop-visible grant on
+      // another vehicle, so the roster is proven to work — M1 sees the
+      // shop-visible one and not the individual one is the isolation asserted.
+      const scenario = await provisionScenario(stackOf(live));
+      const { m1, m2, shopId } = await shopWithTwoMembers(scenario);
+      try {
+        const individualVehicle = await ownedVehicleId(scenario, "1");
+        const sharedVehicle = await ownedVehicleId(scenario, "2");
 
-          const individual = await issueNamedGrant(
-            scenario,
-            scenario.ownerA,
-            individualVehicle,
-            { granteeEmail: m2.email, shopVisible: false }
-          );
-          const shared = await issueNamedGrant(
-            scenario,
-            scenario.ownerA,
-            sharedVehicle,
-            { granteeEmail: m2.email, shopVisible: true }
-          );
-          expect((await bindGrant(scenario, m2, individual.token)).ok).toBe(
-            true
-          );
-          expect((await bindGrant(scenario, m2, shared.token)).ok).toBe(true);
+        const individual = await issueNamedGrant(
+          scenario,
+          scenario.ownerA,
+          individualVehicle,
+          { granteeEmail: m2.email, shopVisible: false }
+        );
+        const shared = await issueNamedGrant(
+          scenario,
+          scenario.ownerA,
+          sharedVehicle,
+          { granteeEmail: m2.email, shopVisible: true }
+        );
+        expect((await bindGrant(scenario, m2, individual.token)).ok).toBe(true);
+        expect((await bindGrant(scenario, m2, shared.token)).ok).toBe(true);
 
-          const roster = await readShopRoster(scenario, m1, shopId);
-          expect(roster.ok).toBe(true);
-          // The roster works (the shop-visible grant is on it) …
-          expect(rosterHasVehicle(roster, sharedVehicle)).toBe(true);
-          // … and yet the individual grant is withheld.
-          expect(rosterHasVehicle(roster, individualVehicle)).toBe(false);
-        } finally {
-          await dropAuthedActor(scenario, m1);
-          await dropAuthedActor(scenario, m2);
-          await teardownScenario(scenario);
-        }
+        const roster = await readShopRoster(scenario, m1, shopId);
+        expect(roster.ok).toBe(true);
+        // The roster works (the shop-visible grant is on it) …
+        expect(rosterHasVehicle(roster, sharedVehicle)).toBe(true);
+        // … and yet the individual grant is withheld.
+        expect(rosterHasVehicle(roster, individualVehicle)).toBe(false);
+      } finally {
+        await dropAuthedActor(scenario, m1);
+        await dropAuthedActor(scenario, m2);
+        await teardownScenario(scenario);
       }
-    );
+    });
 
-    it.fails(
-      "another shop's shop-visible grant never reaches this shop's roster",
-      async () => {
-        // "No others": a grant held by a member of a *different* shop, even
-        // shop-visible, is not on this shop's roster. The positive control is this
-        // shop's own shop-visible grant, which the reader does see — so "not on the
-        // roster" is real isolation, not an empty roster.
-        const scenario = await provisionScenario(stackOf(live));
-        const { m1, m2, shopId } = await shopWithTwoMembers(scenario);
-        const outsider = await makeAuthedActor(scenario, "x");
-        try {
-          // A second shop, wholly separate, with `outsider` as its member.
-          const { shopId: otherShopId } = await createShop(
-            scenario,
-            outsider,
-            "TEST-SHOP-delta"
-          );
-          expect(otherShopId).not.toBe(shopId);
+    it("another shop's shop-visible grant never reaches this shop's roster", async () => {
+      // "No others": a grant held by a member of a *different* shop, even
+      // shop-visible, is not on this shop's roster. The positive control is this
+      // shop's own shop-visible grant, which the reader does see — so "not on the
+      // roster" is real isolation, not an empty roster.
+      const scenario = await provisionScenario(stackOf(live));
+      const { m1, m2, shopId } = await shopWithTwoMembers(scenario);
+      const outsider = await makeAuthedActor(scenario, "x");
+      try {
+        // A second shop, wholly separate, with `outsider` as its member.
+        const { shopId: otherShopId } = await createShop(
+          scenario,
+          outsider,
+          "TEST-SHOP-delta"
+        );
+        expect(otherShopId).not.toBe(shopId);
 
-          const ourVehicle = await ownedVehicleId(scenario, "1");
-          const theirVehicle = await ownedVehicleId(scenario, "2");
-          const ours = await issueNamedGrant(
-            scenario,
-            scenario.ownerA,
-            ourVehicle,
-            {
-              granteeEmail: m2.email,
-              shopVisible: true,
-            }
-          );
-          const theirs = await issueNamedGrant(
-            scenario,
-            scenario.ownerA,
-            theirVehicle,
-            { granteeEmail: outsider.email, shopVisible: true }
-          );
-          expect((await bindGrant(scenario, m2, ours.token)).ok).toBe(true);
-          expect((await bindGrant(scenario, outsider, theirs.token)).ok).toBe(
-            true
-          );
+        const ourVehicle = await ownedVehicleId(scenario, "1");
+        const theirVehicle = await ownedVehicleId(scenario, "2");
+        const ours = await issueNamedGrant(
+          scenario,
+          scenario.ownerA,
+          ourVehicle,
+          {
+            granteeEmail: m2.email,
+            shopVisible: true,
+          }
+        );
+        const theirs = await issueNamedGrant(
+          scenario,
+          scenario.ownerA,
+          theirVehicle,
+          { granteeEmail: outsider.email, shopVisible: true }
+        );
+        expect((await bindGrant(scenario, m2, ours.token)).ok).toBe(true);
+        expect((await bindGrant(scenario, outsider, theirs.token)).ok).toBe(
+          true
+        );
 
-          const roster = await readShopRoster(scenario, m1, shopId);
-          expect(roster.ok).toBe(true);
-          expect(rosterHasVehicle(roster, ourVehicle)).toBe(true);
-          expect(rosterHasVehicle(roster, theirVehicle)).toBe(false);
-        } finally {
-          await dropAuthedActor(scenario, m1);
-          await dropAuthedActor(scenario, m2);
-          await dropAuthedActor(scenario, outsider);
-          await teardownScenario(scenario);
-        }
+        const roster = await readShopRoster(scenario, m1, shopId);
+        expect(roster.ok).toBe(true);
+        expect(rosterHasVehicle(roster, ourVehicle)).toBe(true);
+        expect(rosterHasVehicle(roster, theirVehicle)).toBe(false);
+      } finally {
+        await dropAuthedActor(scenario, m1);
+        await dropAuthedActor(scenario, m2);
+        await dropAuthedActor(scenario, outsider);
+        await teardownScenario(scenario);
       }
-    );
+    });
 
-    it.fails("a non-member cannot read a shop's roster", async () => {
+    it("a non-member cannot read a shop's roster", async () => {
       // A stranger who is in no shop cannot read this shop's roster: either the
       // call is refused, or it returns nothing — a leak is a breach either way,
       // so the assertion is "the shop-visible vehicle is not visible to the
