@@ -2581,6 +2581,18 @@ describe("declaredArgumentNames — PostgREST resolves by NAME (T2-404a)", () =>
     // test's job is proving the parser against what already shipped, not
     // pre-committing an implementation to argument names the spec does not
     // name.
+    //
+    // `create_share_grant` gained `p_grantee_email` and `p_is_shop_visible` in
+    // T3-102 (specs/003-shop-tools, MEC-06/SHP-04), which drop-and-recreate the
+    // routine with two defaulted arguments — the merged T3-101 [TEST] contract
+    // (`tests/shop/contract.ts`, `tests/shop/roster.test.ts`) and
+    // `share-grants.test.ts`'s own "takes the argument names the graders send"
+    // both require it. That is the real, shipped seven-argument signature, not a
+    // guess, so this probe reads it back exactly as the T2-404b note above says
+    // it should — end-to-end against what actually shipped, now exercising the
+    // parser's args-with-`default` handling too. Updated 2026-09-07 (the same
+    // stale-fixture grader-defect fix the T2-404b removal above records, refs
+    // specs/003-shop-tools T3-102).
     const declared = functions(migrationSql());
     const named = (name: string) =>
       declared.find((routine) => routine.name === name)?.argNames;
@@ -2591,6 +2603,8 @@ describe("declaredArgumentNames — PostgREST resolves by NAME (T2-404a)", () =>
       "p_includes_costs",
       "p_includes_receipts",
       "p_expires_in_hours",
+      "p_grantee_email",
+      "p_is_shop_visible",
     ]);
     expect(named("revoke_share_grant")).toEqual(["p_share_id"]);
   });

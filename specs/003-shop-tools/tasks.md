@@ -38,7 +38,7 @@ entitlements are hard-Opus. The billing webhook is `secrets-or-deploy`.
   would block the deletion), extending the shared FK parser additively to expose
   the on-delete action. (F3) The T3-101-line wording fix above. Depends: T3-101
   merged. Blocks: T3-102. *(MEC-05, MEC-06, SHP-03, SHP-04; 002 ACC-03)*
-- [ ] **T3-102 [PLATFORM]** Mechanic roster: authenticated grant-holder view,
+- [x] **T3-102 [PLATFORM]** Mechanic roster: authenticated grant-holder view,
   one place, bilingual per 002 ACC-02. Owner-side "extend to until-revoked" and
   revoke controls. Activates T3-101. Depends: T3-101 and T3-101a merged. *(MEC-05, MEC-06)*
 

@@ -200,36 +200,33 @@ describe("foreignKeyOnDeleteFor tells no-FK apart from a no-action FK", () => {
  * ---------------------------------------------------------------------- */
 
 describe("shares.bound_account_id unbinds on account deletion (F2, ACC-03)", () => {
-  it.fails(
-    "the bound_account_id → auth.users foreign key is `on delete set null`",
-    () => {
-      const sql = migrationSql();
+  it("the bound_account_id → auth.users foreign key is `on delete set null`", () => {
+    const sql = migrationSql();
 
-      // Precondition, shared with the T3-101 core FK grader: the column and a
-      // foreign key must exist. This is what fails honestly *today*, pre-T3-102
-      // — a named absence, never an import error or an undefined deref.
-      const def = columnDefinitionFor(sql, SHARES_TABLE, BOUND_ACCOUNT_COLUMN);
-      expect(
-        def,
-        `${SHARES_TABLE}.${BOUND_ACCOUNT_COLUMN} is not declared`
-      ).not.toBeNull();
+    // Precondition, shared with the T3-101 core FK grader: the column and a
+    // foreign key must exist. This is what fails honestly *today*, pre-T3-102
+    // — a named absence, never an import error or an undefined deref.
+    const def = columnDefinitionFor(sql, SHARES_TABLE, BOUND_ACCOUNT_COLUMN);
+    expect(
+      def,
+      `${SHARES_TABLE}.${BOUND_ACCOUNT_COLUMN} is not declared`
+    ).not.toBeNull();
 
-      const action = foreignKeyOnDeleteFor(
-        sql,
-        SHARES_TABLE,
-        BOUND_ACCOUNT_COLUMN
-      );
-      expect(
-        action,
-        `${BOUND_ACCOUNT_COLUMN} carries no foreign key — there is no ` +
-          `on-delete action to grade`
-      ).not.toBeNull();
+    const action = foreignKeyOnDeleteFor(
+      sql,
+      SHARES_TABLE,
+      BOUND_ACCOUNT_COLUMN
+    );
+    expect(
+      action,
+      `${BOUND_ACCOUNT_COLUMN} carries no foreign key — there is no ` +
+        `on-delete action to grade`
+    ).not.toBeNull();
 
-      // ACC-03: a mechanic must be able to delete their own account while
-      // holding a live binding. The binding UNBINDS (set null) — it must never
-      // cascade-delete the owner's grant row, and never be `no action` /
-      // `restrict`, either of which would block the mechanic's own deletion.
-      expect(action).toBe("set null");
-    }
-  );
+    // ACC-03: a mechanic must be able to delete their own account while
+    // holding a live binding. The binding UNBINDS (set null) — it must never
+    // cascade-delete the owner's grant row, and never be `no action` /
+    // `restrict`, either of which would block the mechanic's own deletion.
+    expect(action).toBe("set null");
+  });
 });

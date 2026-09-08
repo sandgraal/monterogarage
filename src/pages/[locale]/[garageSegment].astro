@@ -398,9 +398,13 @@ const hasReferences = Object.values(referenceCatalogue).some(
     data-string-share-kind-buyer={strings.shareKindBuyer}
     data-string-share-revoke={strings.shareRevoke}
     data-string-share-revoking={strings.shareRevoking}
+    data-string-share-extend={strings.shareExtend}
+    data-string-share-extending={strings.shareExtending}
     data-string-share-copied={strings.shareCopied}
     data-string-share-copy-failed={strings.shareCopyFailed}
     data-string-share-error={strings.shareError}
+    data-string-roster-error={strings.rosterError}
+    data-string-roster-access-until={strings.rosterAccessUntilTemplate}
     data-locale={LOCALE_BCP47[locale]}
   >
     <div class="garage__intro">
@@ -510,6 +514,44 @@ const hasReferences = Object.values(referenceCatalogue).some(
               </p>
 
               <ul class="garage__list" data-garage-list />
+
+              {/* ------------------------------------------------------ */}
+              {/* The mechanic's roster (T3-102, MEC-05)                  */}
+              {/*                                                        */}
+              {/* Every truck an owner has shared with THIS account, in   */}
+              {/* one place, so a mechanic never has to find the original */}
+              {/* link again. It sits beside the account's own vehicles   */}
+              {/* because a mechanic is the same account type as an owner */}
+              {/* (003 §2) — the roster is the other half of the same     */}
+              {/* signed-in surface, not a separate app. The list is      */}
+              {/* filled by `mechanic_roster()`, which keys on auth.uid(); */}
+              {/* an empty roster and a failed read are kept apart, the   */}
+              {/* same failure-is-not-a-zero rule the share list uses.    */}
+              {/* ------------------------------------------------------ */}
+              <section class="garage__roster">
+                <h2>{strings.rosterHeading}</h2>
+                <p class="garage__fineprint">{strings.rosterIntro}</p>
+
+                <p
+                  class="garage__empty-note"
+                  data-garage-roster-loading
+                  role="status"
+                  aria-live="polite"
+                >
+                  {strings.rosterLoading}
+                </p>
+                <p
+                  class="garage__message"
+                  data-garage-roster-message
+                  role="status"
+                  aria-live="polite"
+                />
+                <p class="garage__empty-note" data-garage-roster-empty hidden>
+                  {strings.rosterEmpty}
+                </p>
+
+                <ul class="garage__share-list" data-garage-roster />
+              </section>
             </div>
 
             {/* ---------------------------------------------------------- */}
@@ -656,6 +698,61 @@ const hasReferences = Object.values(referenceCatalogue).some(
                     </option>
                     <option value="buyer">{strings.shareKindBuyer}</option>
                   </select>
+                </p>
+
+                {/* ---------------------------------------------------- */}
+                {/* Issue to a named account (T3-102, MEC-06 / SHP-04)    */}
+                {/*                                                      */}
+                {/* An email ties the link to one account when its holder */}
+                {/* signs in — that binding is what puts the truck on     */}
+                {/* their roster (MEC-05) and lets the owner extend it    */}
+                {/* "until revoked" for that named account (MEC-06). Left */}
+                {/* blank, the link is a plain bearer link anyone it is   */}
+                {/* sent to can open — 002's SHR-07 behaviour, unchanged. */}
+                {/*                                                      */}
+                {/* The shop-visibility switch is off by default and its  */}
+                {/* hint carries SHP-04 in prose: sharing with a person   */}
+                {/* is not sharing with their business. The richer        */}
+                {/* consent prompt that reacts to whether the email       */}
+                {/* belongs to a shop member is T3-202's; this records    */}
+                {/* the choice and defaults it to the conservative one.   */}
+                {/* ---------------------------------------------------- */}
+                <p class="garage__field">
+                  <label class="garage__label" for="garage-share-email">
+                    {strings.shareEmailLabel}
+                  </label>
+                  <input
+                    class="garage__input"
+                    id="garage-share-email"
+                    type="email"
+                    autocomplete="off"
+                    autocapitalize="none"
+                    spellcheck="false"
+                    aria-describedby="garage-share-email-hint"
+                    data-garage-share-email
+                  />
+                  <span class="garage__hint" id="garage-share-email-hint">
+                    {strings.shareEmailHint}
+                  </span>
+                </p>
+
+                <p class="garage__check">
+                  <input
+                    class="garage__checkbox"
+                    id="garage-share-shop-visible"
+                    type="checkbox"
+                    aria-describedby="garage-share-shop-visible-hint"
+                    data-garage-share-shop-visible
+                  />
+                  <label class="garage__label" for="garage-share-shop-visible">
+                    {strings.shareShopVisibleLabel}
+                  </label>
+                  <span
+                    class="garage__hint"
+                    id="garage-share-shop-visible-hint"
+                  >
+                    {strings.shareShopVisibleHint}
+                  </span>
                 </p>
 
                 <p class="garage__check">
@@ -2053,6 +2150,9 @@ const hasReferences = Object.values(referenceCatalogue).some(
     createShareGrant,
     listShareGrants,
     revokeShareGrant,
+    extendShareGrant,
+    readMechanicRoster,
+    type RosterEntry,
     type ShareGrantRow,
   } from "../../lib/supabase/shares";
   import type {
@@ -2366,6 +2466,10 @@ const hasReferences = Object.values(referenceCatalogue).some(
       ),
       /* Typed share grants — T2-404, SHR-05…SHR-08 */
       shareKind: query<HTMLSelectElement>("[data-garage-share-kind]"),
+      shareEmail: query<HTMLInputElement>("[data-garage-share-email]"),
+      shareShopVisible: query<HTMLInputElement>(
+        "[data-garage-share-shop-visible]"
+      ),
       shareCosts: query<HTMLInputElement>("[data-garage-share-costs]"),
       shareReceipts: query<HTMLInputElement>("[data-garage-share-receipts]"),
       shareExpiry: query<HTMLSelectElement>("[data-garage-share-expiry]"),
@@ -2376,6 +2480,11 @@ const hasReferences = Object.values(referenceCatalogue).some(
       shareDismiss: query<HTMLButtonElement>("[data-garage-share-dismiss]"),
       shareList: query<HTMLUListElement>("[data-garage-share-list]"),
       shareMessage: query<HTMLElement>("[data-garage-share-message]"),
+      /* The mechanic's roster — T3-102, MEC-05 */
+      roster: query<HTMLUListElement>("[data-garage-roster]"),
+      rosterLoading: query<HTMLElement>("[data-garage-roster-loading]"),
+      rosterEmpty: query<HTMLElement>("[data-garage-roster-empty]"),
+      rosterMessage: query<HTMLElement>("[data-garage-roster-message]"),
     };
 
     const payload = readSelectorPayload(document) as SelectorPayload | null;
@@ -4199,10 +4308,24 @@ const hasReferences = Object.values(referenceCatalogue).some(
       if (ended !== null) item.classList.add("garage__share-item--ended");
       item.append(label);
 
-      // No button on a grant that is already ended: revoking twice is
+      // No controls on a grant that is already ended: revoking twice is
       // harmless (the RPC keeps the first timestamp) but a control that
       // cannot change anything is a control that teaches a reader nothing.
+      // Extend and revoke live in the same place, per MEC-06 — extend pushes
+      // this one link's expiry to "until revoked" without touching the other
+      // link on the same truck; revoke ends it. Both repaint from the database.
       if (ended === null) {
+        const extend = document.createElement("button");
+        extend.type = "button";
+        extend.className = "garage__link";
+        extend.textContent = text.stringShareExtend ?? "";
+        extend.addEventListener("click", () => {
+          void prolongShareGrant(grant.id, extend).catch(() =>
+            unreachable(els.shareMessage)
+          );
+        });
+        item.append(extend);
+
         const cut = document.createElement("button");
         cut.type = "button";
         cut.className = "garage__link garage__link--danger";
@@ -4282,6 +4405,8 @@ const hasReferences = Object.values(referenceCatalogue).some(
         includesReceipts: els.shareReceipts?.checked ?? false,
         expiresInDays:
           Number(els.shareExpiry?.value) || SHARE_EXPIRY_DAY_CHOICES[0],
+        granteeEmail: els.shareEmail?.value ?? null,
+        shopVisible: els.shareShopVisible?.checked ?? false,
       });
       button.disabled = false;
 
@@ -4322,6 +4447,108 @@ const hasReferences = Object.values(referenceCatalogue).some(
       // over a revocation that failed silently is exactly the wrong direction
       // for this control.
       await loadShareGrants(row);
+    }
+
+    /**
+     * Extend one grant, by id, to "until revoked", and repaint from the
+     * database (MEC-06).
+     *
+     * The far expiry is the RPC's arithmetic; this only names the grant and
+     * repaints, so what the owner sees is the row's real new expiry rather than
+     * an optimistic guess — the same discipline `endShareGrant` uses.
+     */
+    async function prolongShareGrant(
+      shareId: string,
+      control: HTMLButtonElement
+    ): Promise<void> {
+      const row = opened;
+      if (row === null) return;
+      control.disabled = true;
+      control.textContent = text.stringShareExtending ?? "";
+      const outcome = await extendShareGrant(shareId);
+      if (!outcome.ok) {
+        control.disabled = false;
+        control.textContent = text.stringShareExtend ?? "";
+        say(els.shareMessage, text.stringShareError ?? "");
+        return;
+      }
+      await loadShareGrants(row);
+    }
+
+    /* ---------------------------------------------------------------------
+     * The mechanic's roster (T3-102, MEC-05)
+     * ------------------------------------------------------------------ */
+
+    /**
+     * One roster row: a truck shared with this account, its scope and its
+     * access window.
+     *
+     * Read from the two capability columns, never from `kind` (SHR-05's label
+     * is never a branch) — the same shape `renderShareGrant` uses one panel
+     * over, so a mechanic and an owner read the same sentence about the same
+     * grant. No control: the roster is the mechanic's read-only view of what
+     * they hold; ending and extending are the owner's, on the owner's screen.
+     */
+    function renderRosterEntry(entry: RosterEntry): HTMLLIElement {
+      const item = document.createElement("li");
+      item.className = "garage__share-item";
+
+      const name = document.createElement("span");
+      name.className = "garage__share-label";
+      name.textContent = entry.display_name;
+      item.append(name);
+
+      const meta = document.createElement("span");
+      meta.className = "garage__fineprint";
+      const preset =
+        entry.kind === "buyer"
+          ? (text.stringShareKindBuyer ?? entry.kind)
+          : (text.stringShareKindMechanic ?? entry.kind);
+      const opens = entry.includes_costs
+        ? entry.includes_receipts
+          ? (text.stringShareOpensBoth ?? "")
+          : (text.stringShareOpensCosts ?? "")
+        : entry.includes_receipts
+          ? (text.stringShareOpensReceipts ?? "")
+          : (text.stringShareOpensNothing ?? "");
+      const until = new Intl.DateTimeFormat(locale, {
+        dateStyle: "medium",
+      }).format(new Date(entry.expires_at));
+      const access = (text.stringRosterAccessUntil ?? "{date}").replace(
+        "{date}",
+        until
+      );
+      // Punctuation, not prose (same as the share list).
+      meta.textContent = `${preset} · ${opens} · ${access}`;
+      item.append(meta);
+      return item;
+    }
+
+    /**
+     * Read the roster and paint it. Loading, empty and failed are three states,
+     * kept apart: an empty roster ("nobody has shared a truck with you") must
+     * never be shown for a request that failed (AGENTS.md — a failure is not a
+     * zero), and neither may masquerade as the other while the request is in
+     * flight.
+     */
+    async function loadRoster(): Promise<void> {
+      if (els.rosterLoading) els.rosterLoading.hidden = false;
+      if (els.rosterEmpty) els.rosterEmpty.hidden = true;
+      say(els.rosterMessage, "");
+      const outcome = await readMechanicRoster();
+      if (els.rosterLoading) els.rosterLoading.hidden = true;
+      if (!els.roster) return;
+      if (!outcome.ok) {
+        els.roster.replaceChildren();
+        say(els.rosterMessage, text.stringRosterError ?? "");
+        return;
+      }
+      if (outcome.value.length === 0) {
+        els.roster.replaceChildren();
+        if (els.rosterEmpty) els.rosterEmpty.hidden = false;
+        return;
+      }
+      els.roster.replaceChildren(...outcome.value.map(renderRosterEntry));
     }
 
     /**
@@ -4406,6 +4633,17 @@ const hasReferences = Object.values(referenceCatalogue).some(
       els.app.hidden = false;
       paintList();
       show("list");
+
+      /*
+       * The roster, alongside the garage (T3-102, MEC-05).
+       *
+       * Fire-and-forget, like the handle below: a mechanic with no roster and
+       * an owner with no roster are the same signed-in account, and a roster
+       * request that is slow or fails must not hold the garage behind it or turn
+       * a working page into an error one. Its own outcome, its own part of the
+       * screen.
+       */
+      void loadRoster().catch(() => unreachable(els.rosterMessage));
 
       /*
        * The handle, after the garage rather than beside it (T2-402, SHR-02).
