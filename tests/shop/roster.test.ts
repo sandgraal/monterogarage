@@ -143,7 +143,7 @@ function requireAccountRoutine(
  * ====================================================================== */
 
 describe("the shares table gains the binding columns (MEC-06, SHP-04)", () => {
-  it.fails("grantee_email is a nullable column — the addressee", () => {
+  it("grantee_email is a nullable column — the addressee", () => {
     // MEC-06: a grant is issued "for a named account". The email is that name.
     // Nullable, because a plain 002 bearer link has no addressee and must
     // remain issuable — which is also what makes it forever unbindable and so
@@ -157,7 +157,7 @@ describe("the shares table gains the binding columns (MEC-06, SHP-04)", () => {
     expect(isNotNullFor(sql, SHARES_TABLE, GRANTEE_EMAIL_COLUMN)).toBe(false);
   });
 
-  it.fails("bound_account_id is a uuid referencing auth.users", () => {
+  it("bound_account_id is a uuid referencing auth.users", () => {
     // The single fact that puts a grant on a roster, and whose absence keeps it
     // off one. A binding is to a real account or it is nothing, so the column
     // references auth.users.
@@ -185,93 +185,81 @@ describe("the shares table gains the binding columns (MEC-06, SHP-04)", () => {
     expect(fk?.target).toMatch(/(?:^|\.)users$/);
   });
 
-  it.fails(
-    "is_shop_visible is not-null default false — SHP-04, private by default",
-    () => {
-      // > Consent to share with a business is not implied by consent to share
-      // > with a person who works there. — SHP-04
-      //
-      // So the safe value is the default, in the same private-by-default
-      // posture SHR-01 gives every other visibility flag. The shop roster that
-      // *consumes* this flag is T3-201's; T3-101 pins that the flag exists and
-      // defaults to individual.
-      const sql = migrationSql();
-      const def = columnDefinitionFor(sql, SHARES_TABLE, SHOP_VISIBLE_COLUMN);
-      expect(
-        def,
-        `${SHARES_TABLE}.${SHOP_VISIBLE_COLUMN} is not declared`
-      ).not.toBeNull();
-      expect(def?.definition).toMatch(/bool/);
-      expect(isNotNullFor(sql, SHARES_TABLE, SHOP_VISIBLE_COLUMN)).toBe(true);
-      expect(defaultExpression(def?.definition ?? "")).toBe("false");
-    }
-  );
+  it("is_shop_visible is not-null default false — SHP-04, private by default", () => {
+    // > Consent to share with a business is not implied by consent to share
+    // > with a person who works there. — SHP-04
+    //
+    // So the safe value is the default, in the same private-by-default
+    // posture SHR-01 gives every other visibility flag. The shop roster that
+    // *consumes* this flag is T3-201's; T3-101 pins that the flag exists and
+    // defaults to individual.
+    const sql = migrationSql();
+    const def = columnDefinitionFor(sql, SHARES_TABLE, SHOP_VISIBLE_COLUMN);
+    expect(
+      def,
+      `${SHARES_TABLE}.${SHOP_VISIBLE_COLUMN} is not declared`
+    ).not.toBeNull();
+    expect(def?.definition).toMatch(/bool/);
+    expect(isNotNullFor(sql, SHARES_TABLE, SHOP_VISIBLE_COLUMN)).toBe(true);
+    expect(defaultExpression(def?.definition ?? "")).toBe("false");
+  });
 });
 
 describe("the issue path records the addressee and the audience (MEC-06, SHP-04)", () => {
-  it.fails(
-    "create_share_grant takes p_grantee_email and p_is_shop_visible, and stays one routine",
-    () => {
-      // Reuse, not a parallel issue RPC: 002's `create_share_grant` gains two
-      // defaulted arguments. Exactly one routine — adding arguments changes the
-      // identity, so a bare `create or replace` would leave a second overload
-      // and both this grader and 002's "ships create_share_grant" would fail.
-      // T3-102 must drop-and-recreate; see `SHARE_GRANTEE_EMAIL_ARGUMENT`.
-      const all = functions(migrationSql()).filter((routine) =>
-        isContractRoutine(routine, SHARE_CREATE_FUNCTION)
-      );
-      expect(all).toHaveLength(1);
-      const [create] = all;
+  it("create_share_grant takes p_grantee_email and p_is_shop_visible, and stays one routine", () => {
+    // Reuse, not a parallel issue RPC: 002's `create_share_grant` gains two
+    // defaulted arguments. Exactly one routine — adding arguments changes the
+    // identity, so a bare `create or replace` would leave a second overload
+    // and both this grader and 002's "ships create_share_grant" would fail.
+    // T3-102 must drop-and-recreate; see `SHARE_GRANTEE_EMAIL_ARGUMENT`.
+    const all = functions(migrationSql()).filter((routine) =>
+      isContractRoutine(routine, SHARE_CREATE_FUNCTION)
+    );
+    expect(all).toHaveLength(1);
+    const [create] = all;
 
-      expect(create.argNames).toContain(SHARE_GRANTEE_EMAIL_ARGUMENT);
-      expect(create.argNames).toContain(SHARE_SHOP_VISIBLE_ARGUMENT);
-      // The 002 arguments survive — the 5-argument anonymous-link call must
-      // still resolve.
-      for (const name of SHARE_CREATE_ARGUMENTS) {
-        expect(create.argNames, `dropped 002 argument ${name}`).toContain(name);
-      }
+    expect(create.argNames).toContain(SHARE_GRANTEE_EMAIL_ARGUMENT);
+    expect(create.argNames).toContain(SHARE_SHOP_VISIBLE_ARGUMENT);
+    // The 002 arguments survive — the 5-argument anonymous-link call must
+    // still resolve.
+    for (const name of SHARE_CREATE_ARGUMENTS) {
+      expect(create.argNames, `dropped 002 argument ${name}`).toContain(name);
     }
-  );
+  });
 });
 
 describe("the account surface: bind, roster, extend (MEC-05, MEC-06)", () => {
-  it.fails(
-    `ships ${CONTRACT_SCHEMA}.${BIND_GRANT_FUNCTION}, taking the token`,
-    () => {
-      const bind = requireAccountRoutine(BIND_GRANT_FUNCTION);
-      for (const name of BIND_GRANT_ARGUMENTS) {
-        expect(
-          bind.argNames,
-          `${BIND_GRANT_FUNCTION} is missing ${name}`
-        ).toContain(name);
-      }
+  it(`ships ${CONTRACT_SCHEMA}.${BIND_GRANT_FUNCTION}, taking the token`, () => {
+    const bind = requireAccountRoutine(BIND_GRANT_FUNCTION);
+    for (const name of BIND_GRANT_ARGUMENTS) {
+      expect(
+        bind.argNames,
+        `${BIND_GRANT_FUNCTION} is missing ${name}`
+      ).toContain(name);
     }
-  );
+  });
 
-  it.fails(`ships ${CONTRACT_SCHEMA}.${MECHANIC_ROSTER_FUNCTION}`, () => {
+  it(`ships ${CONTRACT_SCHEMA}.${MECHANIC_ROSTER_FUNCTION}`, () => {
     // MEC-05: "one place". It takes no argument a caller can name — it reads
     // auth.uid() — which is what makes "someone else's roster" unrepresentable.
     const roster = requireAccountRoutine(MECHANIC_ROSTER_FUNCTION);
     expect(roster.argNames).toEqual([]);
   });
 
-  it.fails(
-    `ships ${CONTRACT_SCHEMA}.${SHARE_EXTEND_FUNCTION}, per grant`,
-    () => {
-      // MEC-06: "extend to until-revoked … and revoke from the same place". Per
-      // grant, by id, exactly like revoke — extend one link without touching the
-      // other on the same truck.
-      const extend = requireAccountRoutine(SHARE_EXTEND_FUNCTION);
-      for (const name of SHARE_EXTEND_ARGUMENTS) {
-        expect(
-          extend.argNames,
-          `${SHARE_EXTEND_FUNCTION} is missing ${name}`
-        ).toContain(name);
-      }
+  it(`ships ${CONTRACT_SCHEMA}.${SHARE_EXTEND_FUNCTION}, per grant`, () => {
+    // MEC-06: "extend to until-revoked … and revoke from the same place". Per
+    // grant, by id, exactly like revoke — extend one link without touching the
+    // other on the same truck.
+    const extend = requireAccountRoutine(SHARE_EXTEND_FUNCTION);
+    for (const name of SHARE_EXTEND_ARGUMENTS) {
+      expect(
+        extend.argNames,
+        `${SHARE_EXTEND_FUNCTION} is missing ${name}`
+      ).toContain(name);
     }
-  );
+  });
 
-  it.fails("no account routine is reachable without an account", () => {
+  it("no account routine is reachable without an account", () => {
     // §1: "the accountless path is read-only because it has no auth.uid()."
     // Binding, the roster, and extending are the account's value-add, so an
     // anon/public caller holds no execute on any of them. An `"unknown"`
@@ -284,49 +272,43 @@ describe("the account surface: bind, roster, extend (MEC-05, MEC-06)", () => {
     expect(reachable).toEqual([]);
   });
 
-  it.fails(
-    "every account routine is reachable by an authenticated caller",
-    () => {
-      // The other direction, so "not anon" is not satisfied by a routine nobody
-      // can reach at all. A closed door nobody can open is as broken as one that
-      // will not shut.
-      const state = grants(migrationSql());
-      const unreachable = ACCOUNT_ONLY_FUNCTIONS.filter(
-        (name) =>
-          privilegeVerdict(
-            state,
-            requireAccountRoutine(name).identity,
-            "authenticated",
-            "execute"
-          ) !== "granted"
-      );
-      expect(unreachable).toEqual([]);
-    }
-  );
+  it("every account routine is reachable by an authenticated caller", () => {
+    // The other direction, so "not anon" is not satisfied by a routine nobody
+    // can reach at all. A closed door nobody can open is as broken as one that
+    // will not shut.
+    const state = grants(migrationSql());
+    const unreachable = ACCOUNT_ONLY_FUNCTIONS.filter(
+      (name) =>
+        privilegeVerdict(
+          state,
+          requireAccountRoutine(name).identity,
+          "authenticated",
+          "execute"
+        ) !== "granted"
+    );
+    expect(unreachable).toEqual([]);
+  });
 
-  it.fails(
-    "every security-definer account routine pins search_path = ''",
-    () => {
-      // A definer routine resolves unqualified names through the caller's search
-      // path; `set search_path = ''` forces every name to be schema-qualified.
-      // Re-uses 002's rule, scoped to these routines — a routine that is invoker
-      // (extend, if T3-102 leans on the owner's RLS) is not required to set one,
-      // which is why this filters the rule's findings rather than asserting the
-      // mode.
-      const issues = definerSearchPathIssues(migrationSql());
-      for (const name of ACCOUNT_ONLY_FUNCTIONS) {
-        const routine = requireAccountRoutine(name);
-        expect(
-          issues.filter((issue) => issue.includes(routine.identity)),
-          `${routine.identity} search_path`
-        ).toEqual([]);
-      }
+  it("every security-definer account routine pins search_path = ''", () => {
+    // A definer routine resolves unqualified names through the caller's search
+    // path; `set search_path = ''` forces every name to be schema-qualified.
+    // Re-uses 002's rule, scoped to these routines — a routine that is invoker
+    // (extend, if T3-102 leans on the owner's RLS) is not required to set one,
+    // which is why this filters the rule's findings rather than asserting the
+    // mode.
+    const issues = definerSearchPathIssues(migrationSql());
+    for (const name of ACCOUNT_ONLY_FUNCTIONS) {
+      const routine = requireAccountRoutine(name);
+      expect(
+        issues.filter((issue) => issue.includes(routine.identity)),
+        `${routine.identity} search_path`
+      ).toEqual([]);
     }
-  );
+  });
 });
 
 describe("the roster shows only live grants, keyed to the caller (MEC-05, SHR-08)", () => {
-  it.fails("mechanic_roster tests revoked_at — the reused SHR-08 rule", () => {
+  it("mechanic_roster tests revoked_at — the reused SHR-08 rule", () => {
     // The likeliest defect in the whole feature: a roster that keys on the
     // binding and never re-reads revoked_at, so a revoked grant lingers. 002's
     // `revocationCheckIssues` is exactly this question, one surface over.
@@ -335,13 +317,13 @@ describe("the roster shows only live grants, keyed to the caller (MEC-05, SHR-08
     ).toEqual([]);
   });
 
-  it.fails("mechanic_roster tests expires_at — the reused SHR-08 rule", () => {
+  it("mechanic_roster tests expires_at — the reused SHR-08 rule", () => {
     expect(
       expiryCheckIssues(requireAccountRoutine(MECHANIC_ROSTER_FUNCTION))
     ).toEqual([]);
   });
 
-  it.fails("mechanic_roster ties its rows to the caller's own binding", () => {
+  it("mechanic_roster ties its rows to the caller's own binding", () => {
     // Structural floor under property 4's behavioural proof: a roster that does
     // not name bound_account_id cannot be scoped to a binding, and one that
     // does not name auth.uid() cannot be scoped to the caller — either way it
@@ -354,31 +336,25 @@ describe("the roster shows only live grants, keyed to the caller (MEC-05, SHR-08
 });
 
 describe("binding resolves the grant safely and only for its addressee (MEC-06)", () => {
-  it.fails(
-    "bind_share_grant looks the grant up by hash, never plaintext",
-    () => {
-      // 002's three-part token rule, the hash half: a bind that resolves the
-      // token against a plaintext column is a bind whose lookup key is the bearer
-      // secret. Re-used unchanged.
-      expect(
-        tokenHashIssues(requireAccountRoutine(BIND_GRANT_FUNCTION))
-      ).toEqual([]);
-    }
-  );
+  it("bind_share_grant looks the grant up by hash, never plaintext", () => {
+    // 002's three-part token rule, the hash half: a bind that resolves the
+    // token against a plaintext column is a bind whose lookup key is the bearer
+    // secret. Re-used unchanged.
+    expect(tokenHashIssues(requireAccountRoutine(BIND_GRANT_FUNCTION))).toEqual(
+      []
+    );
+  });
 
-  it.fails(
-    "bind_share_grant reads the addressee and writes the binding",
-    () => {
-      // "binds to that account and to no other" rests on the body consulting the
-      // addressee (grantee_email) before it writes the binding (bound_account_id).
-      // A bind that never reads grantee_email binds whoever holds the token; one
-      // that never writes bound_account_id binds nobody. Tier B proves the
-      // behaviour against a live email mismatch; this pins the two seams it needs.
-      const bind = requireAccountRoutine(BIND_GRANT_FUNCTION);
-      expect(bind.body).toContain(GRANTEE_EMAIL_COLUMN);
-      expect(bind.body).toContain(BOUND_ACCOUNT_COLUMN);
-    }
-  );
+  it("bind_share_grant reads the addressee and writes the binding", () => {
+    // "binds to that account and to no other" rests on the body consulting the
+    // addressee (grantee_email) before it writes the binding (bound_account_id).
+    // A bind that never reads grantee_email binds whoever holds the token; one
+    // that never writes bound_account_id binds nobody. Tier B proves the
+    // behaviour against a live email mismatch; this pins the two seams it needs.
+    const bind = requireAccountRoutine(BIND_GRANT_FUNCTION);
+    expect(bind.body).toContain(GRANTEE_EMAIL_COLUMN);
+    expect(bind.body).toContain(BOUND_ACCOUNT_COLUMN);
+  });
 });
 
 /* =========================================================================
@@ -414,7 +390,7 @@ describe.skipIf(!live.available)(
     live
   ),
   () => {
-    it.fails.each([
+    it.each([
       ["a matching email binds and lands on the caller's roster", true],
       ["a mismatched email is refused and never lands on any roster", false],
     ] as const)("%s", async (_label, emailMatches) => {
@@ -450,45 +426,42 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails(
-      "the first authenticated open binds, and no later opener can re-bind it",
-      async () => {
-        // "on first authenticated open" is a once-only event. After the
-        // addressee binds, a stranger holding the same token cannot capture the
-        // binding — and the addressee keeps it. The positive control (the
-        // mechanic is on the roster) is what stops "the stranger sees nothing"
-        // being satisfied by a roster that is broken for everyone.
-        const scenario = await provisionScenario(stackOf(live));
-        const mechanic = await makeAuthedActor(scenario, "m");
-        const stranger = await makeAuthedActor(scenario, "s");
-        try {
-          const vehicleId = await ownedVehicleId(scenario);
-          const grant = await issueNamedGrant(
-            scenario,
-            scenario.ownerA,
-            vehicleId,
-            { granteeEmail: mechanic.email }
-          );
+    it("the first authenticated open binds, and no later opener can re-bind it", async () => {
+      // "on first authenticated open" is a once-only event. After the
+      // addressee binds, a stranger holding the same token cannot capture the
+      // binding — and the addressee keeps it. The positive control (the
+      // mechanic is on the roster) is what stops "the stranger sees nothing"
+      // being satisfied by a roster that is broken for everyone.
+      const scenario = await provisionScenario(stackOf(live));
+      const mechanic = await makeAuthedActor(scenario, "m");
+      const stranger = await makeAuthedActor(scenario, "s");
+      try {
+        const vehicleId = await ownedVehicleId(scenario);
+        const grant = await issueNamedGrant(
+          scenario,
+          scenario.ownerA,
+          vehicleId,
+          { granteeEmail: mechanic.email }
+        );
 
-          expect((await bindGrant(scenario, mechanic, grant.token)).ok).toBe(
-            true
-          );
-          const stolen = await bindGrant(scenario, stranger, grant.token);
-          expect(stolen.ok).toBe(false);
+        expect((await bindGrant(scenario, mechanic, grant.token)).ok).toBe(
+          true
+        );
+        const stolen = await bindGrant(scenario, stranger, grant.token);
+        expect(stolen.ok).toBe(false);
 
-          const mechanicRoster = await readRoster(scenario, mechanic);
-          const strangerRoster = await readRoster(scenario, stranger);
-          expect(mechanicRoster.ok).toBe(true);
-          expect(strangerRoster.ok).toBe(true);
-          expect(rosterHasVehicle(mechanicRoster, vehicleId)).toBe(true);
-          expect(rosterHasVehicle(strangerRoster, vehicleId)).toBe(false);
-        } finally {
-          await dropAuthedActor(scenario, mechanic);
-          await dropAuthedActor(scenario, stranger);
-          await teardownScenario(scenario);
-        }
+        const mechanicRoster = await readRoster(scenario, mechanic);
+        const strangerRoster = await readRoster(scenario, stranger);
+        expect(mechanicRoster.ok).toBe(true);
+        expect(strangerRoster.ok).toBe(true);
+        expect(rosterHasVehicle(mechanicRoster, vehicleId)).toBe(true);
+        expect(rosterHasVehicle(strangerRoster, vehicleId)).toBe(false);
+      } finally {
+        await dropAuthedActor(scenario, mechanic);
+        await dropAuthedActor(scenario, stranger);
+        await teardownScenario(scenario);
       }
-    );
+    });
   }
 );
 
@@ -498,7 +471,7 @@ describe.skipIf(!live.available)(
     live
   ),
   () => {
-    it.fails("the accountless bearer can read an unbound grant", async () => {
+    it("the accountless bearer can read an unbound grant", async () => {
       // SHR-07 / MEC-01: the mechanic opens the link before signing up. A named
       // grant nobody has bound is still an open link for whoever holds the
       // token — binding is about the roster, not about the read path.
@@ -521,7 +494,7 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails("an unbound grant is on nobody's roster", async () => {
+    it("an unbound grant is on nobody's roster", async () => {
       // Issued to the mechanic, bound by nobody: neither the addressee's roster
       // nor a stranger's shows it. The positive control — the mechanic's roster
       // fills the instant they bind — is what proves the empty roster is a real
@@ -568,7 +541,7 @@ describe.skipIf(!live.available)(
     live
   ),
   () => {
-    it.fails("revocation drops the vehicle from the roster", async () => {
+    it("revocation drops the vehicle from the roster", async () => {
       const scenario = await provisionScenario(stackOf(live));
       const mechanic = await makeAuthedActor(scenario, "m");
       try {
@@ -602,7 +575,7 @@ describe.skipIf(!live.available)(
       }
     });
 
-    it.fails("expiry drops the vehicle from the roster", async () => {
+    it("expiry drops the vehicle from the roster", async () => {
       // The grant is bound while live, then its expiry is moved into the past.
       // A roster that still lists it cached membership at bind time instead of
       // consulting liveness per request — the exact defect the reused
@@ -648,100 +621,94 @@ describe.skipIf(!live.available)(
     live
   ),
   () => {
-    it.fails(
-      "an individual grant is on the addressee's roster and no shopmate's",
-      async () => {
-        // SHP-04's account-isolation floor: an individual grant (is_shop_visible
-        // = false) issued to the mechanic reaches the mechanic's roster and not
-        // a would-be shopmate's. The positive control gives the shopmate their
-        // *own* bound grant on a second vehicle, so their roster is proven to
-        // work — a shopmate who sees their own vehicle but not the mechanic's
-        // individual one is the isolation this asserts.
-        //
-        // The shop roster that would union is_shop_visible grants is T3-201's,
-        // and so is the proof that it excludes individual ones; T3-101 grades
-        // the data-layer floor beneath it. (SHOP_ROSTER_HANDOFF.)
-        const scenario = await provisionScenario(stackOf(live));
-        const mechanic = await makeAuthedActor(scenario, "m");
-        const shopmate = await makeAuthedActor(scenario, "p");
-        try {
-          const mechVehicle = await ownedVehicleId(scenario, "1");
-          const mateVehicle = await ownedVehicleId(scenario, "2");
+    it("an individual grant is on the addressee's roster and no shopmate's", async () => {
+      // SHP-04's account-isolation floor: an individual grant (is_shop_visible
+      // = false) issued to the mechanic reaches the mechanic's roster and not
+      // a would-be shopmate's. The positive control gives the shopmate their
+      // *own* bound grant on a second vehicle, so their roster is proven to
+      // work — a shopmate who sees their own vehicle but not the mechanic's
+      // individual one is the isolation this asserts.
+      //
+      // The shop roster that would union is_shop_visible grants is T3-201's,
+      // and so is the proof that it excludes individual ones; T3-101 grades
+      // the data-layer floor beneath it. (SHOP_ROSTER_HANDOFF.)
+      const scenario = await provisionScenario(stackOf(live));
+      const mechanic = await makeAuthedActor(scenario, "m");
+      const shopmate = await makeAuthedActor(scenario, "p");
+      try {
+        const mechVehicle = await ownedVehicleId(scenario, "1");
+        const mateVehicle = await ownedVehicleId(scenario, "2");
 
-          const individual = await issueNamedGrant(
-            scenario,
-            scenario.ownerA,
-            mechVehicle,
-            { granteeEmail: mechanic.email, shopVisible: false }
-          );
-          const mateGrant = await issueNamedGrant(
-            scenario,
-            scenario.ownerA,
-            mateVehicle,
-            { granteeEmail: shopmate.email, shopVisible: false }
-          );
+        const individual = await issueNamedGrant(
+          scenario,
+          scenario.ownerA,
+          mechVehicle,
+          { granteeEmail: mechanic.email, shopVisible: false }
+        );
+        const mateGrant = await issueNamedGrant(
+          scenario,
+          scenario.ownerA,
+          mateVehicle,
+          { granteeEmail: shopmate.email, shopVisible: false }
+        );
 
-          expect(
-            (await bindGrant(scenario, mechanic, individual.token)).ok
-          ).toBe(true);
-          expect(
-            (await bindGrant(scenario, shopmate, mateGrant.token)).ok
-          ).toBe(true);
+        expect((await bindGrant(scenario, mechanic, individual.token)).ok).toBe(
+          true
+        );
+        expect((await bindGrant(scenario, shopmate, mateGrant.token)).ok).toBe(
+          true
+        );
 
-          const mechanicRoster = await readRoster(scenario, mechanic);
-          const shopmateRoster = await readRoster(scenario, shopmate);
-          expect(mechanicRoster.ok).toBe(true);
-          expect(shopmateRoster.ok).toBe(true);
+        const mechanicRoster = await readRoster(scenario, mechanic);
+        const shopmateRoster = await readRoster(scenario, shopmate);
+        expect(mechanicRoster.ok).toBe(true);
+        expect(shopmateRoster.ok).toBe(true);
 
-          expect(rosterHasVehicle(mechanicRoster, mechVehicle)).toBe(true);
-          // The isolation: the shopmate's own roster works (their vehicle is on
-          // it) yet the mechanic's individual grant is not.
-          expect(rosterHasVehicle(shopmateRoster, mateVehicle)).toBe(true);
-          expect(rosterHasVehicle(shopmateRoster, mechVehicle)).toBe(false);
-        } finally {
-          await dropAuthedActor(scenario, mechanic);
-          await dropAuthedActor(scenario, shopmate);
-          await teardownScenario(scenario);
-        }
+        expect(rosterHasVehicle(mechanicRoster, mechVehicle)).toBe(true);
+        // The isolation: the shopmate's own roster works (their vehicle is on
+        // it) yet the mechanic's individual grant is not.
+        expect(rosterHasVehicle(shopmateRoster, mateVehicle)).toBe(true);
+        expect(rosterHasVehicle(shopmateRoster, mechVehicle)).toBe(false);
+      } finally {
+        await dropAuthedActor(scenario, mechanic);
+        await dropAuthedActor(scenario, shopmate);
+        await teardownScenario(scenario);
       }
-    );
+    });
 
-    it.fails(
-      "the individual roster is audience-agnostic: a shop-visible grant still reaches only the bound account",
-      async () => {
-        // is_shop_visible governs the *shop* roster (T3-201), never the
-        // individual one: a shop-visible grant bound to the mechanic is on the
-        // mechanic's roster and still not on a shopmate's individual roster.
-        // This distinguishes the flag's two readers — the day the shop roster
-        // exists it will union this grant, and the individual roster never will.
-        const scenario = await provisionScenario(stackOf(live));
-        const mechanic = await makeAuthedActor(scenario, "m");
-        const shopmate = await makeAuthedActor(scenario, "p");
-        try {
-          const vehicleId = await ownedVehicleId(scenario);
-          const grant = await issueNamedGrant(
-            scenario,
-            scenario.ownerA,
-            vehicleId,
-            { granteeEmail: mechanic.email, shopVisible: true }
-          );
-          expect((await bindGrant(scenario, mechanic, grant.token)).ok).toBe(
-            true
-          );
+    it("the individual roster is audience-agnostic: a shop-visible grant still reaches only the bound account", async () => {
+      // is_shop_visible governs the *shop* roster (T3-201), never the
+      // individual one: a shop-visible grant bound to the mechanic is on the
+      // mechanic's roster and still not on a shopmate's individual roster.
+      // This distinguishes the flag's two readers — the day the shop roster
+      // exists it will union this grant, and the individual roster never will.
+      const scenario = await provisionScenario(stackOf(live));
+      const mechanic = await makeAuthedActor(scenario, "m");
+      const shopmate = await makeAuthedActor(scenario, "p");
+      try {
+        const vehicleId = await ownedVehicleId(scenario);
+        const grant = await issueNamedGrant(
+          scenario,
+          scenario.ownerA,
+          vehicleId,
+          { granteeEmail: mechanic.email, shopVisible: true }
+        );
+        expect((await bindGrant(scenario, mechanic, grant.token)).ok).toBe(
+          true
+        );
 
-          const mechanicRoster = await readRoster(scenario, mechanic);
-          const shopmateRoster = await readRoster(scenario, shopmate);
-          expect(mechanicRoster.ok).toBe(true);
-          expect(shopmateRoster.ok).toBe(true);
-          expect(rosterHasVehicle(mechanicRoster, vehicleId)).toBe(true);
-          expect(rosterHasVehicle(shopmateRoster, vehicleId)).toBe(false);
-        } finally {
-          await dropAuthedActor(scenario, mechanic);
-          await dropAuthedActor(scenario, shopmate);
-          await teardownScenario(scenario);
-        }
+        const mechanicRoster = await readRoster(scenario, mechanic);
+        const shopmateRoster = await readRoster(scenario, shopmate);
+        expect(mechanicRoster.ok).toBe(true);
+        expect(shopmateRoster.ok).toBe(true);
+        expect(rosterHasVehicle(mechanicRoster, vehicleId)).toBe(true);
+        expect(rosterHasVehicle(shopmateRoster, vehicleId)).toBe(false);
+      } finally {
+        await dropAuthedActor(scenario, mechanic);
+        await dropAuthedActor(scenario, shopmate);
+        await teardownScenario(scenario);
       }
-    );
+    });
   }
 );
 
@@ -751,55 +718,52 @@ describe.skipIf(!live.available)(
     live
   ),
   () => {
-    it.fails(
-      "an owner extends an expired grant back onto the roster, then revokes it off",
-      async () => {
-        // The full MEC-06 lifecycle for a named account: a grant that has
-        // lapsed off the roster is extended to "until revoked" and returns,
-        // then is revoked and leaves — the two controls "in the same place".
-        const scenario = await provisionScenario(stackOf(live));
-        const mechanic = await makeAuthedActor(scenario, "m");
-        try {
-          const vehicleId = await ownedVehicleId(scenario);
-          const grant = await issueNamedGrant(
-            scenario,
-            scenario.ownerA,
-            vehicleId,
-            { granteeEmail: mechanic.email }
-          );
-          expect((await bindGrant(scenario, mechanic, grant.token)).ok).toBe(
-            true
-          );
-          expect(
-            rosterHasVehicle(await readRoster(scenario, mechanic), vehicleId)
-          ).toBe(true);
+    it("an owner extends an expired grant back onto the roster, then revokes it off", async () => {
+      // The full MEC-06 lifecycle for a named account: a grant that has
+      // lapsed off the roster is extended to "until revoked" and returns,
+      // then is revoked and leaves — the two controls "in the same place".
+      const scenario = await provisionScenario(stackOf(live));
+      const mechanic = await makeAuthedActor(scenario, "m");
+      try {
+        const vehicleId = await ownedVehicleId(scenario);
+        const grant = await issueNamedGrant(
+          scenario,
+          scenario.ownerA,
+          vehicleId,
+          { granteeEmail: mechanic.email }
+        );
+        expect((await bindGrant(scenario, mechanic, grant.token)).ok).toBe(
+          true
+        );
+        expect(
+          rosterHasVehicle(await readRoster(scenario, mechanic), vehicleId)
+        ).toBe(true);
 
-          await expireGrant(scenario, scenario.ownerA, grant.shareId);
-          expect(
-            rosterHasVehicle(await readRoster(scenario, mechanic), vehicleId)
-          ).toBe(false);
+        await expireGrant(scenario, scenario.ownerA, grant.shareId);
+        expect(
+          rosterHasVehicle(await readRoster(scenario, mechanic), vehicleId)
+        ).toBe(false);
 
-          expect(
-            (await extendGrant(scenario, scenario.ownerA, grant.shareId)).ok
-          ).toBe(true);
-          expect(
-            rosterHasVehicle(await readRoster(scenario, mechanic), vehicleId)
-          ).toBe(true);
+        expect(
+          (await extendGrant(scenario, scenario.ownerA, grant.shareId)).ok
+        ).toBe(true);
+        expect(
+          rosterHasVehicle(await readRoster(scenario, mechanic), vehicleId)
+        ).toBe(true);
 
-          expect(
-            (await revokeGrant(scenario, scenario.ownerA, grant.shareId)).ok
-          ).toBe(true);
-          expect(
-            rosterHasVehicle(await readRoster(scenario, mechanic), vehicleId)
-          ).toBe(false);
-        } finally {
-          await dropAuthedActor(scenario, mechanic);
-          await teardownScenario(scenario);
-        }
+        expect(
+          (await revokeGrant(scenario, scenario.ownerA, grant.shareId)).ok
+        ).toBe(true);
+        expect(
+          rosterHasVehicle(await readRoster(scenario, mechanic), vehicleId)
+        ).toBe(false);
+      } finally {
+        await dropAuthedActor(scenario, mechanic);
+        await teardownScenario(scenario);
       }
-    );
+    });
 
-    it.fails("only the issuer can extend a grant", async () => {
+    it("only the issuer can extend a grant", async () => {
       // Extend is ungated on plan (like revoke) but not unowned. A different
       // owner cannot push out someone else's expiry — and the grant is
       // unchanged afterwards, which the bound mechanic's still-present roster

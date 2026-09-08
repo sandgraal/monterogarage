@@ -576,7 +576,31 @@ export interface UiStrings
   readonly shareOpensBoth: string;
   readonly shareRevoke: string;
   readonly shareRevoking: string;
+  /**
+   * Issuing to a named account, and extending it (T3-102, MEC-06 / SHP-04).
+   *
+   * The email ties the link to one account when its holder signs in; left
+   * blank, the link is a plain 002 bearer link anyone it is sent to can open.
+   * `shareShopVisibleHint` is SHP-04's consent line in prose: sharing with a
+   * person is not sharing with their business, so the switch is off by default.
+   */
+  readonly shareEmailLabel: string;
+  readonly shareEmailHint: string;
+  readonly shareShopVisibleLabel: string;
+  readonly shareShopVisibleHint: string;
+  readonly shareExtend: string;
+  readonly shareExtending: string;
   readonly shareError: string;
+  /**
+   * The mechanic's roster — every truck shared with the signed-in account, in
+   * one place (T3-102, MEC-05). `{date}` is formatted by the browser.
+   */
+  readonly rosterHeading: string;
+  readonly rosterIntro: string;
+  readonly rosterEmpty: string;
+  readonly rosterLoading: string;
+  readonly rosterError: string;
+  readonly rosterAccessUntilTemplate: string;
   /* The accountless page a link opens — T2-404, SHR-07 */
   readonly sharePageTitle: string;
   readonly sharePageHeading: string;
@@ -620,6 +644,20 @@ export interface UiStrings
   readonly sharePageReceiptOpening: string;
   readonly sharePageReceiptFailed: string;
   readonly sharePageReceiptsClosed: string;
+  /**
+   * Binding a link to the addressee's account (T3-102, MEC-06).
+   *
+   * Shown only when the reader is signed in: an authenticated addressee can add
+   * the truck to their roster so they never have to find the link again
+   * (MEC-05). A link tied to a different account is refused, in one sentence
+   * that does not say which account it was meant for.
+   */
+  readonly sharePageBindPrompt: string;
+  readonly sharePageBindAction: string;
+  readonly sharePageBinding: string;
+  readonly sharePageBindDone: string;
+  readonly sharePageBindRefused: string;
+  readonly sharePageBindError: string;
   /* The public showcase / work-log pages — T2-404b, SHR-02..04 */
   /**
    * Not switched on: this build has no Supabase project, so there is nothing
@@ -1454,8 +1492,24 @@ const en: UiStrings = {
   shareOpensBoth: "History, costs and receipts",
   shareRevoke: "End this link",
   shareRevoking: "Ending…",
+  shareEmailLabel: "Send to a specific person (optional)",
+  shareEmailHint:
+    "Enter the email of their account to tie this link to it once they sign in — then it opens only for them. Leave it blank for a link anyone you send it to can open.",
+  shareShopVisibleLabel: "Also let their shop see it",
+  shareShopVisibleHint:
+    "Off by default. A link sent to someone who works at a shop stays between you and that person unless you turn this on. Sharing with a person is not sharing with their business.",
+  shareExtend: "Extend until revoked",
+  shareExtending: "Extending…",
   shareError:
     "That did not go through. Try again in a moment; no link was created or ended.",
+  rosterHeading: "Trucks shared with you",
+  rosterIntro:
+    "Every truck an owner has shared with your account, in one place — you do not need the original link again. Access ends on the date each owner set, and they can end or extend it at any time.",
+  rosterEmpty:
+    "No one has shared a truck with you yet. When an owner sends you a link and you open it while signed in, the truck appears here.",
+  rosterLoading: "Loading the trucks shared with you…",
+  rosterError: "The roster could not be loaded. Try again in a moment.",
+  rosterAccessUntilTemplate: "Access until {date}",
   sharePageTitle: "A truck shared with you",
   sharePageHeading: "A truck shared with you",
   sharePageIntro:
@@ -1480,6 +1534,14 @@ const en: UiStrings = {
   sharePageReceiptFailed:
     "That receipt would not open. Try again in a moment; if it keeps failing, ask the owner.",
   sharePageReceiptsClosed: "This link does not include the receipts.",
+  sharePageBindPrompt:
+    "This link was sent to your account. Add the truck to your roster so you can find it again without the link.",
+  sharePageBindAction: "Add to my roster",
+  sharePageBinding: "Adding…",
+  sharePageBindDone: "Added to your roster.",
+  sharePageBindRefused:
+    "This link is not tied to your account, so it cannot be added to your roster. You can still read it here.",
+  sharePageBindError: "That did not go through. Try again in a moment.",
   publicPageUnavailable:
     "Published pages are not switched on yet on this deployment. The reference side of the site works without them.",
   publicPageScriptRequired:
@@ -2162,8 +2224,24 @@ const es: UiStrings = {
   shareOpensBoth: "Historial, costos y facturas",
   shareRevoke: "Cerrar este enlace",
   shareRevoking: "Cerrando…",
+  shareEmailLabel: "Enviar a una persona específica (opcional)",
+  shareEmailHint:
+    "Escriba el correo de la cuenta de esa persona para atar este enlace a ella cuando inicie sesión; así se abre solo para ella. Déjelo en blanco para un enlace que abra cualquier persona a quien se lo envíe.",
+  shareShopVisibleLabel: "Permitir también que su taller lo vea",
+  shareShopVisibleHint:
+    "Desactivado por defecto. Un enlace enviado a alguien que trabaja en un taller queda entre usted y esa persona, a menos que usted lo active. Compartir con una persona no es compartir con su negocio.",
+  shareExtend: "Extender hasta revocar",
+  shareExtending: "Extendiendo…",
   shareError:
     "No se pudo completar. Inténtelo de nuevo en un momento; no se creó ni se cerró ningún enlace.",
+  rosterHeading: "Carros compartidos con usted",
+  rosterIntro:
+    "Todos los carros que un dueño ha compartido con su cuenta, en un solo lugar: no necesita volver a buscar el enlace original. El acceso termina en la fecha que fijó cada dueño, y él puede terminarlo o extenderlo en cualquier momento.",
+  rosterEmpty:
+    "Todavía nadie le ha compartido un carro. Cuando un dueño le envíe un enlace y usted lo abra con la sesión iniciada, el carro aparece aquí.",
+  rosterLoading: "Cargando los carros compartidos con usted…",
+  rosterError: "No se pudo cargar la lista. Inténtelo de nuevo en un momento.",
+  rosterAccessUntilTemplate: "Acceso hasta el {date}",
   sharePageTitle: "Un carro compartido con usted",
   sharePageHeading: "Un carro compartido con usted",
   sharePageIntro:
@@ -2189,6 +2267,14 @@ const es: UiStrings = {
   sharePageReceiptFailed:
     "Esa factura no se pudo abrir. Inténtelo de nuevo en un momento; si sigue fallando, avísele a la persona dueña.",
   sharePageReceiptsClosed: "Este enlace no incluye las facturas.",
+  sharePageBindPrompt:
+    "Este enlace se envió a su cuenta. Agregue el carro a su lista para encontrarlo de nuevo sin el enlace.",
+  sharePageBindAction: "Agregar a mi lista",
+  sharePageBinding: "Agregando…",
+  sharePageBindDone: "Agregado a su lista.",
+  sharePageBindRefused:
+    "Este enlace no está atado a su cuenta, así que no se puede agregar a su lista. Aun así puede leerlo aquí.",
+  sharePageBindError: "No se pudo completar. Inténtelo de nuevo en un momento.",
   publicPageUnavailable:
     "Las páginas publicadas todavía no están activas en este despliegue. La parte de referencia del sitio funciona sin ellas.",
   publicPageScriptRequired:

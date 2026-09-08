@@ -273,16 +273,31 @@ export async function createShareGrant(input: {
   readonly includesCosts: boolean;
   readonly includesReceipts: boolean;
   readonly expiresInDays: number;
+  /**
+   * The email a grant is issued to (T3-102, MEC-06). Omitted or blank issues a
+   * plain 002 bearer link with no addressee — one that can never bind and so
+   * never reaches a roster, which is exactly 002's behaviour.
+   */
+  readonly granteeEmail?: string | null;
+  /**
+   * SHP-04: visible to the addressee's shop (`true`) or to the individual only
+   * (`false`, the default). The RPC defaults it to `false`; passing it here is
+   * how the owner's choice reaches the row.
+   */
+  readonly shopVisible?: boolean;
 }): Promise<ShareResult<IssuedGrant>> {
   const open = await session();
   if (!open.ok) return open;
 
+  const trimmedEmail = input.granteeEmail?.trim();
   const { data, error } = await open.value.rpc("create_share_grant", {
     p_vehicle_id: input.vehicleId,
     p_kind: input.kind,
     p_includes_costs: input.includesCosts,
     p_includes_receipts: input.includesReceipts,
     p_expires_in_hours: input.expiresInDays * HOURS_PER_DAY,
+    p_grantee_email: trimmedEmail ? trimmedEmail : null,
+    p_is_shop_visible: input.shopVisible ?? false,
   });
   if (error) return failed();
 
@@ -321,6 +336,106 @@ export async function revokeShareGrant(
   });
   if (error) return failed();
   return { ok: true, value: true };
+}
+
+/**
+ * Extend one grant, by id, to "until revoked" (T3-102, MEC-06).
+ *
+ * The companion to `revokeShareGrant`, and the two controls MEC-06 says live in
+ * the same place. "Until revoked" is a far expiry, not a null — the RPC does the
+ * arithmetic, so this module only names the grant. Ownership is decided inside
+ * `extend_share_grant` from `auth.uid()`, never sent from here; a grant the
+ * caller does not own is refused there, and this reports it as `failed` the same
+ * way revoke does.
+ */
+export async function extendShareGrant(
+  shareId: string
+): Promise<ShareResult<true>> {
+  const open = await session();
+  if (!open.ok) return open;
+  const { error } = await open.value.rpc("extend_share_grant", {
+    p_share_id: shareId,
+  });
+  if (error) return failed();
+  return { ok: true, value: true };
+}
+
+/* -------------------------------------------------------------------------
+ * The mechanic's end (MEC-05, MEC-06) — an authenticated account, no token
+ * ---------------------------------------------------------------------- */
+
+/**
+ * One row of the mechanic's roster, as `mechanic_roster()` returns it.
+ *
+ * The token is deliberately not here: the roster tells a mechanic *which*
+ * trucks they hold a live grant on; the link they already hold is what opens
+ * each one. `is_shop_visible` rides along for a shop roster to consume later
+ * (T3-201); the individual roster is audience-agnostic and shows it only as a
+ * label.
+ */
+export interface RosterEntry {
+  readonly vehicle_id: string;
+  readonly share_id: string;
+  readonly display_name: string;
+  readonly generation_id: string;
+  readonly market_id: string | null;
+  readonly model_year: number | null;
+  readonly engine_id: string | null;
+  readonly kind: string;
+  readonly includes_costs: boolean;
+  readonly includes_receipts: boolean;
+  readonly is_shop_visible: boolean;
+  readonly expires_at: string;
+}
+
+/**
+ * Bind a grant to the signed-in account by presenting its token (T3-102,
+ * MEC-06).
+ *
+ * The whole of "binds to that account and to no other" is decided inside
+ * `bind_share_grant`: it binds only when `auth.email()` equals the grant's
+ * `grantee_email` and the grant is live and still unbound, so a link tied to a
+ * different account — or already bound — is refused. This module only carries
+ * the token the mechanic already holds.
+ *
+ * `refused` is its own outcome, because a link sent to someone else is a real
+ * "no, not your account", not an outage — the caller renders it as "this cannot
+ * be added to your roster" while still letting the reader read the link. A
+ * dropped connection is `failed`, never a refusal (the same line every reader
+ * here draws).
+ */
+export async function bindShareGrant(
+  token: string
+): Promise<ShareResult<true>> {
+  const open = await session();
+  if (!open.ok) return open;
+  const { error } = await open.value.rpc("bind_share_grant", {
+    p_token: token,
+  });
+  if (error) return serverAnswered(error) ? refused() : failed();
+  return { ok: true, value: true };
+}
+
+/**
+ * Every vehicle the signed-in account holds a live, bound grant on (MEC-05).
+ *
+ * Keyed entirely on `auth.uid()` inside `mechanic_roster()` — no id is sent, so
+ * "someone else's roster" is unrepresentable rather than merely forbidden. A
+ * revoked or expired grant has already left the list by the time it is read,
+ * because the roster is computed per request. A failed read is `failed` and
+ * never `[]`: an empty roster and a broken request are different sentences, and
+ * a mechanic must never be told "nothing is shared with you" because a request
+ * dropped (AGENTS.md — a failure is not a zero).
+ */
+export async function readMechanicRoster(): Promise<
+  ShareResult<RosterEntry[]>
+> {
+  const open = await session();
+  if (!open.ok) return open;
+  const { data, error } = await open.value.rpc("mechanic_roster");
+  if (error) return failed();
+  if (!Array.isArray(data)) return failed();
+  return { ok: true, value: data as RosterEntry[] };
 }
 
 /* -------------------------------------------------------------------------
