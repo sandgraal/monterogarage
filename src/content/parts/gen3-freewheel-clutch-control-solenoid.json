@@ -1,0 +1,41 @@
+{
+  "id": "gen3-freewheel-clutch-control-solenoid",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    },
+    "engines": ["6g74-sohc", "6g75"]
+  },
+  "oemNumber": "MR430381",
+  "system": "transfer-case",
+  "quantityPerVehicle": 1,
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen 2, 2.5, 3 Freewheel Clutch Control Solenoid: the Mitsubishi number MR430381 with its interchange numbers, the Gen3 (2001-2006, 3.5L/3.8L) fitment, quantity per vehicle, and the symptom (blinking green front-axle 4x4 lights) it causes",
+      "url": "https://lusooverland.com/VP-LO-MR430381",
+      "archiveUrl": "https://web.archive.org/web/20260908010916/https://lusooverland.com/VP-LO-MR430381",
+      "accessed": "2026-09-07",
+      "kind": "vendor"
+    },
+    {
+      "title": "YoshiParts — Mitsubishi OEM MR430381 (\"Valve, Freewheel Clutch Control Solenoid\", Front Axle Freewheel Clutch) for Pajero/Montero V66W (3rd Gen, 1999-2006), independent of the specialist above",
+      "url": "https://yoshiparts.com/parts/mitsubishi-MR430381",
+      "archiveUrl": "https://web.archive.org/web/20260908010936/https://yoshiparts.com/parts/mitsubishi-MR430381",
+      "accessed": "2026-09-07",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Freewheel clutch control solenoid",
+      "summary": "The solenoid valve that routes engine vacuum to engage and disengage the front freewheel clutch when you shift the transfer case in and out of four-wheel drive. When it fails the front axle cannot make up its mind: the specialist describes the classic sign as the green front-axle lights on the dash blinking instead of settling, and the truck refusing to lock into or drop out of 4x4 cleanly. It is one of the first parts to suspect for that fault and it is far cheaper than the actuator or the transfer case itself — but a blinking 4x4 light has more than one cause, so confirm the vacuum supply and the actuator before spending on this. The catalogue lists interchange numbers alongside this one; let the parts counter cross-reference. The number and the fitment come from a Montero specialist's catalogue and an independent parts catalogue, cited below — good evidence for what a part number is and what it fits, and not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification."
+    },
+    "es": {
+      "title": "Solenoide de control del embrague de rueda libre",
+      "summary": "La válvula solenoide que dirige el vacío del motor para acoplar y desacoplar el embrague de rueda libre del eje delantero cuando usted mete y saca la caja de transferencia de la doble tracción. Cuando falla, el eje delantero no se decide: la casa especializada describe la señal clásica como las luces verdes del eje delantero en el tablero parpadeando en vez de quedarse fijas, y el vehículo que no engancha ni suelta el 4x4 con limpieza. Es una de las primeras piezas que hay que sospechar ante esa falla y es mucho más barata que el actuador o la propia caja de transferencia; pero una luz de 4x4 parpadeando tiene más de una causa, así que confirme la alimentación de vacío y el actuador antes de gastar en esto. El catálogo lista números intercambiables junto a este; deje que el mostrador haga la referencia cruzada. El número y la compatibilidad salen del catálogo de una casa especializada en Montero y de un catálogo de repuestos independiente, que se citan abajo: buena evidencia de qué es un número de parte y en qué encaja, pero no literatura de fábrica, así que lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller."
+    }
+  }
+}

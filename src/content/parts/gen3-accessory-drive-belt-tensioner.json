@@ -1,0 +1,41 @@
+{
+  "id": "gen3-accessory-drive-belt-tensioner",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    },
+    "engines": ["6g74-sohc", "6g75"]
+  },
+  "oemNumber": "MD367192",
+  "system": "engine",
+  "quantityPerVehicle": 1,
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen3 Accessory Drive Belt Tensioner: the Mitsubishi number MD367192, the Gen3 (2001-2006, 3.5L/3.8L) fitment table, quantity per vehicle, and the note that Bando makes the OEM drive belt and auto-tensioner for all Gen3 Monteros",
+      "url": "https://lusooverland.com/VP-BAN-780116",
+      "archiveUrl": "https://web.archive.org/web/20260908011341/https://lusooverland.com/VP-BAN-780116",
+      "accessed": "2026-09-07",
+      "kind": "vendor"
+    },
+    {
+      "title": "YoshiParts — Mitsubishi OEM MD367192 (\"Tensioner, Alternator Drive Belt Auto\"): part number and Pajero/Montero V73W (3rd Gen, 1999-2006) fitment, with an alternate catalogue number noted, independent of the specialist above",
+      "url": "https://yoshiparts.com/parts/mitsubishi-MD367192",
+      "archiveUrl": "https://web.archive.org/web/20260908010723/https://yoshiparts.com/parts/mitsubishi-MD367192",
+      "accessed": "2026-09-07",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Accessory drive belt tensioner",
+      "summary": "The automatic tensioner that keeps the accessory drive belt tight — the belt that runs the alternator, the water-pump drive, the power steering and the air conditioning. It is a spring-loaded arm with a pulley, and when the spring tires or the pulley bearing dries out the belt starts to slip, squeal, or in the worst case get thrown off. Replace it with the belt, not after it: the access is the same and a new belt on a weak tensioner is a job half done. The specialist page states that Bando makes the original tensioner for these trucks and sells it under its own label, and the catalogue lists an alternate Mitsubishi number alongside this one, so let the parts counter cross-reference rather than insisting on a single number. The number and the fitment come from a Montero specialist's catalogue and an independent parts catalogue, cited below — good evidence for what a part number is and what it fits, and not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification."
+    },
+    "es": {
+      "title": "Tensor de la faja de accesorios",
+      "summary": "El tensor automático que mantiene templada la faja de accesorios: la faja que mueve el alternador, el accionamiento de la bomba de agua, la dirección hidráulica y el aire acondicionado. Es un brazo con resorte y una polea, y cuando el resorte se cansa o el rodamiento de la polea se seca, la faja empieza a patinar, a chillar o, en el peor caso, a salirse. Cámbielo junto con la faja, no después: el acceso es el mismo y una faja nueva sobre un tensor débil es un trabajo hecho a medias. La ficha de la casa especializada indica que Bando fabrica el tensor original de estos vehículos y lo vende con su propia etiqueta, y el catálogo lista un número Mitsubishi alterno junto a este, así que deje que el mostrador haga la referencia cruzada en vez de insistir en un solo número. El número y la compatibilidad salen del catálogo de una casa especializada en Montero y de un catálogo de repuestos independiente, que se citan abajo: buena evidencia de qué es un número de parte y en qué encaja, pero no literatura de fábrica, así que lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller."
+    }
+  }
+}

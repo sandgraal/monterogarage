@@ -1,0 +1,48 @@
+{
+  "id": "gen3-timing-belt",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    },
+    "engines": ["6g74-sohc", "6g75"]
+  },
+  "oemNumber": "MD358549",
+  "system": "engine",
+  "quantityPerVehicle": 1,
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "YoshiParts — Mitsubishi OEM timing belt MD358549 (\"Belt, Valve Timing\"): part number and Pajero/Montero V65W (3rd Gen, 1999-2006) fitment, with Montero Sport, L200 and Triton listed as also compatible",
+      "url": "https://yoshiparts.com/parts/mitsubishi-MD358549",
+      "archiveUrl": "https://web.archive.org/web/20260908004115/https://yoshiparts.com/parts/mitsubishi-MD358549",
+      "accessed": "2026-09-07",
+      "kind": "vendor"
+    },
+    {
+      "title": "Mizumo Auto — timing belt fitment guide cross-referencing OEM MD358549 to the 2001-2002 Montero 3.5L 6G74 and the 2003-2006 Montero 3.8L 6G75, independent of the catalogue above",
+      "url": "https://mizumoauto.com/products/mizumo-auto-ma-9761236501-timing-belt-fits-01-06-mitsubishi-montero-3-5l-3-8l-sohc-24v-6g74-6g75",
+      "archiveUrl": "https://web.archive.org/web/20260908010401/https://mizumoauto.com/products/mizumo-auto-ma-9761236501-timing-belt-fits-01-06-mitsubishi-montero-3-5l-3-8l-sohc-24v-6g74-6g75",
+      "accessed": "2026-09-07",
+      "kind": "vendor"
+    },
+    {
+      "title": "Luso Overland — MONTERO Gen3 OEM Timing Belt Kit: confirms the belt is one item in the set that is replaced together on this interference engine, and states the Gen3 (2001-2006, 3.5L/3.8L) fitment",
+      "url": "https://lusooverland.com/VP-LO-K-TB005",
+      "archiveUrl": "https://web.archive.org/web/20260908010426/https://lusooverland.com/VP-LO-K-TB005",
+      "accessed": "2026-09-07",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Timing belt",
+      "summary": "The timing belt for this generation's petrol V6. This is an interference engine: if the belt breaks or jumps teeth the valves and pistons meet, and the job stops being a belt and becomes an engine. That is why it is replaced on a schedule rather than when it fails, and why it is replaced as a kit — the belt, the tensioner, both pulleys and the water pump come out together, so a new belt on tired parts buys nothing and pays for the same access twice. The timing-belt-service entry covers the whole job and the interval. Order the belt from a supplier who lists it for this exact engine; a belt that is a couple of teeth off is not a belt that fits. The number and the fitment come from a parts catalogue and an independent seller's fitment guide, cited below — good evidence for what a part number is and what it fits, and not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification."
+    },
+    "es": {
+      "title": "Faja de distribución",
+      "summary": "La faja de distribución del V6 de gasolina de esta generación. Es un motor de interferencia: si la faja se revienta o se salta dientes, las válvulas y los pistones se topan, y el trabajo deja de ser una faja y pasa a ser un motor. Por eso se cambia por calendario y no cuando falla, y por eso se cambia como juego: la faja, el tensor, las dos poleas y la bomba de agua salen juntos, así que una faja nueva sobre piezas cansadas no compra nada y hace pagar dos veces el mismo acceso. La entrada de servicio de faja de distribución cubre todo el trabajo y el intervalo. Pida la faja donde se la listen para este motor exacto; una faja que quede un par de dientes corrida no es una faja que sirva. El número y la compatibilidad salen de un catálogo de repuestos y de la guía de aplicación de un vendedor independiente, que se citan abajo: buena evidencia de qué es un número de parte y en qué encaja, pero no literatura de fábrica, así que lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller."
+    }
+  }
+}
