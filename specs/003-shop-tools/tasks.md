@@ -44,18 +44,18 @@ entitlements are hard-Opus. The billing webhook is `secrets-or-deploy`.
 
 ## Phase S2 — Shops
 
-- [ ] **T3-201 [TEST]** Shop membership and claim graders: membership is
+- [x] **T3-201 [TEST]** Shop membership and claim graders: membership is
   invite-only with no open join; a member sees exactly the shop's grants and no
   others; an unverified directory claim renders nothing; directory ordering and
   inclusion are provably unaffected by account, claim, or plan state (SHP-05 —
   grade it now, while there is no plan to be tempted by). Depends: T3-102. *(SHP-01..05)*
 - [ ] **T3-202 [PLATFORM]** Shops: create, invite, membership, roster sharing
-  subject to SHP-04's consent prompt. Activates T3-201. Depends: T3-201 merged. *(SHP-01, SHP-03, SHP-04)*
+  subject to SHP-04's consent prompt. Activates T3-201's membership graders (SHP-01/03/04). Depends: T3-201 merged. *(SHP-01, SHP-03, SHP-04)*
 - [ ] **T3-203 [PLATFORM]** Directory claim: claim flow against the 001
   community collection's `shop` entries, verification, claimed badge. The
   community collection stays git-owned and read-only — a claim is a database
-  row pointing at a content id, never an edit to the entry. Depends: T3-202,
-  001-T703a. *(SHP-02, SHP-05)*
+  row pointing at a content id, never an edit to the entry. Activates T3-201's
+  directory graders (SHP-02/05). Depends: T3-202, 001-T703a. *(SHP-02, SHP-05)*
 
 ## Phase S3 — Propose-and-accept
 
