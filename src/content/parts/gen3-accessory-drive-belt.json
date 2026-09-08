@@ -1,0 +1,55 @@
+{
+  "id": "gen3-accessory-drive-belt",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    },
+    "engines": ["6g74-sohc", "6g75"]
+  },
+  "oemNumber": "MN183597",
+  "system": "engine",
+  "quantityPerVehicle": 1,
+  "crossReferences": [
+    {
+      "ref": "bando-7pk2415",
+      "brand": "Bando",
+      "partNumber": "7PK2415",
+      "quality": "oem-supplier"
+    }
+  ],
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen3 Accessory Drive Belt: the Bando 7PK2415 belt, the Mitsubishi numbers it carries (current MN183597, older MN155725 and MD366490), the Gen3 (2001-2006, 3.5L/3.8L) fitment, and the note that Bando makes the OEM belt",
+      "url": "https://lusooverland.com/VP-BAN-7PK2415",
+      "archiveUrl": "https://web.archive.org/web/20260908010746/https://lusooverland.com/VP-BAN-7PK2415",
+      "accessed": "2026-09-07",
+      "kind": "vendor"
+    },
+    {
+      "title": "YoshiParts — Mitsubishi OEM MN155725 (\"Belt, Alternator & Others\") for Pajero/Montero V65W (3rd Gen, 1999-2006), which the catalogue lists as replaced by the current number MN183597 — independent confirmation of the belt and its supersession",
+      "url": "https://yoshiparts.com/parts/mitsubishi-MN155725",
+      "archiveUrl": "https://web.archive.org/web/20260908010841/https://yoshiparts.com/parts/mitsubishi-MN155725",
+      "accessed": "2026-09-07",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Accessory drive belt",
+      "summary": "The single serpentine belt that drives everything on the front of the engine off the crankshaft — alternator, water-pump drive, power steering and air conditioning. When it glazes, cracks or frays it announces itself with a squeal on a cold start or under load, and if it lets go you lose charging, power steering and cooling drive at once, so it is not a part to run to failure. It comes off with the timing cover during a belt service, so replace it then rather than paying for the access twice. The number on this page is the current Mitsubishi one; the catalogue also lists older numbers it replaces, and the parts counter can resolve any of them. The number and the fitment come from a Montero specialist's catalogue and an independent parts catalogue, cited below — good evidence for what a part number is and what it fits, and not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification.",
+      "crossReferenceNotes": {
+        "bando-7pk2415": "The specialist page states that Bando makes the original drive belt for the Gen 3 Montero and sells it under its own label as size 7PK2415 — a seven-rib belt in the length this engine takes. Filed as OEM supplier because it is the same belt in Bando's own box; ask the counter for it by that size if the Mitsubishi number is slow to source."
+      }
+    },
+    "es": {
+      "title": "Faja de accesorios",
+      "summary": "La faja serpentina única que mueve todo el frente del motor desde el cigüeñal: alternador, accionamiento de la bomba de agua, dirección hidráulica y aire acondicionado. Cuando se vitrifica, se agrieta o se deshilacha se anuncia con un chillido al arrancar en frío o bajo carga, y si se revienta usted pierde la carga, la dirección hidráulica y el accionamiento de refrigeración de golpe, así que no es pieza para llevarla hasta la falla. Sale junto con la tapa de distribución durante un servicio de faja, así que cámbiela en ese momento en lugar de pagar dos veces el acceso. El número de esta página es el vigente de Mitsubishi; el catálogo también lista números viejos que este reemplaza, y el mostrador puede resolver cualquiera de ellos. El número y la compatibilidad salen del catálogo de una casa especializada en Montero y de un catálogo de repuestos independiente, que se citan abajo: buena evidencia de qué es un número de parte y en qué encaja, pero no literatura de fábrica, así que lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller.",
+      "crossReferenceNotes": {
+        "bando-7pk2415": "La ficha de la casa especializada indica que Bando fabrica la faja de accionamiento original de la Montero de tercera generación y la vende con su propia etiqueta como medida 7PK2415: una faja de siete estrías en el largo que lleva este motor. Queda registrada como proveedor original porque es la misma faja en la caja de Bando; pídala al mostrador por esa medida si el número de Mitsubishi se tarda en conseguir."
+      }
+    }
+  }
+}

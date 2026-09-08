@@ -1,0 +1,41 @@
+{
+  "id": "gen3-fuel-filler-hose",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    },
+    "engines": ["6g74-sohc", "6g75"]
+  },
+  "oemNumber": "MR959820",
+  "system": "fuel",
+  "quantityPerVehicle": 1,
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen 3 Fuel Filler Hose: the Mitsubishi number MR959820, the Gen3 (2001-2006, 3.5L/3.8L) fitment, quantity per vehicle, and the note that it connects the filler pipe to the fuel tank",
+      "url": "https://lusooverland.com/VP-LO-MR959820",
+      "archiveUrl": "https://web.archive.org/web/20260908011012/https://lusooverland.com/VP-LO-MR959820",
+      "accessed": "2026-09-07",
+      "kind": "vendor"
+    },
+    {
+      "title": "YoshiParts — Mitsubishi OEM MR959820 (\"Hose, Fuel Filler\") for Pajero/Montero V75W (3rd Gen, 1999-2006), independent of the specialist above",
+      "url": "https://yoshiparts.com/parts/mitsubishi-MR959820",
+      "archiveUrl": "https://web.archive.org/web/20260908011106/https://yoshiparts.com/parts/mitsubishi-MR959820",
+      "accessed": "2026-09-07",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Fuel filler hose",
+      "summary": "The large rubber hose that carries fuel from the filler neck down to the tank. On a truck this age the original rubber hardens and cracks, and the first sign is usually a smell of petrol while you refuel or a wet patch near the filler after a full fill. This is the fuel system: a perished filler hose is a fire risk, not an inconvenience, and it is not a part to keep driving on. Have a qualified mechanic confirm where the leak is coming from, because the filler hose and the tank's own valves can produce the same smell, and replace the hose with genuine fuel-rated line rather than whatever hose is on the shelf. The number and the fitment come from a Montero specialist's catalogue and an independent parts catalogue, cited below — good evidence for what a part number is and what it fits, and not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification."
+    },
+    "es": {
+      "title": "Manguera de llenado de combustible",
+      "summary": "La manguera gruesa de hule que lleva el combustible desde el cuello de llenado hasta el tanque. En un vehículo de esta edad el hule original se endurece y se agrieta, y la primera señal suele ser olor a gasolina mientras usted echa combustible o una mancha húmeda cerca del llenado después de un tanque lleno. Esto es el sistema de combustible: una manguera de llenado reseca es un riesgo de incendio, no una molestia, y no es pieza para seguir manejando. Haga que un mecánico calificado confirme de dónde viene la fuga, porque la manguera de llenado y las propias válvulas del tanque pueden dar el mismo olor, y reemplace la manguera con línea original apta para combustible y no con cualquier manguera de estante. El número y la compatibilidad salen del catálogo de una casa especializada en Montero y de un catálogo de repuestos independiente, que se citan abajo: buena evidencia de qué es un número de parte y en qué encaja, pero no literatura de fábrica, así que lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller."
+    }
+  }
+}
