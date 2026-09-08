@@ -310,6 +310,70 @@ describe("shop_members.account_id must be `on delete cascade` (ACC-03)", () => {
       "shop_members.account_id: references public.shops"
     );
   });
+
+  it.each([
+    { label: "public.users", target: "public.users" },
+    { label: "auth.users_old", target: "auth.users_old" },
+  ])(
+    "an account_id referencing $label — wrong table, but the name still " +
+      'contains "users" — is rejected, not silently accepted',
+    ({ target }) => {
+      // The regression this pins (Copilot review, PR #174): the FK-target
+      // check used to be `!fk.target.includes("users")`, a substring test.
+      // `public.users` and `auth.users_old` both contain "users", so the old
+      // check treated them as the auth.users hop. `on delete cascade` here is
+      // otherwise the *correct* action for this column, so under the old
+      // check this schema produced ZERO findings — a false pass. The fix
+      // compares `fk.target` to `SHARED_TABLE_ACCOUNT_TARGET` for exact
+      // equality, so a same-name-different-schema or same-schema-different-
+      // name target is caught. (Mutation check: reverting `accountHopIssues`
+      // to the `.includes("users")` form makes this exact case go green when
+      // it should be red — the bug this test exists to prevent.)
+      const wrongTargetContainingUsers = sql(`
+        create table public.shops (
+          id uuid primary key,
+          created_by uuid references auth.users on delete set null
+        );
+        create table public.shop_members (
+          id uuid primary key,
+          account_id uuid not null references ${target} on delete cascade
+        );
+        create table public.shop_invites (
+          id uuid primary key,
+          invited_by uuid references auth.users on delete set null
+        );
+      `);
+      const issues = sharedTableCascadeIssues(wrongTargetContainingUsers).join(
+        " | "
+      );
+      expect(issues).toContain(
+        `shop_members.account_id: references ${target}, not auth.users`
+      );
+    }
+  );
+
+  it("the correct auth.users target still passes (positive control)", () => {
+    // Same shape as the two cases above, but the actual, correct target —
+    // proving the exact-match fix doesn't over-reject a legitimate hop.
+    const correctTarget = sql(`
+      create table public.shops (
+        id uuid primary key,
+        created_by uuid references auth.users on delete set null
+      );
+      create table public.shop_members (
+        id uuid primary key,
+        account_id uuid not null references auth.users on delete cascade
+      );
+      create table public.shop_invites (
+        id uuid primary key,
+        invited_by uuid references auth.users on delete set null
+      );
+    `);
+    const named = sharedTableCascadeIssues(correctTarget).filter((issue) =>
+      issue.startsWith("shop_members.account_id:")
+    );
+    expect(named).toEqual([]);
+  });
 });
 
 /* =========================================================================

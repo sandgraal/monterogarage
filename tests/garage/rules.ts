@@ -1677,7 +1677,9 @@ export function sharedTableCascadeIssues(
 
 /**
  * One shared-table column's finding, or none. Checks THREE things a boolean
- * `cascades` could not: the FK exists, it targets `auth.users`, and its
+ * `cascades` could not: the FK exists, it targets exactly `auth.users` (not
+ * merely a target whose name contains "users" — `public.users` and
+ * `auth.users_old` are different objects and must not pass), and its
  * on-delete action is the one ACC-03 requires for this column's kind.
  */
 function accountHopIssues(
@@ -1695,7 +1697,7 @@ function accountHopIssues(
         `deletion (ACC-03) is honoured; expected \`on delete ${expected}\``,
     ];
   }
-  if (!fk.target.includes("users")) {
+  if (fk.target !== SHARED_TABLE_ACCOUNT_TARGET) {
     return [
       `${table}.${column}: references ${fk.target}, not ` +
         `${SHARED_TABLE_ACCOUNT_TARGET} — the account-lifecycle grader needs ` +
