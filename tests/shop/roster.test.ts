@@ -493,9 +493,9 @@ describe.skipIf(!live.available)(
         // is not "bind is broken for everyone."
         const first = await bindGrant(scenario, mechanic, grant.token);
         expect(first.ok).toBe(true);
-        expect(
-          rosterHasVehicle(await readRoster(scenario, mechanic), vehicleId)
-        ).toBe(true);
+        const rosterAfterFirst = await readRoster(scenario, mechanic);
+        expect(rosterAfterFirst.ok).toBe(true);
+        expect(rosterHasVehicle(rosterAfterFirst, vehicleId)).toBe(true);
 
         // The clause under test: the same addressee, same token, second
         // call. Refused, and refused by name — not merely a non-2xx status,
@@ -506,9 +506,9 @@ describe.skipIf(!live.available)(
 
         // Still on the roster exactly because of the first bind, not a
         // partial effect of the refused second call.
-        expect(
-          rosterHasVehicle(await readRoster(scenario, mechanic), vehicleId)
-        ).toBe(true);
+        const rosterAfterSecond = await readRoster(scenario, mechanic);
+        expect(rosterAfterSecond.ok).toBe(true);
+        expect(rosterHasVehicle(rosterAfterSecond, vehicleId)).toBe(true);
       } finally {
         await dropAuthedActor(scenario, mechanic);
         await teardownScenario(scenario);
