@@ -415,6 +415,16 @@ describe("every table that exists is a table some grader knows about", () => {
     // `reviewer-probes.test.ts` (G10, and now G28 for the `tableGrantIssues`
     // half specifically), so this file staying at exactly one real entry
     // costs no coverage.
+    //
+    // ## Why 003's shop tables did NOT grow this map (T3-202a)
+    //
+    // A shop table is private user data, not public reference content, so it
+    // must keep its RLS proof — and exemption is the one path that drops it.
+    // 003's shops/shop_members/shop_invites are therefore a THIRD class,
+    // `SHARED_USER_TABLES` in `contract.ts` (RLS-graded like a user table,
+    // cascade-graded by the shared account-deletion model), not entries here.
+    // This map stays at exactly one, and `harness-contract.test.ts` pins the
+    // three classes disjoint so a shop table can never quietly land here.
     expect(EXEMPT_PUBLIC_TABLES.size).toBe(1);
     expect([...EXEMPT_PUBLIC_TABLES.keys()]).toEqual(["search_index_entries"]);
     for (const [table, reason] of EXEMPT_PUBLIC_TABLES) {

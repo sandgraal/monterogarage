@@ -1328,6 +1328,138 @@ export const OPTIMISTIC_BOOLEAN_DEFAULTS: ReadonlyMap<string, string> = new Map<
 >([]);
 
 /* -------------------------------------------------------------------------
+ * The SHARED user-table class (T3-202a [TEST]) — declared ahead of T3-202
+ *
+ * refs specs/003-shop-tools (SHP-01, §2 "Shop"), specs/002-montero-garage
+ * (ACC-03)
+ * ---------------------------------------------------------------------- */
+
+/**
+ * A **third** kind of `public` table, distinct from both lists above.
+ *
+ * The user-data model this suite grew up on has exactly two classes, and every
+ * created `public` table has had to be one of them:
+ *
+ * - {@link USER_TABLES} — **single-owner** private data. Each row reaches one
+ *   `auth.users` row through an `ownershipPath` that is `on delete cascade` at
+ *   every hop, so deleting the account deletes the row (ACC-03). RLS is
+ *   owner-scoped: `owner_id = auth.uid()` (through however many joins).
+ * - {@link EXEMPT_PUBLIC_TABLES} — **public reference content** (the
+ *   git→Supabase read-model). Not a user's private data at all, so an
+ *   `anon`/`authenticated` `select` grant is correct and RLS is not the
+ *   question — the sweeps skip it.
+ *
+ * 003's shop tables (`shops`, `shop_members`, `shop_invites`) are **neither**.
+ * They hold private user data — who belongs to which business, who was invited
+ * — so they are as RLS-sensitive as any single-owner table and must **not** be
+ * exempted. But 003 §2 defines a Shop as *"a named business with one or more
+ * member accounts"*, and SHP-01 makes membership multi-account and
+ * invitation-only: there is **no single owner**, so there is no honest
+ * single-owner `on delete cascade` hop to `auth.users` to enumerate. Forcing
+ * one would be a lie the cascade grader would then enforce as the spec.
+ *
+ * ## The lifecycle model this class grades (owner ruling, 2026-09-08)
+ *
+ * ACC-03 is the fixed point: *"A user SHALL be able to delete their account"* —
+ * deletion is never gated. What that means for a shared table depends on
+ * whether a column IS the account's own row or merely NAMES an account on a row
+ * shared with others:
+ *
+ * - **`accountCascadeColumns`** — the column that makes a row the account's own
+ *   (a membership *is* the member's). It MUST be `on delete cascade` to
+ *   `auth.users`: on account deletion the member's own membership row goes with
+ *   them, and the delete is never blocked. `shop_members.account_id`.
+ * - **`founderSetNullColumns`** — a column that merely records which account
+ *   opened a shop or issued an invite, on a row that outlives that account. It
+ *   MUST be `on delete set null` to `auth.users`: a founder deleting their
+ *   account leaves the shop standing for its other members (a `cascade` would
+ *   destroy their shop; ACC-03 forbids gating the deletion, so `restrict` /
+ *   `no action` are out too). `shops.created_by`, `shop_invites.invited_by`.
+ *
+ * A **zero-member shop persists (orphaned)** under this model — nothing forces
+ * its cleanup, and the grader requires none. That is deliberate: the only
+ * account-lifecycle guarantee ACC-03 asks for is that a *person* can leave, not
+ * that a *business* is reaped.
+ *
+ * ## What this class does NOT change, and where those graders live
+ *
+ * A shared table is still fully RLS-graded. It flows through the exact same
+ * `ungradedTableIssues` RLS-enabled-and-forced sweep as a single-owner table
+ * (it is accepted as *known*, never *exempt*), and through the same
+ * deny-by-default grant sweep (`tableGrantIssues` over `createdTables()`), so a
+ * shop table missing `force`, or leaking a grant to `anon`/`public`, still
+ * fails. The per-column names, the definer-write RPCs, and the membership
+ * policies are 003's own contract (`tests/shop/contract.ts`, T3-201) — this
+ * file owns only the garage-suite *taxonomy* decision (which of the three
+ * classes a created table belongs to) and the account-lifecycle cascade model
+ * the single-owner `CASCADE_HOPS` guard cannot express.
+ *
+ * ## Renegotiable in one line, like every name here
+ *
+ * The names below mirror `tests/shop/contract.ts` (`SHOPS_TABLE`,
+ * `SHOP_MEMBERS_TABLE`, `SHOP_INVITES_TABLE`, `SHOP_MEMBER_ACCOUNT_COLUMN`).
+ * They are stated literally rather than imported so the 002 garage suite does
+ * not depend on the 003 shop suite; if T3-202 renames one, that is a one-line
+ * conversation with the conductor. What is not negotiable is the lifecycle
+ * behaviour graded around them.
+ *
+ * `directory_claims` (T3-203) is another table of this shape and is
+ * **deliberately not here**: it is a later task's surface, and adding it now
+ * would grade a migration nobody has been asked to write.
+ */
+export interface SharedUserTableContract {
+  /** Unqualified table name in the `public` schema. */
+  readonly name: string;
+  /** The requirement that puts this table in the schema. */
+  readonly requirement: string;
+  /**
+   * Columns that ARE an account's own row and MUST be `on delete cascade` to
+   * `auth.users` — the member's own data goes on account deletion (ACC-03).
+   */
+  readonly accountCascadeColumns: readonly string[];
+  /**
+   * Columns that merely record an account on a row shared with others and MUST
+   * be `on delete set null` to `auth.users` — the shared row outlives the
+   * departing account, and the departure is never blocked (ACC-03).
+   */
+  readonly founderSetNullColumns: readonly string[];
+}
+
+export const SHARED_USER_TABLES: readonly SharedUserTableContract[] = [
+  {
+    name: "shops",
+    requirement:
+      "SHP-01 (a named business with one or more members; no single owner)",
+    accountCascadeColumns: [],
+    founderSetNullColumns: ["created_by"],
+  },
+  {
+    name: "shop_members",
+    requirement: "SHP-01 (one row per live membership; the member's own row)",
+    accountCascadeColumns: ["account_id"],
+    founderSetNullColumns: [],
+  },
+  {
+    name: "shop_invites",
+    requirement: "SHP-01 (an outstanding invitation; survives its issuer)",
+    accountCascadeColumns: [],
+    founderSetNullColumns: ["invited_by"],
+  },
+] as const;
+
+/** Convenience: the shared-table names, for the `ungradedTableIssues` sweep. */
+export const SHARED_USER_TABLE_NAMES = SHARED_USER_TABLES.map(
+  (table) => table.name
+);
+
+/**
+ * The account table every shared-table lifecycle column binds to. Named once so
+ * the cascade grader's "is this the auth hop?" check reads the same string the
+ * FK target parser returns (`normalizeSql` lower-cases `auth.users`).
+ */
+export const SHARED_TABLE_ACCOUNT_TARGET = "auth.users";
+
+/* -------------------------------------------------------------------------
  * Typed share grants, continued (SHR-05..09) — declared by T2-401 [TEST]
  * ---------------------------------------------------------------------- */
 

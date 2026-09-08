@@ -26,10 +26,12 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  EXEMPT_PUBLIC_TABLES,
   GRANT_EXPIRY_COLUMN,
   GRANT_REVOCATION_COLUMN,
   UNSHIPPED_USER_TABLES,
   PLAINTEXT_TOKEN_COLUMNS,
+  SHARED_USER_TABLE_NAMES,
   SHARE_CAPABILITY_COLUMNS,
   SHARE_FLAG_COLUMNS,
   SHARE_GRANT_KINDS,
@@ -704,6 +706,34 @@ describe("the declared contract is internally coherent", () => {
       "record_media",
       "shares",
     ]);
+  });
+
+  it("names the SHARED user-data tables (T3-202a) — a third, distinct class", () => {
+    // The same hard equality one class over. `SHARED_USER_TABLES` (shops,
+    // shop_members, shop_invites) is private user data with no single owner, so
+    // it is neither a `USER_TABLES` single-owner cascade row nor
+    // `EXEMPT_PUBLIC_TABLES` public reference content. A fourth shared table —
+    // T3-203's `directory_claims` is the next one of this shape — joins by a
+    // deliberate edit here, exactly like `shares` joined `USER_TABLE_NAMES`.
+    expect(SHARED_USER_TABLE_NAMES).toEqual([
+      "shops",
+      "shop_members",
+      "shop_invites",
+    ]);
+  });
+
+  it("keeps the three table classes pairwise disjoint", () => {
+    // A name in two classes would be graded by two incompatible models: a table
+    // both single-owner and shared gets two cascade rules; a shared table also
+    // exempted loses its RLS proof (exemption is the one path that skips it).
+    // So the classes must not overlap.
+    const single = new Set(USER_TABLE_NAMES);
+    const shared = new Set(SHARED_USER_TABLE_NAMES);
+    const exempt = new Set(EXEMPT_PUBLIC_TABLES.keys());
+
+    expect([...shared].filter((name) => single.has(name))).toEqual([]);
+    expect([...shared].filter((name) => exempt.has(name))).toEqual([]);
+    expect([...single].filter((name) => exempt.has(name))).toEqual([]);
   });
 
   it("splits into a shipped half and a pending half, and both are named", () => {
