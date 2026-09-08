@@ -357,6 +357,19 @@ Stop and ask before any of these:
   review each caught a distinct privacy-leak spelling) before it was an
   allowlist that fails safe — a reminder that a trust-boundary grader should be
   an affirmative allowlist, not a negation denylist, from the start.
+  **T3-102 (2026-09-08):** the [PLATFORM] branch updated
+  `tests/garage/reviewer-probes.test.ts`'s `declaredArgumentNames` probe —
+  appending `p_grantee_email` / `p_is_shop_visible` to `create_share_grant`'s
+  expected `argNames` — because that probe reads the shipped migration via
+  `functions(migrationSql())` and T3-102 legitimately widens
+  `create_share_grant` to the 7-arg signature the merged T3-101 contract
+  (`tests/shop/contract.ts`) mandates. The expected value is intrinsically
+  coupled to the migration, so no standalone pre-merge [TEST] fix was
+  possible (on `main` the routine was 5-arg). Independently adjudicated by
+  code review as correct (arg names from `tests/shop/contract.ts`),
+  non-weakening, and still biting (wrong name / order / count each turn it
+  red). Recorded here per the separation rule; the next change to this
+  probe's coverage is a test-writer's.
 - A clean fact-check, a clean bilingual edit, and all required branch-protection
   checks authorize the `pr-shepherd` to merge without another confirmation.
 - Never `--no-verify`, never a bare force-push, never `gh pr merge --admin`,

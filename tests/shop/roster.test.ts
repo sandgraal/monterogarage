@@ -462,6 +462,58 @@ describe.skipIf(!live.available)(
         await teardownScenario(scenario);
       }
     });
+
+    it("the addressee themself cannot re-bind an already-bound grant (once-only, not idempotent)", async () => {
+      // The sibling test above proves a *stranger* cannot capture the
+      // binding — but `grantee_email = auth.email()` refuses a stranger on
+      // its own, regardless of whether `bound_account_id is null` is checked
+      // at all. It cannot exercise that clause. This is the one case that
+      // can: the *same* addressee, who satisfies the email check both
+      // times, calling `bind` a second time. `bind_share_grant`'s atomic
+      // UPDATE also requires `bound_account_id is null` — so a second call
+      // from the addressee who already holds the binding must still be
+      // refused ("share binding refused"), not silently re-succeed. Drop
+      // that clause and this is the only grader in the suite that reddens:
+      // the stranger proof above stays green because it never reaches the
+      // null check, and it would stay green forever if this were the only
+      // "no re-bind" proof on file.
+      const scenario = await provisionScenario(stackOf(live));
+      const mechanic = await makeAuthedActor(scenario, "m");
+      try {
+        const vehicleId = await ownedVehicleId(scenario);
+        const grant = await issueNamedGrant(
+          scenario,
+          scenario.ownerA,
+          vehicleId,
+          { granteeEmail: mechanic.email }
+        );
+
+        // Positive control: the first bind, by the addressee, succeeds and
+        // lands the vehicle on their roster — so the refusal asserted below
+        // is not "bind is broken for everyone."
+        const first = await bindGrant(scenario, mechanic, grant.token);
+        expect(first.ok).toBe(true);
+        const rosterAfterFirst = await readRoster(scenario, mechanic);
+        expect(rosterAfterFirst.ok).toBe(true);
+        expect(rosterHasVehicle(rosterAfterFirst, vehicleId)).toBe(true);
+
+        // The clause under test: the same addressee, same token, second
+        // call. Refused, and refused by name — not merely a non-2xx status,
+        // which an unrelated failure could also produce.
+        const second = await bindGrant(scenario, mechanic, grant.token);
+        expect(second.ok).toBe(false);
+        expect(second.text).toContain("share binding refused");
+
+        // Still on the roster exactly because of the first bind, not a
+        // partial effect of the refused second call.
+        const rosterAfterSecond = await readRoster(scenario, mechanic);
+        expect(rosterAfterSecond.ok).toBe(true);
+        expect(rosterHasVehicle(rosterAfterSecond, vehicleId)).toBe(true);
+      } finally {
+        await dropAuthedActor(scenario, mechanic);
+        await teardownScenario(scenario);
+      }
+    });
   }
 );
 
