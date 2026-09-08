@@ -49,6 +49,30 @@ entitlements are hard-Opus. The billing webhook is `secrets-or-deploy`.
   others; an unverified directory claim renders nothing; directory ordering and
   inclusion are provably unaffected by account, claim, or plan state (SHP-05 —
   grade it now, while there is no plan to be tempted by). Depends: T3-102. *(SHP-01..05)*
+- [x] **T3-202a [TEST]** The SHARED user-table class, and a hard prerequisite
+  for T3-202 — **must merge before T3-202**, so the shop tables have a home in
+  the 002 garage taxonomy before T3-202 creates them and T3-202's implementer
+  never grades its own taxonomy decision (the T802 separation precedent). The
+  garage user-data model had two classes and every created `public` table had
+  to be one: `USER_TABLES` (single-owner, an `on delete cascade` hop to
+  `auth.users`) or `EXEMPT_PUBLIC_TABLES` (public reference content, no RLS
+  question). 003's `shops`/`shop_members`/`shop_invites` are neither — private
+  user data with **no single owner** (§2, SHP-01: a shop is a business with one
+  or more members, invitation-only), so no honest single-owner cascade hop
+  exists. Adds `SHARED_USER_TABLES` (a third class): `ungradedTableIssues`
+  accepts a shared table and keeps it fully RLS-graded (enable + force +
+  deny-by-default), while a new `sharedTableCascadeIssues` grades the shared
+  account-deletion model instead of a single-owner hop. **Owner ruling
+  (2026-09-08):** `shops.created_by` → `auth.users` **ON DELETE SET NULL** (a
+  founder deleting their account leaves the shop standing for its other members;
+  ACC-03 forbids gating that deletion, and `cascade` would destroy their shop);
+  `shop_members.account_id` → `auth.users` **ON DELETE CASCADE** (a member's own
+  membership row is theirs and goes on account deletion; ACC-03: never blocked);
+  a **zero-member shop persists (orphaned)** — no forced cleanup. Graders are
+  `it.fails` against the shipped migration (red today, T3-202 activates each by
+  deleting its `.fails` line), with synthetic-DDL boundary tables and positive
+  controls proving each clause bites. Depends: T3-201 merged. Blocks: T3-202.
+  *(SHP-01; 002 ACC-03)*
 - [ ] **T3-202 [PLATFORM]** Shops: create, invite, membership, roster sharing
   subject to SHP-04's consent prompt. Activates T3-201's membership graders (SHP-01/03/04). Depends: T3-201 merged. *(SHP-01, SHP-03, SHP-04)*
 - [ ] **T3-203 [PLATFORM]** Directory claim: claim flow against the 001

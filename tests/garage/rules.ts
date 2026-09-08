@@ -73,11 +73,15 @@ import {
   PENDING_USER_TABLES,
   PLAINTEXT_TOKEN_COLUMNS,
   PUBLIC_VISIBILITY_FLAG_COLUMNS,
+  SHARED_TABLE_ACCOUNT_TARGET,
+  SHARED_USER_TABLES,
+  SHARED_USER_TABLE_NAMES,
   SHARE_GRANT_KINDS,
   SHARE_READER_TOKEN_ARGUMENT,
   SHARE_TOKEN_HASH_COLUMN,
   USER_TABLES,
   USER_TABLE_NAMES,
+  type SharedUserTableContract,
 } from "./contract.ts";
 import {
   balancedAt,
@@ -89,6 +93,8 @@ import {
   defaultExpression,
   enablesRls,
   forcesRls,
+  foreignKeyFor,
+  foreignKeyOnDeleteFor,
   functions,
   grants,
   parenExpression,
@@ -100,6 +106,7 @@ import {
   statements,
   type FunctionDefinition,
   type GrantState,
+  type OnDeleteAction,
   type PolicyDefinition,
 } from "./sql.ts";
 
@@ -1574,21 +1581,37 @@ export function ungradedTableIssues(
   normalized: string,
   options: {
     readonly enumerated?: readonly string[];
+    readonly shared?: readonly string[];
     readonly exempt?: ReadonlyMap<string, string>;
   } = {}
 ): string[] {
   const enumerated = options.enumerated ?? USER_TABLE_NAMES;
+  const shared = options.shared ?? SHARED_USER_TABLE_NAMES;
   const exempt = options.exempt ?? EXEMPT_PUBLIC_TABLES;
   const issues: string[] = [];
 
   for (const table of createdTables(normalized)) {
     const exemptReason = exempt.get(table.name);
-    if (!enumerated.includes(table.name) && exemptReason === undefined) {
+    // Three ways a created table is accounted for: a single-owner user table
+    // (`USER_TABLES`), a shared user table with no single owner
+    // (`SHARED_USER_TABLES`, T3-202a — RLS-graded here, cascade-graded by the
+    // shared model), or public reference content (`EXEMPT_PUBLIC_TABLES`, which
+    // skips the RLS proof below because it is not private data).
+    const graded =
+      enumerated.includes(table.name) ||
+      shared.includes(table.name) ||
+      exemptReason !== undefined;
+    if (!graded) {
       issues.push(
-        `${table.identity}: created but not enumerated in USER_TABLES and not ` +
-          `named in EXEMPT_PUBLIC_TABLES — no grader knows it exists`
+        `${table.identity}: created but not enumerated in USER_TABLES, not a ` +
+          `SHARED_USER_TABLE, and not named in EXEMPT_PUBLIC_TABLES — no grader ` +
+          `knows it exists`
       );
     }
+    // ONLY an exempt table skips the RLS proof. A SHARED_USER_TABLE is private
+    // user data — a shared shop's membership is nobody's to read anonymously —
+    // so it must enable AND force RLS exactly like a single-owner table, and
+    // falls through to the same two checks below.
     if (exemptReason !== undefined) continue;
 
     if (!enablesRls(normalized, table.name)) {
@@ -1602,6 +1625,101 @@ export function ungradedTableIssues(
     }
   }
   return issues;
+}
+
+/**
+ * Every finding against the account-deletion (ACC-03) lifecycle of a SHARED
+ * user table — declared by T3-202a [TEST], activated by T3-202.
+ *
+ * ## Why the single-owner `CASCADE_HOPS` guard cannot grade these
+ *
+ * `deletion-cascade.test.ts` walks each single-owner table's `ownershipPath`
+ * and demands every hop be `on delete cascade`, because deleting the one owner
+ * must delete the row (ACC-03). A shared table has **no single owner** (003 §2:
+ * a shop is "a named business with one or more member accounts"), so there is
+ * no such hop to walk — and a `cascade` from a *founder* to the shop would be
+ * the opposite of correct, destroying a business its other members still
+ * belong to. The lifecycle is therefore graded per column, by kind:
+ *
+ * - {@link SharedUserTableContract.accountCascadeColumns} — the row IS the
+ *   account's own (a membership), so the FK to `auth.users` MUST cascade: the
+ *   member's own row goes when they delete their account, and the delete is
+ *   never blocked.
+ * - {@link SharedUserTableContract.founderSetNullColumns} — the column merely
+ *   records who opened/issued a shared row, so the FK to `auth.users` MUST be
+ *   `set null`: the shared row outlives the departing account (`cascade` would
+ *   destroy it; `restrict`/`no action` would BLOCK the deletion ACC-03 forbids
+ *   gating).
+ *
+ * `null` from {@link foreignKeyOnDeleteFor} (no FK at all) is reported as a
+ * distinct, honest absence rather than folded into a wrong action — the
+ * unknown-is-not-zero discipline this repo has paid for.
+ */
+export function sharedTableCascadeIssues(
+  normalized: string,
+  shared: readonly SharedUserTableContract[] = SHARED_USER_TABLES
+): string[] {
+  const issues: string[] = [];
+  for (const table of shared) {
+    for (const column of table.accountCascadeColumns) {
+      issues.push(
+        ...accountHopIssues(normalized, table.name, column, "cascade")
+      );
+    }
+    for (const column of table.founderSetNullColumns) {
+      issues.push(
+        ...accountHopIssues(normalized, table.name, column, "set null")
+      );
+    }
+  }
+  return issues;
+}
+
+/**
+ * One shared-table column's finding, or none. Checks THREE things a boolean
+ * `cascades` could not: the FK exists, it targets `auth.users`, and its
+ * on-delete action is the one ACC-03 requires for this column's kind.
+ */
+function accountHopIssues(
+  normalized: string,
+  table: string,
+  column: string,
+  expected: OnDeleteAction
+): string[] {
+  const fk = foreignKeyFor(normalized, table, column);
+  const action = foreignKeyOnDeleteFor(normalized, table, column);
+  if (fk === null || action === null) {
+    return [
+      `${table}.${column}: no foreign key to ${SHARED_TABLE_ACCOUNT_TARGET} — ` +
+        `a shared user table must bind this column to the account so account ` +
+        `deletion (ACC-03) is honoured; expected \`on delete ${expected}\``,
+    ];
+  }
+  if (!fk.target.includes("users")) {
+    return [
+      `${table}.${column}: references ${fk.target}, not ` +
+        `${SHARED_TABLE_ACCOUNT_TARGET} — the account-lifecycle grader needs ` +
+        `the auth.users hop`,
+    ];
+  }
+  if (action === expected) return [];
+
+  const because =
+    expected === "cascade"
+      ? action === "restrict" || action === "no action"
+        ? "it would BLOCK account deletion, which ACC-03 forbids gating; a " +
+          "member's own membership row is theirs and must go with the account"
+        : "a member's own membership row is theirs and must go on account " +
+          "deletion (ACC-03), not linger as an orphan"
+      : action === "cascade"
+        ? "cascade would destroy a shared shop other members still belong to " +
+          "when its founder deletes their account — the business must outlive " +
+          "the person (ACC-03 forbids gating that deletion)"
+        : "it would BLOCK the founder's account deletion, which ACC-03 forbids " +
+          "gating; the shared row must survive by unbinding (set null)";
+  return [
+    `${table}.${column}: on delete ${action}, not ${expected} — ${because}`,
+  ];
 }
 
 /**
