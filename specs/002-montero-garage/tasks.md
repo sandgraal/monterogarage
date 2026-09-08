@@ -1642,6 +1642,14 @@ Read 002 §10 and `specs/003-shop-tools/spec.md` before starting any of these.
   answer is a world-masked read-model populated by CI (RM-01/RM-02 shape,
   enumerated in `contract.ts`'s table map), which is a schema + contract change
   for an owner/test-writer decision.
+  <br>**Independent grader pass added post-review** (resolves the review's
+  process finding that T2-403 shipped `[PLATFORM]` with only a self-authored
+  unit test): `tests/pages/community-evidence.render.test.ts` (render/structural
+  — dormancy gate, the `[hidden]` guard's genuine effectiveness, `problemId`
+  wiring, testimony framing, bilingual/no-numeric-divergence) and
+  `tests/garage/community-evidence-eligibility.test.ts` (GAR-04′/SHR-09
+  selector + masker, world-keyed eligibility, no private-field leak), both
+  spec-derived by a separate test-writer session and mutation-tested.
 
 ## Superseded from 001
 
