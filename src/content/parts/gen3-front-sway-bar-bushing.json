@@ -1,0 +1,40 @@
+{
+  "id": "gen3-front-sway-bar-bushing",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    },
+    "engines": ["6g74-sohc", "6g75"]
+  },
+  "oemNumber": "MR374520",
+  "system": "suspension",
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "YoshiParts — Mitsubishi OEM MR374520 (\"Bushing, Fr Susp Stabilizer\"): part number and Pajero/Montero V73W (3rd Gen, 1999-2006) fitment, filed under front suspension",
+      "url": "https://yoshiparts.com/parts/mitsubishi-MR374520",
+      "archiveUrl": "https://web.archive.org/web/20260908011426/https://yoshiparts.com/parts/mitsubishi-MR374520",
+      "accessed": "2026-09-07",
+      "kind": "vendor"
+    },
+    {
+      "title": "Burjauto — Mitsubishi MR374520 (\"Bushing, fr susp stab\") for Pajero/Montero, with a chassis-code applications table covering the 3rd-Gen codes (V73W, V75W, V77W among them), independent of the catalogue above",
+      "url": "https://burjauto.com/product/mr374520-mitsubishi/5857327",
+      "archiveUrl": "https://web.archive.org/web/20260908013911/https://burjauto.com/product/mr374520-mitsubishi/5857327",
+      "accessed": "2026-09-07",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Front sway bar bushing",
+      "summary": "The rubber bushing that clamps the front stabilizer bar to the frame. There is one at each mounting point, and they wear as a pair, so replace both sides at once — a fresh bushing on one side and a hard, split one on the other leaves you with the same knock. Worn bushings are a common source of a clunk over speed bumps and washboard, and they are one of the cheapest ways to make the front end feel tight again, often worth doing together with the sway bar end links. Confirm the bushing matches your truck before ordering: the catalogue itself notes that fitment can vary by year and market within this platform, and a bushing sized for the wrong bar is either loose or will not clamp, so let the counter check by part number. This is suspension work; if you cannot support the truck safely, take it to a qualified mechanic. The number and the fitment come from two independent parts catalogues, cited below — good evidence for what a part number is and what it fits, and not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification."
+    },
+    "es": {
+      "title": "Buje de la barra estabilizadora delantera",
+      "summary": "El buje de hule que sujeta la barra estabilizadora delantera al chasis. Hay uno en cada punto de anclaje y se desgastan de a pares, así que cambie ambos lados a la vez: un buje nuevo de un lado y uno duro y partido del otro le dejan el mismo golpeteo. Los bujes gastados son una fuente común de un golpe al pasar reductores y calamina, y son una de las formas más baratas de que el tren delantero vuelva a sentirse firme; muchas veces conviene hacerlos junto con las bieletas de la barra estabilizadora. Confirme que el buje corresponde a su vehículo antes de pedir: el propio catálogo advierte que la compatibilidad puede variar según el año y el mercado dentro de esta plataforma, y un buje de la medida equivocada queda flojo o no llega a apretar, así que deje que el mostrador lo verifique por número de parte. Esto es trabajo de suspensión; si usted no puede sostener el vehículo con seguridad, llévelo donde un mecánico calificado. El número y la compatibilidad salen de dos catálogos de repuestos independientes, que se citan abajo: buena evidencia de qué es un número de parte y en qué encaja, pero no literatura de fábrica, así que lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller."
+    }
+  }
+}

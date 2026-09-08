@@ -1,0 +1,41 @@
+{
+  "id": "gen3-updated-crankshaft-bolt-and-washer-set",
+  "fitment": {
+    "gens": ["gen3"],
+    "years": {
+      "from": 2001,
+      "to": 2006
+    },
+    "engines": ["6g74-sohc", "6g75"]
+  },
+  "oemNumber": "1100A141",
+  "system": "engine",
+  "quantityPerVehicle": 1,
+  "confidence": "community-consensus",
+  "sources": [
+    {
+      "title": "Luso Overland — MONTERO Gen 2, 2.5, 3; SPORT Updated V6 Crankshaft Center Bolt & Washer Set: the updated bolt (1100A141) and its matching washer sold as one set, the fitment, and the failure it addresses (the original bolt backs out and breaks, ruining the crankshaft)",
+      "url": "https://lusooverland.com/VP-MMC-K-M23-CBWS41",
+      "archiveUrl": "https://web.archive.org/web/20260908011242/https://lusooverland.com/VP-MMC-K-M23-CBWS41",
+      "accessed": "2026-09-07",
+      "kind": "vendor"
+    },
+    {
+      "title": "YoshiParts — Mitsubishi OEM 1100A141 (\"Center Bolt, Crankshaft Pulley\"): part number and fitment across the Pajero/Montero V6 range, independent of the specialist above",
+      "url": "https://yoshiparts.com/parts/mitsubishi-1100A141",
+      "archiveUrl": "https://web.archive.org/web/20260908011304/https://yoshiparts.com/parts/mitsubishi-1100A141",
+      "accessed": "2026-09-07",
+      "kind": "vendor"
+    }
+  ],
+  "prose": {
+    "en": {
+      "title": "Updated crankshaft center bolt and washer set",
+      "summary": "The updated bolt that holds the crankshaft pulley on, sold as a set with its matching washer. The original bolt on these V6s is a known failure: the specialist describes it backing out and breaking, which ruins the crankshaft and can take other parts with it — see the crankshaft-bolt-failure entry for the symptoms and the do-not-drive warning. The updated bolt is the fix, and the specialist states it comes with permanent thread locker already applied and includes the replacement washer, so fit both together and do not reuse the old washer. This page is filed under the updated bolt's number; the washer is part of the same set, and the parts counter can supply it by the kit. The number and the fitment come from a Montero specialist's catalogue and an independent parts catalogue, cited below — good evidence for what a part number is and what it fits, and not factory literature, so read every figure on this page as the catalogue's claim rather than as a service-manual specification. Torque this bolt to the factory specification; do not guess it, and if you cannot, hand the job to a qualified mechanic."
+    },
+    "es": {
+      "title": "Juego de tornillo central de cigüeñal y arandela, actualizado",
+      "summary": "El tornillo actualizado que sujeta la polea del cigüeñal, vendido como juego con su arandela correspondiente. El tornillo original de estos V6 es una falla conocida: la casa especializada lo describe aflojándose y quebrándose, lo que arruina el cigüeñal y puede llevarse otras piezas por delante; vea la entrada de falla del tornillo de cigüeñal para los síntomas y la advertencia de no manejar. El tornillo actualizado es la solución, y la casa especializada indica que viene con sellador de rosca permanente ya aplicado e incluye la arandela de reemplazo, así que monte ambos juntos y no reutilice la arandela vieja. Esta página queda registrada bajo el número del tornillo actualizado; la arandela es parte del mismo juego, y el mostrador puede entregarla como kit. El número y la compatibilidad salen del catálogo de una casa especializada en Montero y de un catálogo de repuestos independiente, que se citan abajo: buena evidencia de qué es un número de parte y en qué encaja, pero no literatura de fábrica, así que lea cada dato de esta página como afirmación del catálogo y no como especificación del manual de taller. Apriete este tornillo al valor de fábrica; no lo adivine, y si no puede, deje el trabajo a un mecánico calificado."
+    }
+  }
+}

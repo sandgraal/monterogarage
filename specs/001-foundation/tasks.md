@@ -614,7 +614,55 @@ or explicitly named) are checked. `/conduct next` dispatches the whole frontier.
     drain-plug or fastener-sealing washer (CR-based preferred, matching the
     bar the rest of this collection's glossary entries clear) before it can
     ship at `community-consensus`.
-- [x] **T504a [TEST]** Render graders for the procedures index page
+  - **Wave 2 shipped (2026-09-07): 8 entries, `npm run gaps` went from 33
+    dangling fix-path references / 29 distinct `parts` ids to 23 / 20 — eight
+    distinct ids closed.** The entries: `gen3-timing-belt` (MD358549),
+    `gen3-accessory-drive-belt` (MN183597, current number, with the Bando
+    7PK2415 belt as OEM-supplier cross-reference), `gen3-accessory-drive-belt-
+    tensioner` (MD367192), `gen3-freewheel-clutch-control-solenoid` (MR430381),
+    `gen3-fuel-filler-hose` (MR959820), `gen3-fuel-tank-safety-valve`
+    (MR512157), `gen3-updated-crankshaft-bolt-and-washer-set` (1100A141), and
+    `gen3-front-sway-bar-bushing` (MR374520). All `community-consensus` on
+    `kind: "vendor"` sources, and **every entry carries two independent vendor
+    catalogues per the wave-1 review-round policy above** — mostly a Luso
+    Overland specialist page plus YoshiParts, with Mizumo Auto standing in for
+    the belt's engine-code fitment and Burjauto's chassis-code table for the
+    sway-bar bushing. web.archive.org's Save Page Now was reachable this
+    session; all 18 citations were captured and each `archiveUrl` verified
+    against its own returned snapshot.
+  - **Naming/kit decisions this wave made, for the record.** (1) The accessory
+    drive belt is filed under the current Mitsubishi number (MN183597); the
+    catalogue also lists the older MN155725 and MD366490, named in prose as
+    "older numbers this one replaces" rather than minted as separate superseded
+    entries, since nothing references them. (2) `gen3-updated-crankshaft-bolt-
+    and-washer-set` is a two-number kit (bolt 1100A141 + washer MR994412); the
+    schema makes `oemNumber` a single identity, so the entry *is* the updated
+    bolt and the washer is described in prose as included in the set (its number
+    is on the cited Luso page, not minted into a field that cannot hold it). (3)
+    `gen3-fuel-tank-safety-valve` omits `quantityPerVehicle`: the count differs
+    by year (the 2001 trucks take more than one, later trucks one), so the
+    variance is stated qualitatively in prose rather than as one wrong number.
+  - **What is still dangling after wave 2 (20 distinct ids), and why each was
+    held.** Water pump, timing-belt idler pulley, transmission pan filter: the
+    only OEM numbers reachable point to the 6G72 3.0L chassis (V63W/V73W) or the
+    wrong platform, not the 6G74/6G75 this generation runs — a wrong pump or
+    idler on a timing job is high-consequence, so held for a source that names
+    the 3.5/3.8 number cleanly. `gen3-front-freewheel-clutch-actuator`
+    (MR453711) is confirmed as the part, but the only *openable* pages list its
+    4th-gen (V87W) fitment; the gen-3 (V73/V75/V77) fitment appears only in
+    search snippets and eBay/Amazon listings this session could not open, so it
+    is held per "a page you did not open is not a source." `gen3-fuel-filter`
+    (MR526974) is well-attested but every second source beyond YoshiParts is
+    Cloudflare-gated (amayama, the RevolutionParts dealer sites) — held for the
+    two-vendor bar, not shipped single-source. Control-arm bushings, strut top
+    hat / bushing kit, coil springs, shocks, exhaust manifolds L/R and the pipe
+    flange gasket, window regulator, hydraulic brake booster, rear diff
+    companion shaft: not carried by the reachable specialist catalogue and
+    needing a naming decision or a second openable source each.
+    `gen3-surge-tank-butterfly-delete-disc` is a fabricated delete part with no
+    OEM number — the `oemNumber`-as-identity category error wave 1 already
+    flagged, and it should be resolved as a schema/collection question, not
+    forced into a `parts` entry. Render graders for the procedures index page
   (`procedures-index.render.test.ts`) — cards render, hrefs resolve, filters
   work, T204's provisional-match indicator shows on a partial fitment match.
   T502's own reviewer deferred this exact grader (AGENTS.md's `[TEST]`-debt

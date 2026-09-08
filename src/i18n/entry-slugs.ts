@@ -241,6 +241,38 @@ export const ENTRY_SLUGS: Readonly<
       en: "automatic-transmission-fluid-sp-iii",
       es: "aceite-de-transmision-automatica-sp-iii",
     },
+    "gen3-timing-belt": {
+      en: "timing-belt",
+      es: "faja-de-distribucion",
+    },
+    "gen3-accessory-drive-belt": {
+      en: "accessory-drive-belt",
+      es: "faja-de-accesorios",
+    },
+    "gen3-accessory-drive-belt-tensioner": {
+      en: "accessory-drive-belt-tensioner",
+      es: "tensor-de-faja-de-accesorios",
+    },
+    "gen3-freewheel-clutch-control-solenoid": {
+      en: "freewheel-clutch-control-solenoid",
+      es: "solenoide-de-embrague-de-rueda-libre",
+    },
+    "gen3-fuel-filler-hose": {
+      en: "fuel-filler-hose",
+      es: "manguera-de-llenado-de-combustible",
+    },
+    "gen3-fuel-tank-safety-valve": {
+      en: "fuel-tank-safety-valve",
+      es: "valvula-de-seguridad-del-tanque-de-combustible",
+    },
+    "gen3-updated-crankshaft-bolt-and-washer-set": {
+      en: "updated-crankshaft-bolt-and-washer-set",
+      es: "juego-de-tornillo-central-de-ciguenal-actualizado",
+    },
+    "gen3-front-sway-bar-bushing": {
+      en: "front-sway-bar-bushing",
+      es: "buje-de-barra-estabilizadora-delantera",
+    },
   },
   /**
    * PRC-01 — one page per job. Populated by T504.
