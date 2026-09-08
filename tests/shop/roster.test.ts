@@ -787,28 +787,28 @@ describe.skipIf(!live.available)(
         expect((await bindGrant(scenario, mechanic, grant.token)).ok).toBe(
           true
         );
-        expect(
-          rosterHasVehicle(await readRoster(scenario, mechanic), vehicleId)
-        ).toBe(true);
+        const rosterAfterBind = await readRoster(scenario, mechanic);
+        expect(rosterAfterBind.ok).toBe(true);
+        expect(rosterHasVehicle(rosterAfterBind, vehicleId)).toBe(true);
 
         await expireGrant(scenario, scenario.ownerA, grant.shareId);
-        expect(
-          rosterHasVehicle(await readRoster(scenario, mechanic), vehicleId)
-        ).toBe(false);
+        const rosterAfterExpiry = await readRoster(scenario, mechanic);
+        expect(rosterAfterExpiry.ok).toBe(true);
+        expect(rosterHasVehicle(rosterAfterExpiry, vehicleId)).toBe(false);
 
         expect(
           (await extendGrant(scenario, scenario.ownerA, grant.shareId)).ok
         ).toBe(true);
-        expect(
-          rosterHasVehicle(await readRoster(scenario, mechanic), vehicleId)
-        ).toBe(true);
+        const rosterAfterExtend = await readRoster(scenario, mechanic);
+        expect(rosterAfterExtend.ok).toBe(true);
+        expect(rosterHasVehicle(rosterAfterExtend, vehicleId)).toBe(true);
 
         expect(
           (await revokeGrant(scenario, scenario.ownerA, grant.shareId)).ok
         ).toBe(true);
-        expect(
-          rosterHasVehicle(await readRoster(scenario, mechanic), vehicleId)
-        ).toBe(false);
+        const rosterAfterRevoke = await readRoster(scenario, mechanic);
+        expect(rosterAfterRevoke.ok).toBe(true);
+        expect(rosterHasVehicle(rosterAfterRevoke, vehicleId)).toBe(false);
       } finally {
         await dropAuthedActor(scenario, mechanic);
         await teardownScenario(scenario);
