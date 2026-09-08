@@ -15,7 +15,7 @@ entitlements are hard-Opus. The billing webhook is `secrets-or-deploy`.
 
 ## Phase S1 — The mechanic's account
 
-- [ ] **T3-101 [TEST]** Roster and grant-binding graders: a grant issued to an
+- [x] **T3-101 [TEST]** Roster and grant-binding graders: a grant issued to an
   email binds to that account on first authenticated open and to no other; an
   unbound grant is readable by its bearer and invisible to every roster; a
   revoked or expired grant leaves the roster on the next request; a shop member
