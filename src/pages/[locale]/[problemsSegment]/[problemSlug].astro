@@ -61,6 +61,7 @@ import TriageBanner from "../../../components/TriageBanner.astro";
 import SafetyNotice from "../../../components/SafetyNotice.astro";
 import ConfidenceCaveat from "../../../components/ConfidenceCaveat.astro";
 import EntryFitNotice from "../../../components/EntryFitNotice.astro";
+import CommunityEvidence from "../../../components/CommunityEvidence.astro";
 import {
   LOCALES,
   LOCALE_BCP47,
@@ -398,6 +399,8 @@ const causePhrase = new Map(
         )
       }
     </section>
+
+    <CommunityEvidence locale={locale} problemId={entry.id} />
 
     {
       data.sources.length > 0 && (

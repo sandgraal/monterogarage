@@ -1,0 +1,388 @@
+---
+/**
+ * Community first-hand evidence on a problem page (T2-403, GAR-04′).
+ *
+ * > **GAR-04′** WHEN a record references a problem entry and its vehicle's
+ * > work-log is public, THE problem page MAY surface it as community first-hand
+ * > evidence (opt-in per record; the 001 GAR-04 idea, now multi-user).
+ *
+ * ## Client-side, because that is the only place live user data reaches a
+ * ## static page
+ *
+ * This site is static (AGENTS.md — Astro, static output on Vercel), so there is
+ * no request-time server to read published records for an anonymous visitor.
+ * The showcase and work-log pages solve the identical problem the identical way
+ * — they ship chrome and a `<script>` that reads one named vehicle from the
+ * browser through the anon world reader (`share_read_records`), already
+ * world-masked by the database (SHR-01, SHR-03). This section does the same for
+ * each registered source and keeps only the records that name *this* problem.
+ *
+ * Every visibility decision is the database's and `src/lib/garage/visibility.ts`'s
+ * — this component decides none of it. `communityEvidenceItemsFromWorldRecords`
+ * (the same module `community-evidence.test.ts` grades) is the one place the
+ * shaping lives, so the surface cannot drift from the rule SHR-09 pins.
+ *
+ * ## Rendered only when there is something to render
+ *
+ * The section is emitted only when Supabase is configured *and* at least one
+ * source is registered (`communityEvidenceSources()`), and it stays `hidden`
+ * until the fetch finds at least one eligible record — so a problem page with
+ * no first-hand evidence carries no empty heading, and a build with no live
+ * project (CI, the a11y and link jobs) ships no dormant script. It is a
+ * progressive enhancement: the problem page — the highest-stakes page on the
+ * site — is complete without it, and a reader with no JavaScript loses only
+ * this supplementary band.
+ *
+ * ## Testimony, framed as such
+ *
+ * The band opens with the testimony note (AGENTS.md; the §8 Facts amendment):
+ * these are owners' own accounts of their own trucks, never site-verified
+ * reference facts, and a reader who arrived at a problem page is exactly the one
+ * likeliest to mistake one for the other.
+ *
+ * refs specs/002-montero-garage (GAR-04′, SHR-09, SHR-01, SHR-02, SHR-03),
+ * specs/001-foundation (PRB-01, I18N-08), design/HANDOFF-DESIGN.md
+ */
+import { LOCALE_BCP47 } from "../i18n/routing";
+import type { Locale } from "../i18n/routing";
+import { generationLabel, t } from "../i18n/ui";
+import { SUPABASE_BROWSER_CONFIG } from "../lib/supabase/config";
+import { communityEvidenceSources } from "../lib/garage/community-evidence-sources";
+import {
+  GENERATION_IDS,
+  type GenerationId,
+} from "../schemas/vehicle-vocabulary";
+
+interface Props {
+  locale: Locale;
+  problemId: string;
+}
+
+const { locale, problemId } = Astro.props as Props;
+const strings = t(locale);
+
+const sources = communityEvidenceSources();
+const shouldRender = SUPABASE_BROWSER_CONFIG !== null && sources.length > 0;
+
+/** A crawler-safe JSON payload, `<` escaped so it cannot close the script. */
+function safeJson(value: unknown): string {
+  return JSON.stringify(value).replaceAll("<", "\\u003c");
+}
+
+const sourcesJson = safeJson(sources);
+const generationLabels = Object.fromEntries(
+  GENERATION_IDS.map((id) => [id, generationLabel(strings, id as GenerationId)])
+);
+const generationLabelsJson = safeJson(generationLabels);
+---
+
+{
+  shouldRender && (
+    <section
+      class="panel community-evidence"
+      data-community-evidence
+      data-problem-id={problemId}
+      data-sources={sourcesJson}
+      data-generation-labels={generationLabelsJson}
+      data-locale={LOCALE_BCP47[locale]}
+      data-string-source-link={strings.problemCommunityEvidenceSourceLink}
+      data-string-cost-none={strings.sharePageCostNone}
+      data-string-kind-work={strings.garageRecordKindWork}
+      data-string-kind-receipt={strings.garageRecordKindReceipt}
+      data-string-kind-note={strings.garageRecordKindNote}
+      data-string-kind-plan={strings.garageRecordKindPlan}
+      hidden
+    >
+      <h2 class="panel__title">{strings.problemCommunityEvidenceHeading}</h2>
+      <p class="community-evidence__note">
+        {strings.problemCommunityEvidenceNote}
+      </p>
+      <ol class="community-evidence__list" data-community-list />
+    </section>
+  )
+}
+
+<script>
+  import { isLocale, localeHref, type Locale } from "../i18n/routing";
+  import { readPublicRecords, readPublicVehicle } from "../lib/supabase/shares";
+  import {
+    communityEvidenceAttribution,
+    communityEvidenceItemsFromWorldRecords,
+    compareCommunityEvidenceRecency,
+    type CommunityEvidenceItem,
+  } from "../lib/garage/community-evidence";
+  import { worklogRoutePath } from "../lib/garage/showcase-view";
+  import {
+    formatCost,
+    formatDuration,
+    formatRecordDate,
+    recordHeadline,
+    type RecordRow,
+  } from "../lib/garage/record";
+
+  interface SourceRef {
+    readonly handle: string;
+    readonly vehicleId: string;
+  }
+
+  /**
+   * DOM wiring only — composes no prose, decides no visibility. The records
+   * arrive already world-masked by the database (SHR-01, SHR-03); the shaping
+   * is `community-evidence.ts`'s; every string is the server's (I18N-08).
+   */
+  function enhance(root: HTMLElement): void {
+    const list = root.querySelector<HTMLElement>("[data-community-list]");
+    if (!list) return;
+
+    const text = { ...root.dataset };
+    const localeTag = text.locale || "en";
+    const locale: Locale = isLocale(localeTag.slice(0, 2))
+      ? (localeTag.slice(0, 2) as Locale)
+      : "en";
+
+    const problemId = text.problemId ?? "";
+    if (problemId === "") return;
+
+    const sources: SourceRef[] = (() => {
+      try {
+        const parsed = JSON.parse(text.sources ?? "[]") as unknown;
+        return Array.isArray(parsed) ? (parsed as SourceRef[]) : [];
+      } catch {
+        return [];
+      }
+    })();
+    if (sources.length === 0) return;
+
+    const generationLabels: Record<string, string> = (() => {
+      try {
+        return JSON.parse(text.generationLabels ?? "{}") as Record<
+          string,
+          string
+        >;
+      } catch {
+        return {};
+      }
+    })();
+
+    function identityLabel(vehicle: {
+      readonly generationId: string;
+      readonly marketId: string | null;
+      readonly modelYear: number | null;
+      readonly engineId: string | null;
+    }): string {
+      return [
+        generationLabels[vehicle.generationId] ?? vehicle.generationId,
+        vehicle.marketId ? vehicle.marketId.toUpperCase() : "",
+        vehicle.modelYear === null ? "" : String(vehicle.modelYear),
+        vehicle.engineId ? vehicle.engineId.toUpperCase() : "",
+      ]
+        .filter((part) => part !== "")
+        .join(" · ");
+    }
+
+    function kindLabel(kind: string): string {
+      if (kind === "work") return text.stringKindWork ?? kind;
+      if (kind === "receipt") return text.stringKindReceipt ?? kind;
+      if (kind === "note") return text.stringKindNote ?? kind;
+      if (kind === "plan") return text.stringKindPlan ?? kind;
+      return kind;
+    }
+
+    /**
+     * One piece of evidence: the truck it came from, then the record, then a
+     * link into that truck's own published work log for the full context. The
+     * cost line renders only when the `cost_amount` key is present — the absent
+     * key is the database saying "you were not shown this" (SHR-03/SHR-06).
+     */
+    function renderItem(item: CommunityEvidenceItem): HTMLLIElement {
+      const { record, attribution } = item;
+      const li = document.createElement("li");
+      li.className = "community-evidence__item";
+
+      const source = document.createElement("p");
+      source.className = "community-evidence__source";
+      const identity = identityLabel(attribution);
+      source.textContent = identity
+        ? `${attribution.displayName} · ${identity}`
+        : attribution.displayName;
+      li.append(source);
+
+      const heading = document.createElement("p");
+      heading.className = "community-evidence__title";
+      heading.textContent = recordHeadline(
+        record as Pick<RecordRow, "title" | "kind">,
+        kindLabel(record.kind)
+      );
+      li.append(heading);
+
+      const meta = document.createElement("p");
+      meta.className = "community-evidence__meta";
+      const parts: string[] = [formatRecordDate(record.occurred_on, locale)];
+      if (record.odometer_km !== null && record.odometer_km !== undefined) {
+        parts.push(
+          new Intl.NumberFormat(locale, {
+            style: "unit",
+            unit: "kilometer",
+            unitDisplay: "short",
+            maximumFractionDigits: 0,
+          }).format(record.odometer_km)
+        );
+      }
+      if (record.time_minutes !== null && record.time_minutes !== undefined) {
+        parts.push(formatDuration(record.time_minutes, locale));
+      }
+      meta.textContent = parts.join(" · ");
+      li.append(meta);
+
+      if (Object.hasOwn(record, "cost_amount")) {
+        const cost = document.createElement("p");
+        cost.className = "community-evidence__cost";
+        cost.textContent =
+          typeof record.cost_amount === "number" &&
+          typeof record.cost_currency === "string"
+            ? formatCost(record.cost_amount, record.cost_currency, locale)
+            : (text.stringCostNone ?? "");
+        li.append(cost);
+      }
+
+      const note = (record.body ?? "").trim();
+      if (note !== "") {
+        const body = document.createElement("p");
+        body.className = "community-evidence__body";
+        body.textContent = note;
+        li.append(body);
+      }
+
+      const link = document.createElement("a");
+      link.className = "community-evidence__link";
+      link.href = localeHref(
+        locale,
+        worklogRoutePath(attribution.handle, attribution.vehicleId, locale)
+      );
+      link.textContent = text.stringSourceLink ?? "";
+      li.append(link);
+
+      return li;
+    }
+
+    async function itemsFor(
+      source: SourceRef
+    ): Promise<CommunityEvidenceItem[]> {
+      const vehicleResult = await readPublicVehicle(source);
+      if (!vehicleResult.ok || vehicleResult.value === null) return [];
+      const attribution = communityEvidenceAttribution(source.handle, {
+        id: vehicleResult.value.id,
+        display_name: vehicleResult.value.display_name,
+        generation_id: vehicleResult.value.generation_id,
+        market_id: vehicleResult.value.market_id,
+        model_year: vehicleResult.value.model_year,
+        engine_id: vehicleResult.value.engine_id,
+      });
+
+      const recordsResult = await readPublicRecords(source);
+      if (!recordsResult.ok) return [];
+
+      return [
+        ...communityEvidenceItemsFromWorldRecords({
+          problemId,
+          attribution,
+          records: recordsResult.value,
+        }),
+      ];
+    }
+
+    async function open(): Promise<void> {
+      const settled = await Promise.all(
+        sources.map((source) => itemsFor(source))
+      );
+      const items = settled.flat().sort(compareCommunityEvidenceRecency);
+      if (items.length === 0) return;
+
+      list!.replaceChildren(...items.map((item) => renderItem(item)));
+      root.hidden = false;
+    }
+
+    // A failure is not an empty section (AGENTS.md): the band simply stays
+    // hidden, exactly as it does when there is genuinely no evidence, because
+    // this supplementary surface has no honest way to say "could not check" that
+    // is worth interrupting a problem page for.
+    void open().catch(() => {});
+  }
+
+  const root = document.querySelector<HTMLElement>("[data-community-evidence]");
+  if (root) enhance(root);
+</script>
+
+<style>
+  .community-evidence[hidden] {
+    display: none !important;
+  }
+
+  .community-evidence {
+    gap: 1rem;
+  }
+
+  .community-evidence__note {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    /* 5.72:1 on white — `muted`, never the handoff's `faint`. */
+    color: #6e6559;
+  }
+
+  .community-evidence__list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .community-evidence__item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    border: 1px solid #e4ddd1;
+    border-radius: 8px;
+    padding: 1rem 1.125rem;
+  }
+
+  .community-evidence__source {
+    margin: 0;
+    font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+    font-size: 0.8125rem;
+    /* 8.9:1 on white — `muted-strong`. */
+    color: #55493c;
+  }
+
+  .community-evidence__title {
+    margin: 0;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: #2b2620;
+  }
+
+  .community-evidence__meta,
+  .community-evidence__cost {
+    margin: 0;
+    font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+    font-size: 0.8125rem;
+    color: #55493c;
+  }
+
+  .community-evidence__body {
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: #2b2620;
+  }
+
+  .community-evidence__link {
+    align-self: flex-start;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    /* 5.6:1 on white. */
+    color: #93441f;
+  }
+</style>
