@@ -180,6 +180,13 @@ begin
     raise insufficient_privilege using message = 'shop creation refused';
   end if;
 
+  -- A blank or whitespace-only name is the function's own refusal, not a raw
+  -- NOT NULL violation from shops.name: guard before the insert so the caller
+  -- sees the same terse refusal as every other rejection here.
+  if nullif(btrim(p_name), '') is null then
+    raise insufficient_privilege using message = 'shop creation refused';
+  end if;
+
   insert into public.shops (name, created_by)
   values (nullif(btrim(p_name), ''), v_uid)
   returning id into v_shop;
@@ -229,6 +236,13 @@ begin
      where m.shop_id = p_shop_id
        and m.account_id = v_uid
   ) then
+    raise insufficient_privilege using message = 'invite refused';
+  end if;
+
+  -- A blank or whitespace-only email is the function's own refusal, not a raw
+  -- NOT NULL violation from shop_invites.invitee_email: guard before the insert
+  -- so the caller sees the same terse refusal as every other rejection here.
+  if nullif(btrim(p_invitee_email), '') is null then
     raise insufficient_privilege using message = 'invite refused';
   end if;
 

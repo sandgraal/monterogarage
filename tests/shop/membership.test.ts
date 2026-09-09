@@ -365,9 +365,9 @@ describe("the shop roster returns exactly the shop's live shop-visible grants (S
 
 /* =========================================================================
  * Tier B — behavioural. The half that actually proves invite-only membership,
- * the absence of a self-join, and roster isolation on the wire. Marked it.fails
- * so a pre-T3-202 live run reports expected failures, not errors; skipped
- * entirely when no local stack is present.
+ * the absence of a self-join, and roster isolation on the wire. Now that T3-202
+ * ships the RPCs, a live run is expected to pass; skipped entirely when no local
+ * stack is present.
  * ====================================================================== */
 
 /** One owned vehicle for owner A, created as owner A through the API. */

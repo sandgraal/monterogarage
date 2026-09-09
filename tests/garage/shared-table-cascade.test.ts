@@ -467,15 +467,15 @@ describe("the SHARED user-table class is internally coherent", () => {
 });
 
 /* =========================================================================
- * The graders — RED today, activated by T3-202
+ * The graders — activated by T3-202, green against the shipped migration
  *
- * `it.fails` is the marker. Each reads the shipped migration, which does not
- * create the shop tables yet, so each fails today with a named absence. T3-202
- * activates each by deleting exactly its one `.fails` line; only a correct
- * shared-cascade migration turns it green.
+ * Each reads the shipped migration, which now creates the shop tables. T3-202
+ * activated each by deleting its one `.fails` marker; they stay green only while
+ * a correct shared-cascade migration remains in place — a regression turns them
+ * red with a named absence.
  * ====================================================================== */
 
-describe("the shipped migration creates the shop tables with RLS forced — pending T3-202", () => {
+describe("the shipped migration creates the shop tables with RLS forced", () => {
   it.each(SHARED_USER_TABLE_NAMES)(
     "public.%s exists and forces row level security",
     (table) => {
@@ -487,7 +487,7 @@ describe("the shipped migration creates the shop tables with RLS forced — pend
   );
 });
 
-describe("the shipped migration honours the shared account-deletion model — pending T3-202 (ACC-03)", () => {
+describe("the shipped migration honours the shared account-deletion model (ACC-03)", () => {
   it("shop_members.account_id is `on delete cascade` to auth.users", () => {
     const action = foreignKeyOnDeleteFor(
       migrationSql(),
@@ -528,11 +528,10 @@ describe("the shipped migration honours the shared account-deletion model — pe
   });
 
   it("the shop tables are accepted by the ungraded-table sweep, RLS and all", () => {
-    // The other side of the accommodation, against the real migration: once
+    // The other side of the accommodation, against the real migration: now that
     // T3-202 ships the tables, `ungradedTableIssues` must find them known AND
-    // RLS-forced. Red today because they do not exist (createdTables is empty
-    // of them, so this returns [] — which is why the assertion below, that the
-    // sweep has *seen and cleared* all three, cannot yet hold).
+    // RLS-forced. createdTables now lists all three, so the assertion below —
+    // that the sweep has *seen and cleared* all three — holds.
     const created = createdTables(migrationSql()).map((t) => t.name);
     for (const table of SHARED_USER_TABLE_NAMES) {
       expect(created, `public.${table} not created yet`).toContain(table);
