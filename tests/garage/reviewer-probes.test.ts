@@ -2593,6 +2593,18 @@ describe("declaredArgumentNames — PostgREST resolves by NAME (T2-404a)", () =>
     // parser's args-with-`default` handling too. Updated 2026-09-07 (the same
     // stale-fixture grader-defect fix the T2-404b removal above records, refs
     // specs/003-shop-tools T3-102).
+    //
+    // `create_share_grant` then gained an EIGHTH defaulted argument,
+    // `p_can_propose`, in T3-302 (specs/003-shop-tools, PRO-01), which again
+    // drop-and-recreates the routine — the identical mechanical coupling the
+    // T3-102 5->7 note just above records, one argument further. The merged
+    // T3-301 [TEST] contract (`tests/shop/contract.ts` `SHARE_CAN_PROPOSE_ARGUMENT`,
+    // `tests/shop/proposals.test.ts` "takes p_can_propose, and stays one routine")
+    // requires it. Updating THIS exact-signature pin to the newly-shipped
+    // 8-argument signature is a LEDGERED grader-adjacent exception (the T3-102
+    // precedent), and only this one line — it reads back the real, shipped
+    // signature, not a guess. Flagged for independent review. Updated 2026-09-08
+    // (refs specs/003-shop-tools T3-302).
     const declared = functions(migrationSql());
     const named = (name: string) =>
       declared.find((routine) => routine.name === name)?.argNames;
@@ -2605,6 +2617,7 @@ describe("declaredArgumentNames — PostgREST resolves by NAME (T2-404a)", () =>
       "p_expires_in_hours",
       "p_grantee_email",
       "p_is_shop_visible",
+      "p_can_propose",
     ]);
     expect(named("revoke_share_grant")).toEqual(["p_share_id"]);
   });

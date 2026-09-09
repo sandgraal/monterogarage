@@ -142,7 +142,7 @@ whole reason it was authorized.
   because the tempting shortcut is a pending record); acceptance creates exactly
   one record carrying provenance; rejection creates none; revocation kills
   submit and withdraw but leaves pending proposals rejectable (PRO-06).
-- [ ] **T3-302 [PLATFORM]** Proposals: mechanic-side quote and job draft with
+- [x] **T3-302 [PLATFORM]** Proposals: mechanic-side quote and job draft with
   line items, owner-side accept/reject with provenance carried onto the created
   record. Activates T3-301. Depends: T3-301 merged. *(PRO-01..04, PRO-06)*
 - [ ] **T3-303 [PLATFORM]** Provenance rendering: an accepted record shows who

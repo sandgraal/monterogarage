@@ -356,11 +356,11 @@ function forgingInsertPolicies(
  * ====================================================================== */
 
 describe("the proposals table ships behind row-level security (PRO-03, PRO-04)", () => {
-  it.fails(`${CONTRACT_SCHEMA}.${PROPOSALS_TABLE} is a created table`, () => {
+  it(`${CONTRACT_SCHEMA}.${PROPOSALS_TABLE} is a created table`, () => {
     requireProposalsTable();
   });
 
-  it.fails.each(PROPOSAL_COLUMNS)("proposals.%s is a column", (column) => {
+  it.each(PROPOSAL_COLUMNS)("proposals.%s is a column", (column) => {
     requireProposalsTable();
     expect(
       columnDefinitionFor(migrationSql(), PROPOSALS_TABLE, column),
@@ -368,7 +368,7 @@ describe("the proposals table ships behind row-level security (PRO-03, PRO-04)",
     ).not.toBeNull();
   });
 
-  it.fails("proposals enables AND forces row level security", () => {
+  it("proposals enables AND forces row level security", () => {
     // `enable` alone exempts the table owner (which migrations run as); `force`
     // closes it. Both required, graded separately because `force` is the one
     // most often missed. AGENTS.md: "every user table ships with RLS."
@@ -378,7 +378,7 @@ describe("the proposals table ships behind row-level security (PRO-03, PRO-04)",
     expect(forcesRls(sql, PROPOSALS_TABLE), "does not force RLS").toBe(true);
   });
 
-  it.fails("no anonymous role reaches the proposals table", () => {
+  it("no anonymous role reaches the proposals table", () => {
     // A proposal is an authenticated flow (spec §1: "the accountless path is
     // read-only because it has no auth.uid()"). `tableGrantIssues` flags anon
     // holding anything AND — the unknown-is-not-zero hazard — a table whose
@@ -388,7 +388,7 @@ describe("the proposals table ships behind row-level security (PRO-03, PRO-04)",
     expect(tableGrantIssues(migrationSql(), [PROPOSALS_TABLE])).toEqual([]);
   });
 
-  it.fails("owner_id is on delete cascade to auth.users (ACC-03)", () => {
+  it("owner_id is on delete cascade to auth.users (ACC-03)", () => {
     requireProposalsTable();
     const fk = foreignKeyFor(
       migrationSql(),
@@ -406,66 +406,57 @@ describe("the proposals table ships behind row-level security (PRO-03, PRO-04)",
     ).toBe("cascade");
   });
 
-  it.fails(
-    "proposed_by is on delete cascade to auth.users — a draft dies with its author (ACC-03)",
-    () => {
-      requireProposalsTable();
-      const fk = foreignKeyFor(
+  it("proposed_by is on delete cascade to auth.users — a draft dies with its author (ACC-03)", () => {
+    requireProposalsTable();
+    const fk = foreignKeyFor(
+      migrationSql(),
+      PROPOSALS_TABLE,
+      PROPOSAL_PROPOSED_BY_COLUMN
+    );
+    expect(fk, "proposed_by has no foreign key").not.toBeNull();
+    expect(fk?.target).toContain("users");
+    expect(
+      foreignKeyOnDeleteFor(
         migrationSql(),
         PROPOSALS_TABLE,
         PROPOSAL_PROPOSED_BY_COLUMN
-      );
-      expect(fk, "proposed_by has no foreign key").not.toBeNull();
-      expect(fk?.target).toContain("users");
-      expect(
-        foreignKeyOnDeleteFor(
-          migrationSql(),
-          PROPOSALS_TABLE,
-          PROPOSAL_PROPOSED_BY_COLUMN
-        )
-      ).toBe("cascade");
-    }
-  );
+      )
+    ).toBe("cascade");
+  });
 
-  it.fails(
-    "vehicle_id is on delete cascade to vehicles — a proposal on a gone vehicle is meaningless",
-    () => {
-      requireProposalsTable();
-      const fk = foreignKeyFor(
+  it("vehicle_id is on delete cascade to vehicles — a proposal on a gone vehicle is meaningless", () => {
+    requireProposalsTable();
+    const fk = foreignKeyFor(
+      migrationSql(),
+      PROPOSALS_TABLE,
+      PROPOSAL_VEHICLE_COLUMN
+    );
+    expect(fk, "vehicle_id has no foreign key").not.toBeNull();
+    expect(fk?.target).toContain("vehicles");
+    expect(
+      foreignKeyOnDeleteFor(
         migrationSql(),
         PROPOSALS_TABLE,
         PROPOSAL_VEHICLE_COLUMN
-      );
-      expect(fk, "vehicle_id has no foreign key").not.toBeNull();
-      expect(fk?.target).toContain("vehicles");
-      expect(
-        foreignKeyOnDeleteFor(
-          migrationSql(),
-          PROPOSALS_TABLE,
-          PROPOSAL_VEHICLE_COLUMN
-        )
-      ).toBe("cascade");
-    }
-  );
+      )
+    ).toBe("cascade");
+  });
 
-  it.fails(
-    "the shared account-deletion model holds for proposals (both accounts cascade)",
-    () => {
-      // The same `sharedTableCascadeIssues` the 002 suite runs, aimed at just
-      // the proposals entry: BOTH owner_id and proposed_by must cascade to
-      // auth.users, so a pending draft vanishes when either party deletes their
-      // account. Passing an explicit list keeps this file from importing the
-      // shipped-set default (which excludes a pending table).
-      const entry = SHARED_USER_TABLES.find((t) => t.name === PROPOSALS_TABLE);
-      if (!entry) {
-        throw new Error(
-          "proposals is not registered in SHARED_USER_TABLES — T3-301a's " +
-            "contract wiring is missing"
-        );
-      }
-      expect(sharedTableCascadeIssues(migrationSql(), [entry])).toEqual([]);
+  it("the shared account-deletion model holds for proposals (both accounts cascade)", () => {
+    // The same `sharedTableCascadeIssues` the 002 suite runs, aimed at just
+    // the proposals entry: BOTH owner_id and proposed_by must cascade to
+    // auth.users, so a pending draft vanishes when either party deletes their
+    // account. Passing an explicit list keeps this file from importing the
+    // shipped-set default (which excludes a pending table).
+    const entry = SHARED_USER_TABLES.find((t) => t.name === PROPOSALS_TABLE);
+    if (!entry) {
+      throw new Error(
+        "proposals is not registered in SHARED_USER_TABLES — T3-301a's " +
+          "contract wiring is missing"
+      );
     }
-  );
+    expect(sharedTableCascadeIssues(migrationSql(), [entry])).toEqual([]);
+  });
 });
 
 describe("proposals is registered as a pending SHARED user table (contract wiring)", () => {
@@ -486,21 +477,18 @@ describe("proposals is registered as a pending SHARED user table (contract wirin
 });
 
 describe("only the author and the owner can see a proposal (PRO-04)", () => {
-  it.fails(
-    "every proposals policy is owner-scoped, non-anon, and has a `to` clause",
-    () => {
-      // The generic single-owner sweep, aimed at proposals by an explicit list
-      // (the task line: "both pass rules.ts unchanged"). It rejects a policy
-      // granted to anon/public, one with no `to` clause, one whose predicate is
-      // not tied to auth.uid(), and a table with no policy at all.
-      requireProposalsTable();
-      expect(userTablePolicyIssues(migrationSql(), [PROPOSALS_TABLE])).toEqual(
-        []
-      );
-    }
-  );
+  it("every proposals policy is owner-scoped, non-anon, and has a `to` clause", () => {
+    // The generic single-owner sweep, aimed at proposals by an explicit list
+    // (the task line: "both pass rules.ts unchanged"). It rejects a policy
+    // granted to anon/public, one with no `to` clause, one whose predicate is
+    // not tied to auth.uid(), and a table with no policy at all.
+    requireProposalsTable();
+    expect(userTablePolicyIssues(migrationSql(), [PROPOSALS_TABLE])).toEqual(
+      []
+    );
+  });
 
-  it.fails("an owner policy keys the row to owner_id = auth.uid()", () => {
+  it("an owner policy keys the row to owner_id = auth.uid()", () => {
     requireProposalsTable();
     expect(
       policyKeyedOn(PROPOSAL_OWNER_COLUMN),
@@ -508,7 +496,7 @@ describe("only the author and the owner can see a proposal (PRO-04)", () => {
     ).toBeDefined();
   });
 
-  it.fails("a proposer policy keys the row to proposed_by = auth.uid()", () => {
+  it("a proposer policy keys the row to proposed_by = auth.uid()", () => {
     requireProposalsTable();
     expect(
       policyKeyedOn(PROPOSAL_PROPOSED_BY_COLUMN),
@@ -554,71 +542,62 @@ describe("only the author and the owner can see a proposal (PRO-04)", () => {
 });
 
 describe("the proposal write path requires a live can_propose grant (PRO-01, PRO-06)", () => {
-  it.fails(
-    `${SHARES_TABLE}.${CAN_PROPOSE_COLUMN} is a boolean, not-null, default false capability`,
-    () => {
-      // SHR-05: a grant's powers are explicit capability columns, never a
-      // branch on `kind`. SHR-01: private by default — the capability is closed
-      // unless the owner opens it.
-      const def = columnDefinitionFor(
-        migrationSql(),
-        SHARES_TABLE,
-        CAN_PROPOSE_COLUMN
-      );
-      expect(
-        def,
-        `${SHARES_TABLE}.${CAN_PROPOSE_COLUMN} is absent`
-      ).not.toBeNull();
-      expect(/bool/.test(def?.definition ?? ""), "not boolean").toBe(true);
-      expect(
-        isNotNullFor(migrationSql(), SHARES_TABLE, CAN_PROPOSE_COLUMN),
-        "not `not null`"
-      ).toBe(true);
-      expect(
-        defaultExpression(def?.definition ?? ""),
-        "default is not false"
-      ).toBe("false");
-    }
-  );
+  it(`${SHARES_TABLE}.${CAN_PROPOSE_COLUMN} is a boolean, not-null, default false capability`, () => {
+    // SHR-05: a grant's powers are explicit capability columns, never a
+    // branch on `kind`. SHR-01: private by default — the capability is closed
+    // unless the owner opens it.
+    const def = columnDefinitionFor(
+      migrationSql(),
+      SHARES_TABLE,
+      CAN_PROPOSE_COLUMN
+    );
+    expect(
+      def,
+      `${SHARES_TABLE}.${CAN_PROPOSE_COLUMN} is absent`
+    ).not.toBeNull();
+    expect(/bool/.test(def?.definition ?? ""), "not boolean").toBe(true);
+    expect(
+      isNotNullFor(migrationSql(), SHARES_TABLE, CAN_PROPOSE_COLUMN),
+      "not `not null`"
+    ).toBe(true);
+    expect(
+      defaultExpression(def?.definition ?? ""),
+      "default is not false"
+    ).toBe("false");
+  });
 
-  it.fails(
-    `${SHARE_CREATE_FUNCTION} takes ${SHARE_CAN_PROPOSE_ARGUMENT}, and stays one routine`,
-    () => {
-      // Adding a defaulted argument changes the routine's identity, so T3-302
-      // must drop + recreate (and re-grant execute), leaving exactly one
-      // overload — the same discipline T3-102 used for its two arguments.
-      const found = functions(migrationSql()).filter((routine) =>
-        isContractRoutine(routine, SHARE_CREATE_FUNCTION)
-      );
-      expect(found.length, `${SHARE_CREATE_FUNCTION} overload count`).toBe(1);
-      expect(found[0]?.argNames ?? []).toContain(SHARE_CAN_PROPOSE_ARGUMENT);
-    }
-  );
+  it(`${SHARE_CREATE_FUNCTION} takes ${SHARE_CAN_PROPOSE_ARGUMENT}, and stays one routine`, () => {
+    // Adding a defaulted argument changes the routine's identity, so T3-302
+    // must drop + recreate (and re-grant execute), leaving exactly one
+    // overload — the same discipline T3-102 used for its two arguments.
+    const found = functions(migrationSql()).filter((routine) =>
+      isContractRoutine(routine, SHARE_CREATE_FUNCTION)
+    );
+    expect(found.length, `${SHARE_CREATE_FUNCTION} overload count`).toBe(1);
+    expect(found[0]?.argNames ?? []).toContain(SHARE_CAN_PROPOSE_ARGUMENT);
+  });
 
-  it.fails(
-    "the proposer policy consults a live can_propose grant — inline, or via a helper it calls",
-    () => {
-      // PRO-01 + PRO-06's structural floor, corrected by the 2026-09-09 ruling:
-      // the mechanic's submit path must consult the `shares` grant, its
-      // `can_propose` capability, and BOTH liveness columns, correlated to the
-      // proposal's vehicle and owner — a check that skips `revoked_at`/
-      // `expires_at` is a path a revoked grant still opens. The check may be
-      // inline OR in a `security definer` helper the policy calls; the grader
-      // reads THROUGH the reference (see `reachableLiveness`) so it does not
-      // force the inline `exists (select … from shares …)` a mechanic can never
-      // satisfy under RLS — the very defect this ruling fixes. The Tier-B
-      // PRO-01 proofs are the behavioural bar this structural floor stands on.
-      requireProposalsTable();
-      const policy = proposerPolicyIn(migrationSql());
-      if (!policy) {
-        throw proposalSeam(
-          `no proposer-scoped policy on ${PROPOSALS_TABLE} to carry the ` +
-            `live-grant check`
-        );
-      }
-      expect(proposerLivenessIssues(migrationSql(), policy)).toEqual([]);
+  it("the proposer policy consults a live can_propose grant — inline, or via a helper it calls", () => {
+    // PRO-01 + PRO-06's structural floor, corrected by the 2026-09-09 ruling:
+    // the mechanic's submit path must consult the `shares` grant, its
+    // `can_propose` capability, and BOTH liveness columns, correlated to the
+    // proposal's vehicle and owner — a check that skips `revoked_at`/
+    // `expires_at` is a path a revoked grant still opens. The check may be
+    // inline OR in a `security definer` helper the policy calls; the grader
+    // reads THROUGH the reference (see `reachableLiveness`) so it does not
+    // force the inline `exists (select … from shares …)` a mechanic can never
+    // satisfy under RLS — the very defect this ruling fixes. The Tier-B
+    // PRO-01 proofs are the behavioural bar this structural floor stands on.
+    requireProposalsTable();
+    const policy = proposerPolicyIn(migrationSql());
+    if (!policy) {
+      throw proposalSeam(
+        `no proposer-scoped policy on ${PROPOSALS_TABLE} to carry the ` +
+          `live-grant check`
+      );
     }
-  );
+    expect(proposerLivenessIssues(migrationSql(), policy)).toEqual([]);
+  });
 
   /** A proposer policy whose live-grant check lives in a named helper, built
    * from synthetic DDL so each mutation control varies exactly one thing. Fake
@@ -842,59 +821,47 @@ describe("the owner cannot forge a proposal (PRO-01, §7.1 provenance integrity)
 });
 
 describe("acceptance is the owner's own action, and the one write into records (PRO-02)", () => {
-  it.fails(
-    `ships ${CONTRACT_SCHEMA}.${ACCEPT_PROPOSAL_FUNCTION}, taking the proposal id`,
-    () => {
-      const accept = requireProposalRoutine(ACCEPT_PROPOSAL_FUNCTION);
-      for (const name of ACCEPT_PROPOSAL_ARGUMENTS) {
-        expect(accept.argNames, `missing ${name}`).toContain(name);
-      }
+  it(`ships ${CONTRACT_SCHEMA}.${ACCEPT_PROPOSAL_FUNCTION}, taking the proposal id`, () => {
+    const accept = requireProposalRoutine(ACCEPT_PROPOSAL_FUNCTION);
+    for (const name of ACCEPT_PROPOSAL_ARGUMENTS) {
+      expect(accept.argNames, `missing ${name}`).toContain(name);
     }
-  );
+  });
 
-  it.fails(
-    "accept_proposal is security definer and pins search_path = ''",
-    () => {
-      const accept = requireProposalRoutine(ACCEPT_PROPOSAL_FUNCTION);
-      expect(accept.securityDefiner, "not security definer").toBe(true);
-      expect(
-        definerSearchPathIssues(migrationSql()).filter((issue) =>
-          issue.includes(accept.identity)
-        ),
-        "search_path not pinned to ''"
-      ).toEqual([]);
-    }
-  );
+  it("accept_proposal is security definer and pins search_path = ''", () => {
+    const accept = requireProposalRoutine(ACCEPT_PROPOSAL_FUNCTION);
+    expect(accept.securityDefiner, "not security definer").toBe(true);
+    expect(
+      definerSearchPathIssues(migrationSql()).filter((issue) =>
+        issue.includes(accept.identity)
+      ),
+      "search_path not pinned to ''"
+    ).toEqual([]);
+  });
 
-  it.fails(
-    "accept_proposal ties auth.uid() to the proposal's owner — the owner's own action",
-    () => {
-      // "Acceptance is the owner's own action, keyed to auth.uid()." A definer
-      // routine bypasses RLS, so the ownership check must be IN the body: it
-      // ties the caller to the proposal's owner_id. `authUidComparands` on the
-      // body proves an equality, not a mere mention.
-      const accept = requireProposalRoutine(ACCEPT_PROPOSAL_FUNCTION);
-      expect(
-        authUidComparands(accept.body),
-        `${ACCEPT_PROPOSAL_FUNCTION} never ties auth.uid() to ${PROPOSAL_OWNER_COLUMN}`
-      ).toContain(PROPOSAL_OWNER_COLUMN);
-    }
-  );
+  it("accept_proposal ties auth.uid() to the proposal's owner — the owner's own action", () => {
+    // "Acceptance is the owner's own action, keyed to auth.uid()." A definer
+    // routine bypasses RLS, so the ownership check must be IN the body: it
+    // ties the caller to the proposal's owner_id. `authUidComparands` on the
+    // body proves an equality, not a mere mention.
+    const accept = requireProposalRoutine(ACCEPT_PROPOSAL_FUNCTION);
+    expect(
+      authUidComparands(accept.body),
+      `${ACCEPT_PROPOSAL_FUNCTION} never ties auth.uid() to ${PROPOSAL_OWNER_COLUMN}`
+    ).toContain(PROPOSAL_OWNER_COLUMN);
+  });
 
-  it.fails(
-    "accept_proposal reads the proposal and writes exactly records",
-    () => {
-      const accept = requireProposalRoutine(ACCEPT_PROPOSAL_FUNCTION);
-      expect(accept.body, `never reads ${PROPOSALS_TABLE}`).toContain(
-        PROPOSALS_TABLE
-      );
-      expect(accept.body, `never writes ${RECORDS_TABLE}`).toContain(
-        RECORDS_TABLE
-      );
-    }
-  );
+  it("accept_proposal reads the proposal and writes exactly records", () => {
+    const accept = requireProposalRoutine(ACCEPT_PROPOSAL_FUNCTION);
+    expect(accept.body, `never reads ${PROPOSALS_TABLE}`).toContain(
+      PROPOSALS_TABLE
+    );
+    expect(accept.body, `never writes ${RECORDS_TABLE}`).toContain(
+      RECORDS_TABLE
+    );
+  });
 
-  it.fails.each(RECORD_PROVENANCE_COLUMNS)(
+  it.each(RECORD_PROVENANCE_COLUMNS)(
     "accept_proposal carries %s onto the created record (PRO-02 provenance)",
     (column) => {
       const accept = requireProposalRoutine(ACCEPT_PROPOSAL_FUNCTION);
@@ -902,7 +869,7 @@ describe("acceptance is the owner's own action, and the one write into records (
     }
   );
 
-  it.fails.each(RECORD_PROVENANCE_COLUMNS)(
+  it.each(RECORD_PROVENANCE_COLUMNS)(
     "records.%s exists — provenance the accepted record carries (PRO-02, PRO-05)",
     (column) => {
       expect(
@@ -912,56 +879,50 @@ describe("acceptance is the owner's own action, and the one write into records (
     }
   );
 
-  it.fails(
-    "records.accepted_at is a timestamp; the share/author refs are uuid",
-    () => {
-      const acceptedAt = columnDefinitionFor(
-        migrationSql(),
-        RECORDS_TABLE,
-        RECORD_ACCEPTED_AT_COLUMN
-      );
-      expect(acceptedAt, "records.accepted_at absent").not.toBeNull();
-      expect(/timestamp/.test(acceptedAt?.definition ?? "")).toBe(true);
-      for (const column of [
-        RECORD_PROPOSED_BY_COLUMN,
-        RECORD_PROPOSAL_SHARE_COLUMN,
-      ]) {
-        const def = columnDefinitionFor(migrationSql(), RECORDS_TABLE, column);
-        expect(def, `records.${column} absent`).not.toBeNull();
-        expect(
-          /uuid/.test(def?.definition ?? ""),
-          `records.${column} not uuid`
-        ).toBe(true);
-      }
+  it("records.accepted_at is a timestamp; the share/author refs are uuid", () => {
+    const acceptedAt = columnDefinitionFor(
+      migrationSql(),
+      RECORDS_TABLE,
+      RECORD_ACCEPTED_AT_COLUMN
+    );
+    expect(acceptedAt, "records.accepted_at absent").not.toBeNull();
+    expect(/timestamp/.test(acceptedAt?.definition ?? "")).toBe(true);
+    for (const column of [
+      RECORD_PROPOSED_BY_COLUMN,
+      RECORD_PROPOSAL_SHARE_COLUMN,
+    ]) {
+      const def = columnDefinitionFor(migrationSql(), RECORDS_TABLE, column);
+      expect(def, `records.${column} absent`).not.toBeNull();
+      expect(
+        /uuid/.test(def?.definition ?? ""),
+        `records.${column} not uuid`
+      ).toBe(true);
     }
-  );
+  });
 
-  it.fails(
-    "records.proposed_by is on delete set null — an accepted record survives its author (PRO-06)",
-    () => {
-      // The mirror image of proposals.proposed_by (cascade). An accepted
-      // proposal IS the owner's record; the mechanic deleting their account
-      // must not delete the owner's record — only unbind the attribution.
-      const fk = foreignKeyFor(
+  it("records.proposed_by is on delete set null — an accepted record survives its author (PRO-06)", () => {
+    // The mirror image of proposals.proposed_by (cascade). An accepted
+    // proposal IS the owner's record; the mechanic deleting their account
+    // must not delete the owner's record — only unbind the attribution.
+    const fk = foreignKeyFor(
+      migrationSql(),
+      RECORDS_TABLE,
+      RECORD_PROPOSED_BY_COLUMN
+    );
+    expect(fk, "records.proposed_by has no foreign key").not.toBeNull();
+    expect(fk?.target).toContain("users");
+    expect(
+      foreignKeyOnDeleteFor(
         migrationSql(),
         RECORDS_TABLE,
         RECORD_PROPOSED_BY_COLUMN
-      );
-      expect(fk, "records.proposed_by has no foreign key").not.toBeNull();
-      expect(fk?.target).toContain("users");
-      expect(
-        foreignKeyOnDeleteFor(
-          migrationSql(),
-          RECORDS_TABLE,
-          RECORD_PROPOSED_BY_COLUMN
-        )
-      ).toBe("set null");
-    }
-  );
+      )
+    ).toBe("set null");
+  });
 });
 
 describe("acceptance is account-only, and reachable by an account (spec §1)", () => {
-  it.fails("accept_proposal is not reachable without an account", () => {
+  it("accept_proposal is not reachable without an account", () => {
     // §1: "the accountless path is read-only because it has no auth.uid()."
     // Accepting is the write; an anon/public caller holds no execute on it. An
     // "unknown" verdict counts as reachable (Postgres grants execute to PUBLIC
@@ -973,7 +934,7 @@ describe("acceptance is account-only, and reachable by an account (spec §1)", (
     expect(reachable).toEqual([]);
   });
 
-  it.fails("accept_proposal is reachable by an authenticated caller", () => {
+  it("accept_proposal is reachable by an authenticated caller", () => {
     // The other direction — a closed door nobody can open is as broken as one
     // that will not shut.
     const state = grants(migrationSql());
@@ -1099,7 +1060,7 @@ async function ownedVehicleId(scenario: Scenario, slot = "1"): Promise<string> {
 describe.skipIf(!live.available)(
   liveTitle("PRO-01 — only a live can_propose grant admits a proposal", live),
   () => {
-    it.fails.each([
+    it.each([
       ["opens can_propose", true, true],
       ["withholds can_propose", false, false],
     ] as const)(
@@ -1135,44 +1096,41 @@ describe.skipIf(!live.available)(
       }
     );
 
-    it.fails(
-      "a mechanic with no grant cannot submit; the same mechanic, once granted, can",
-      async () => {
-        const scenario = await provisionScenario(stackOf(live));
-        const mechanic = await makeAuthedActor(scenario, "m");
-        try {
-          const vehicleId = await ownedVehicleId(scenario);
-          // No grant at all: refused.
-          const ungranted = await submitProposal(
-            scenario,
-            mechanic,
-            scenario.ownerA.userId as string,
-            vehicleId
-          );
-          expect(ungranted.ok).toBe(false);
-          // Positive control: a live can_propose grant, and now it works.
-          const grant = await issueProposeGrant(
-            scenario,
-            scenario.ownerA,
-            vehicleId,
-            { granteeEmail: mechanic.email, canPropose: true }
-          );
-          expect((await bindGrant(scenario, mechanic, grant.token)).ok).toBe(
-            true
-          );
-          const granted = await submitProposal(
-            scenario,
-            mechanic,
-            scenario.ownerA.userId as string,
-            vehicleId
-          );
-          expect(granted.ok).toBe(true);
-        } finally {
-          await dropAuthedActor(scenario, mechanic);
-          await teardownScenario(scenario);
-        }
+    it("a mechanic with no grant cannot submit; the same mechanic, once granted, can", async () => {
+      const scenario = await provisionScenario(stackOf(live));
+      const mechanic = await makeAuthedActor(scenario, "m");
+      try {
+        const vehicleId = await ownedVehicleId(scenario);
+        // No grant at all: refused.
+        const ungranted = await submitProposal(
+          scenario,
+          mechanic,
+          scenario.ownerA.userId as string,
+          vehicleId
+        );
+        expect(ungranted.ok).toBe(false);
+        // Positive control: a live can_propose grant, and now it works.
+        const grant = await issueProposeGrant(
+          scenario,
+          scenario.ownerA,
+          vehicleId,
+          { granteeEmail: mechanic.email, canPropose: true }
+        );
+        expect((await bindGrant(scenario, mechanic, grant.token)).ok).toBe(
+          true
+        );
+        const granted = await submitProposal(
+          scenario,
+          mechanic,
+          scenario.ownerA.userId as string,
+          vehicleId
+        );
+        expect(granted.ok).toBe(true);
+      } finally {
+        await dropAuthedActor(scenario, mechanic);
+        await teardownScenario(scenario);
       }
-    );
+    });
   }
 );
 
@@ -1182,53 +1140,50 @@ describe.skipIf(!live.available)(
     live
   ),
   () => {
-    it.fails(
-      "the author and the owner see the proposal; a third mechanic does not",
-      async () => {
-        const scenario = await provisionScenario(stackOf(live));
-        const mechanic = await makeAuthedActor(scenario, "m");
-        const stranger = await makeAuthedActor(scenario, "s");
-        try {
-          const vehicleId = await ownedVehicleId(scenario);
-          const grant = await issueProposeGrant(
-            scenario,
-            scenario.ownerA,
-            vehicleId,
-            { granteeEmail: mechanic.email, canPropose: true }
-          );
-          expect((await bindGrant(scenario, mechanic, grant.token)).ok).toBe(
-            true
-          );
-          const submitted = await submitProposal(
-            scenario,
-            mechanic,
-            scenario.ownerA.userId as string,
-            vehicleId
-          );
-          expect(submitted.ok).toBe(true);
-          const proposalId = proposalIdOf(submitted);
-          expect(proposalId).not.toBeNull();
+    it("the author and the owner see the proposal; a third mechanic does not", async () => {
+      const scenario = await provisionScenario(stackOf(live));
+      const mechanic = await makeAuthedActor(scenario, "m");
+      const stranger = await makeAuthedActor(scenario, "s");
+      try {
+        const vehicleId = await ownedVehicleId(scenario);
+        const grant = await issueProposeGrant(
+          scenario,
+          scenario.ownerA,
+          vehicleId,
+          { granteeEmail: mechanic.email, canPropose: true }
+        );
+        expect((await bindGrant(scenario, mechanic, grant.token)).ok).toBe(
+          true
+        );
+        const submitted = await submitProposal(
+          scenario,
+          mechanic,
+          scenario.ownerA.userId as string,
+          vehicleId
+        );
+        expect(submitted.ok).toBe(true);
+        const proposalId = proposalIdOf(submitted);
+        expect(proposalId).not.toBeNull();
 
-          // Author sees it, owner sees it (positive controls) …
-          const authorView = await readProposals(scenario, mechanic);
-          expect(authorView.ok).toBe(true);
-          expect(proposalsInclude(authorView, proposalId as string)).toBe(true);
-          const ownerView = await readProposals(scenario, scenario.ownerA);
-          expect(ownerView.ok).toBe(true);
-          expect(proposalsInclude(ownerView, proposalId as string)).toBe(true);
+        // Author sees it, owner sees it (positive controls) …
+        const authorView = await readProposals(scenario, mechanic);
+        expect(authorView.ok).toBe(true);
+        expect(proposalsInclude(authorView, proposalId as string)).toBe(true);
+        const ownerView = await readProposals(scenario, scenario.ownerA);
+        expect(ownerView.ok).toBe(true);
+        expect(proposalsInclude(ownerView, proposalId as string)).toBe(true);
 
-          // … and a third mechanic does not — refusal or empty, never the row.
-          const strangerView = await readProposals(scenario, stranger);
-          expect(proposalsInclude(strangerView, proposalId as string)).toBe(
-            false
-          );
-        } finally {
-          await dropAuthedActor(scenario, mechanic);
-          await dropAuthedActor(scenario, stranger);
-          await teardownScenario(scenario);
-        }
+        // … and a third mechanic does not — refusal or empty, never the row.
+        const strangerView = await readProposals(scenario, stranger);
+        expect(proposalsInclude(strangerView, proposalId as string)).toBe(
+          false
+        );
+      } finally {
+        await dropAuthedActor(scenario, mechanic);
+        await dropAuthedActor(scenario, stranger);
+        await teardownScenario(scenario);
       }
-    );
+    });
   }
 );
 
@@ -1238,74 +1193,66 @@ describe.skipIf(!live.available)(
     live
   ),
   () => {
-    it.fails(
-      "acceptance creates exactly one record carrying the proposal's provenance",
-      async () => {
-        const scenario = await provisionScenario(stackOf(live));
-        const mechanic = await makeAuthedActor(scenario, "m");
-        try {
-          const vehicleId = await ownedVehicleId(scenario);
-          const grant = await issueProposeGrant(
-            scenario,
-            scenario.ownerA,
-            vehicleId,
-            { granteeEmail: mechanic.email, canPropose: true }
-          );
-          expect((await bindGrant(scenario, mechanic, grant.token)).ok).toBe(
-            true
-          );
-          const submitted = await submitProposal(
-            scenario,
-            mechanic,
-            scenario.ownerA.userId as string,
-            vehicleId
-          );
-          const proposalId = proposalIdOf(submitted);
-          expect(proposalId).not.toBeNull();
+    it("acceptance creates exactly one record carrying the proposal's provenance", async () => {
+      const scenario = await provisionScenario(stackOf(live));
+      const mechanic = await makeAuthedActor(scenario, "m");
+      try {
+        const vehicleId = await ownedVehicleId(scenario);
+        const grant = await issueProposeGrant(
+          scenario,
+          scenario.ownerA,
+          vehicleId,
+          { granteeEmail: mechanic.email, canPropose: true }
+        );
+        expect((await bindGrant(scenario, mechanic, grant.token)).ok).toBe(
+          true
+        );
+        const submitted = await submitProposal(
+          scenario,
+          mechanic,
+          scenario.ownerA.userId as string,
+          vehicleId
+        );
+        const proposalId = proposalIdOf(submitted);
+        expect(proposalId).not.toBeNull();
 
-          const before = await readVehicleRecords(
-            scenario,
-            scenario.ownerA,
-            vehicleId
-          );
-          // createOwnedFixture already made one record on this vehicle.
-          const beforeCount = rowCount(before);
+        const before = await readVehicleRecords(
+          scenario,
+          scenario.ownerA,
+          vehicleId
+        );
+        // createOwnedFixture already made one record on this vehicle.
+        const beforeCount = rowCount(before);
 
-          const accepted = await acceptProposal(
-            scenario,
-            scenario.ownerA,
-            proposalId as string
-          );
-          expect(accepted.ok).toBe(true);
+        const accepted = await acceptProposal(
+          scenario,
+          scenario.ownerA,
+          proposalId as string
+        );
+        expect(accepted.ok).toBe(true);
 
-          const after = await readVehicleRecords(
-            scenario,
-            scenario.ownerA,
-            vehicleId
-          );
-          expect(after.ok).toBe(true);
-          expect(rowCount(after) - beforeCount).toBe(1);
+        const after = await readVehicleRecords(
+          scenario,
+          scenario.ownerA,
+          vehicleId
+        );
+        expect(after.ok).toBe(true);
+        expect(rowCount(after) - beforeCount).toBe(1);
 
-          const rows = (after.body as Record<string, unknown>[]) ?? [];
-          const provenanced = rows.find(
-            (row) => row[RECORD_PROPOSED_BY_COLUMN] === mechanic.userId
-          );
-          expect(
-            provenanced,
-            "the new record carries no proposer"
-          ).toBeDefined();
-          expect(provenanced?.[RECORD_ACCEPTED_AT_COLUMN]).toBeTruthy();
-          expect(provenanced?.[RECORD_PROPOSAL_SHARE_COLUMN]).toBe(
-            grant.shareId
-          );
-        } finally {
-          await dropAuthedActor(scenario, mechanic);
-          await teardownScenario(scenario);
-        }
+        const rows = (after.body as Record<string, unknown>[]) ?? [];
+        const provenanced = rows.find(
+          (row) => row[RECORD_PROPOSED_BY_COLUMN] === mechanic.userId
+        );
+        expect(provenanced, "the new record carries no proposer").toBeDefined();
+        expect(provenanced?.[RECORD_ACCEPTED_AT_COLUMN]).toBeTruthy();
+        expect(provenanced?.[RECORD_PROPOSAL_SHARE_COLUMN]).toBe(grant.shareId);
+      } finally {
+        await dropAuthedActor(scenario, mechanic);
+        await teardownScenario(scenario);
       }
-    );
+    });
 
-    it.fails("rejection creates no record", async () => {
+    it("rejection creates no record", async () => {
       const scenario = await provisionScenario(stackOf(live));
       const mechanic = await makeAuthedActor(scenario, "m");
       try {
@@ -1358,66 +1305,63 @@ describe.skipIf(!live.available)(
 describe.skipIf(!live.available)(
   liveTitle("PRO-02/PRO-03 — a mechanic cannot forge an accepted record", live),
   () => {
-    it.fails(
-      "a mechanic cannot write a record directly, nor accept their own proposal; the owner can",
-      async () => {
-        const scenario = await provisionScenario(stackOf(live));
-        const mechanic = await makeAuthedActor(scenario, "m");
-        try {
-          const vehicleId = await ownedVehicleId(scenario);
-          const grant = await issueProposeGrant(
-            scenario,
-            scenario.ownerA,
-            vehicleId,
-            { granteeEmail: mechanic.email, canPropose: true }
-          );
-          expect((await bindGrant(scenario, mechanic, grant.token)).ok).toBe(
-            true
-          );
+    it("a mechanic cannot write a record directly, nor accept their own proposal; the owner can", async () => {
+      const scenario = await provisionScenario(stackOf(live));
+      const mechanic = await makeAuthedActor(scenario, "m");
+      try {
+        const vehicleId = await ownedVehicleId(scenario);
+        const grant = await issueProposeGrant(
+          scenario,
+          scenario.ownerA,
+          vehicleId,
+          { granteeEmail: mechanic.email, canPropose: true }
+        );
+        expect((await bindGrant(scenario, mechanic, grant.token)).ok).toBe(
+          true
+        );
 
-          // Forgery 1: a direct write into the owner's records is refused
-          // (records' insert policy is owner-only — PRO-03).
-          const forged = await forgeRecordInsert(scenario, mechanic, vehicleId);
-          expect(forged.ok).toBe(false);
+        // Forgery 1: a direct write into the owner's records is refused
+        // (records' insert policy is owner-only — PRO-03).
+        const forged = await forgeRecordInsert(scenario, mechanic, vehicleId);
+        expect(forged.ok).toBe(false);
 
-          const submitted = await submitProposal(
-            scenario,
-            mechanic,
-            scenario.ownerA.userId as string,
-            vehicleId
-          );
-          const proposalId = proposalIdOf(submitted);
-          expect(proposalId).not.toBeNull();
+        const submitted = await submitProposal(
+          scenario,
+          mechanic,
+          scenario.ownerA.userId as string,
+          vehicleId
+        );
+        const proposalId = proposalIdOf(submitted);
+        expect(proposalId).not.toBeNull();
 
-          const before = rowCount(
-            await readVehicleRecords(scenario, scenario.ownerA, vehicleId)
-          );
+        const before = rowCount(
+          await readVehicleRecords(scenario, scenario.ownerA, vehicleId)
+        );
 
-          // Forgery 2: the mechanic accepts their OWN proposal — acceptance is
-          // keyed to the owner's auth.uid(), so this must create nothing.
-          await acceptProposal(scenario, mechanic, proposalId as string);
-          const afterForge = rowCount(
-            await readVehicleRecords(scenario, scenario.ownerA, vehicleId)
-          );
-          expect(afterForge).toBe(before);
+        // Forgery 2: the mechanic accepts their OWN proposal — acceptance is
+        // keyed to the owner's auth.uid(), so this must create nothing.
+        await acceptProposal(scenario, mechanic, proposalId as string);
+        const afterForge = rowCount(
+          await readVehicleRecords(scenario, scenario.ownerA, vehicleId)
+        );
+        expect(afterForge).toBe(before);
 
-          // Positive control: the OWNER accepts, and now a record appears.
-          const ownerAccept = await acceptProposal(
-            scenario,
-            scenario.ownerA,
-            proposalId as string
-          );
-          expect(ownerAccept.ok).toBe(true);
-          const afterOwner = rowCount(
-            await readVehicleRecords(scenario, scenario.ownerA, vehicleId)
-          );
-          expect(afterOwner - before).toBe(1);
-        } finally {
-          await dropAuthedActor(scenario, mechanic);
-          await teardownScenario(scenario);
-        }
+        // Positive control: the OWNER accepts, and now a record appears.
+        const ownerAccept = await acceptProposal(
+          scenario,
+          scenario.ownerA,
+          proposalId as string
+        );
+        expect(ownerAccept.ok).toBe(true);
+        const afterOwner = rowCount(
+          await readVehicleRecords(scenario, scenario.ownerA, vehicleId)
+        );
+        expect(afterOwner - before).toBe(1);
+      } finally {
+        await dropAuthedActor(scenario, mechanic);
+        await teardownScenario(scenario);
       }
-    );
+    });
   }
 );
 
@@ -1427,136 +1371,130 @@ describe.skipIf(!live.available)(
     live
   ),
   () => {
-    it.fails(
-      "after revocation the mechanic cannot submit or withdraw, but the owner can reject",
-      async () => {
-        const scenario = await provisionScenario(stackOf(live));
-        const mechanic = await makeAuthedActor(scenario, "m");
-        try {
-          const vehicleId = await ownedVehicleId(scenario);
-          const grant = await issueProposeGrant(
-            scenario,
-            scenario.ownerA,
-            vehicleId,
-            { granteeEmail: mechanic.email, canPropose: true }
-          );
-          expect((await bindGrant(scenario, mechanic, grant.token)).ok).toBe(
-            true
-          );
+    it("after revocation the mechanic cannot submit or withdraw, but the owner can reject", async () => {
+      const scenario = await provisionScenario(stackOf(live));
+      const mechanic = await makeAuthedActor(scenario, "m");
+      try {
+        const vehicleId = await ownedVehicleId(scenario);
+        const grant = await issueProposeGrant(
+          scenario,
+          scenario.ownerA,
+          vehicleId,
+          { granteeEmail: mechanic.email, canPropose: true }
+        );
+        expect((await bindGrant(scenario, mechanic, grant.token)).ok).toBe(
+          true
+        );
 
-          // Two live proposals: P0 (to withdraw as a positive control while
-          // live) and P1 (to survive to revocation for the owner to reject).
-          const p0 = proposalIdOf(
-            await submitProposal(
-              scenario,
-              mechanic,
-              scenario.ownerA.userId as string,
-              vehicleId
-            )
-          );
-          const p1 = proposalIdOf(
-            await submitProposal(
-              scenario,
-              mechanic,
-              scenario.ownerA.userId as string,
-              vehicleId
-            )
-          );
-          expect(p0).not.toBeNull();
-          expect(p1).not.toBeNull();
-
-          // Positive control: while the grant is live, the mechanic CAN
-          // withdraw their own proposal.
-          expect(
-            (await withdrawProposal(scenario, mechanic, p0 as string)).ok
-          ).toBe(true);
-
-          // Revoke the grant.
-          expect(
-            (await revokeGrant(scenario, scenario.ownerA, grant.shareId)).ok
-          ).toBe(true);
-
-          // Now the mechanic can neither submit …
-          const lateSubmit = await submitProposal(
+        // Two live proposals: P0 (to withdraw as a positive control while
+        // live) and P1 (to survive to revocation for the owner to reject).
+        const p0 = proposalIdOf(
+          await submitProposal(
             scenario,
             mechanic,
             scenario.ownerA.userId as string,
             vehicleId
-          );
-          expect(lateSubmit.ok).toBe(false);
-          // … nor withdraw the still-pending P1.
-          await withdrawProposal(scenario, mechanic, p1 as string);
-          const stillThere = await readProposals(scenario, scenario.ownerA);
-          expect(proposalsInclude(stillThere, p1 as string)).toBe(true);
-
-          // But the owner can still reject the pending P1 (PRO-06).
-          expect(
-            (await rejectProposal(scenario, scenario.ownerA, p1 as string)).ok
-          ).toBe(true);
-          const afterReject = await readProposals(scenario, scenario.ownerA);
-          expect(proposalsInclude(afterReject, p1 as string)).toBe(false);
-        } finally {
-          await dropAuthedActor(scenario, mechanic);
-          await teardownScenario(scenario);
-        }
-      }
-    );
-
-    it.fails(
-      "an accepted record is unaffected when the grant is later revoked",
-      async () => {
-        const scenario = await provisionScenario(stackOf(live));
-        const mechanic = await makeAuthedActor(scenario, "m");
-        try {
-          const vehicleId = await ownedVehicleId(scenario);
-          const grant = await issueProposeGrant(
+          )
+        );
+        const p1 = proposalIdOf(
+          await submitProposal(
             scenario,
-            scenario.ownerA,
-            vehicleId,
-            { granteeEmail: mechanic.email, canPropose: true }
-          );
-          expect((await bindGrant(scenario, mechanic, grant.token)).ok).toBe(
-            true
-          );
-          const proposalId = proposalIdOf(
-            await submitProposal(
-              scenario,
-              mechanic,
-              scenario.ownerA.userId as string,
-              vehicleId
-            )
-          );
-          expect(proposalId).not.toBeNull();
-          expect(
-            (
-              await acceptProposal(
-                scenario,
-                scenario.ownerA,
-                proposalId as string
-              )
-            ).ok
-          ).toBe(true);
-          const afterAccept = rowCount(
-            await readVehicleRecords(scenario, scenario.ownerA, vehicleId)
-          );
-
-          // Revoke the grant — the accepted record is a record now, unaffected.
-          expect(
-            (await revokeGrant(scenario, scenario.ownerA, grant.shareId)).ok
-          ).toBe(true);
-          const afterRevoke = await readVehicleRecords(
-            scenario,
-            scenario.ownerA,
+            mechanic,
+            scenario.ownerA.userId as string,
             vehicleId
-          );
-          expect(afterRevoke.ok).toBe(true);
-          expect(rowCount(afterRevoke)).toBe(afterAccept);
-        } finally {
-          await dropAuthedActor(scenario, mechanic);
-          await teardownScenario(scenario);
-        }
+          )
+        );
+        expect(p0).not.toBeNull();
+        expect(p1).not.toBeNull();
+
+        // Positive control: while the grant is live, the mechanic CAN
+        // withdraw their own proposal.
+        expect(
+          (await withdrawProposal(scenario, mechanic, p0 as string)).ok
+        ).toBe(true);
+
+        // Revoke the grant.
+        expect(
+          (await revokeGrant(scenario, scenario.ownerA, grant.shareId)).ok
+        ).toBe(true);
+
+        // Now the mechanic can neither submit …
+        const lateSubmit = await submitProposal(
+          scenario,
+          mechanic,
+          scenario.ownerA.userId as string,
+          vehicleId
+        );
+        expect(lateSubmit.ok).toBe(false);
+        // … nor withdraw the still-pending P1.
+        await withdrawProposal(scenario, mechanic, p1 as string);
+        const stillThere = await readProposals(scenario, scenario.ownerA);
+        expect(proposalsInclude(stillThere, p1 as string)).toBe(true);
+
+        // But the owner can still reject the pending P1 (PRO-06).
+        expect(
+          (await rejectProposal(scenario, scenario.ownerA, p1 as string)).ok
+        ).toBe(true);
+        const afterReject = await readProposals(scenario, scenario.ownerA);
+        expect(proposalsInclude(afterReject, p1 as string)).toBe(false);
+      } finally {
+        await dropAuthedActor(scenario, mechanic);
+        await teardownScenario(scenario);
       }
-    );
+    });
+
+    it("an accepted record is unaffected when the grant is later revoked", async () => {
+      const scenario = await provisionScenario(stackOf(live));
+      const mechanic = await makeAuthedActor(scenario, "m");
+      try {
+        const vehicleId = await ownedVehicleId(scenario);
+        const grant = await issueProposeGrant(
+          scenario,
+          scenario.ownerA,
+          vehicleId,
+          { granteeEmail: mechanic.email, canPropose: true }
+        );
+        expect((await bindGrant(scenario, mechanic, grant.token)).ok).toBe(
+          true
+        );
+        const proposalId = proposalIdOf(
+          await submitProposal(
+            scenario,
+            mechanic,
+            scenario.ownerA.userId as string,
+            vehicleId
+          )
+        );
+        expect(proposalId).not.toBeNull();
+        expect(
+          (
+            await acceptProposal(
+              scenario,
+              scenario.ownerA,
+              proposalId as string
+            )
+          ).ok
+        ).toBe(true);
+        const afterAccept = rowCount(
+          await readVehicleRecords(scenario, scenario.ownerA, vehicleId)
+        );
+
+        // Revoke the grant — the accepted record is a record now, unaffected.
+        expect(
+          (await revokeGrant(scenario, scenario.ownerA, grant.shareId)).ok
+        ).toBe(true);
+        const afterRevoke = await readVehicleRecords(
+          scenario,
+          scenario.ownerA,
+          vehicleId
+        );
+        expect(afterRevoke.ok).toBe(true);
+        expect(rowCount(afterRevoke)).toBe(afterAccept);
+      } finally {
+        await dropAuthedActor(scenario, mechanic);
+        await teardownScenario(scenario);
+      }
+    });
   }
 );
 
