@@ -208,6 +208,169 @@ function distinguishesFailureFromEmpty(
   );
 }
 
+/**
+ * Does the **opening tag** that carries `hookAttr` also carry a literal
+ * `hidden` attribute — as opposed to `hookAttr` and `hidden` merely both
+ * appearing *somewhere* in the source, in either order, with no requirement
+ * that they belong to the same element?
+ *
+ * Finds every complete opening tag in `source` (`<tag ...>`, a run of
+ * non-`>` characters so it can never cross into a second tag), keeps the ones
+ * whose attribute list carries `hookAttr` as a whole attribute token, and asks
+ * whether that *same* tag also carries `hidden` as a whole attribute token —
+ * `\s${name}(?=[\s=/>])`, so `aria-hidden="true"` does not satisfy `hidden`
+ * (the hyphen is not a token boundary this checks for) and a JS property
+ * access (`app.hidden`) inside a `<script>` never reads as an HTML attribute,
+ * because it is never inside an opening tag's `<...>` run in the first place.
+ *
+ * This is the fix for the code-review finding that
+ * `` new RegExp(`${hook}[^>]*\\bhidden\\b`) `` matched `data-shop-app` in a
+ * `<script>` selector string followed, arbitrarily far downstream and past no
+ * `>`, by an unrelated `app.hidden = false` — passing even when the
+ * server-rendered element itself carried no `hidden` attribute at all
+ * (T3-202b code review, fix 1).
+ */
+function elementCarriesHiddenAttribute(
+  source: string,
+  hookAttr: string
+): boolean {
+  const tags = source.match(/<[A-Za-z][\w-]*\b[^>]*>/g) ?? [];
+  const carriesToken = (tag: string, name: string): boolean =>
+    new RegExp(`\\s${name}(?=[\\s=/>])`).test(tag);
+  return tags.some(
+    (tag) => carriesToken(tag, hookAttr) && carriesToken(tag, "hidden")
+  );
+}
+
+/**
+ * Does `source` actually **call** a session read — `.getSession(` or
+ * `.onAuthStateChange(` — as opposed to merely mentioning something
+ * session-adjacent, such as importing a name it never calls?
+ *
+ * This is the fix for the code-review finding that
+ * `/getSession|onAuthStateChange|SUPABASE_BROWSER_CONFIG/` was satisfied by
+ * `import { SUPABASE_BROWSER_CONFIG } from "..."` alone — which every
+ * RPC-calling page carries, whether or not it ever checks who is signed in —
+ * so a page that reveals its app unconditionally still passed as long as it
+ * imported the config for an unrelated reason (T3-202b code review, fix 3).
+ */
+function checksSessionBeforeReveal(source: string): boolean {
+  return /\.getSession\s*\(|\.onAuthStateChange\s*\(/.test(source);
+}
+
+/**
+ * The index of the `closeCh` that balances the `openCh` at
+ * `source[openIndex]`, tracking nesting depth so an inner pair of the same
+ * two characters does not end the search early. `-1` if the source ends
+ * before the pair balances (a real bug in the source, never expected against
+ * real TS).
+ */
+function matchingDelimiterIndex(
+  source: string,
+  openIndex: number,
+  openCh: string,
+  closeCh: string
+): number {
+  let depth = 0;
+  for (let i = openIndex; i < source.length; i += 1) {
+    if (source[i] === openCh) depth += 1;
+    else if (source[i] === closeCh) {
+      depth -= 1;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+/**
+ * The index of a function's real opening `{`, starting the search right
+ * after its parameter list's closing `)`.
+ *
+ * Tracks **angle-bracket depth**, not brace depth, and returns only a `{`
+ * seen while that depth is `0` — so a return type shaped like
+ * `Promise<{ ok: true } | { ok: false }>` (a plausible discriminated-result
+ * type, and the exact shape this file's own scratch fixtures used while
+ * proving this helper) does not read as the function's body just because it
+ * is the first `{` in the source: both of its braces sit inside the
+ * `Promise<...>` angle brackets, so this only stops once that generic has
+ * closed.
+ */
+function functionBodyOpenBraceIndex(source: string, fromIndex: number): number {
+  let angleDepth = 0;
+  for (let i = fromIndex; i < source.length; i += 1) {
+    const ch = source[i];
+    if (ch === "<") angleDepth += 1;
+    else if (ch === ">") {
+      if (angleDepth > 0) angleDepth -= 1;
+    } else if (ch === "{" && angleDepth === 0) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+/**
+ * Every top-level function body in `source` — `function name(...) { ... }` /
+ * `async function name(...) { ... }`, and their `const name = async (...) =>
+ * { ... }` sibling (the two shapes `shares.ts` and `garage.ts` actually use)
+ * — extracted by balancing delimiters from the parameter list onward, rather
+ * than a bounded regex, so neither a nested `if`/`for` inside the function
+ * nor a parenthesized type in a parameter's own type annotation (`ask: () =>
+ * Promise<string | null>`, `garage.ts`'s real `currentUserIdIfAny` signature)
+ * truncates the parameter list early, and an inline-brace return type does
+ * not get mistaken for the function's opening brace.
+ */
+function topLevelFunctionBodies(source: string): string[] {
+  const startPattern =
+    /(?:export\s+)?(?:async\s+)?function\s+[A-Za-z_$][\w$]*\s*(?:<[^>]*>)?\s*\(|(?:export\s+)?const\s+[A-Za-z_$][\w$]*\s*=\s*async\s*(?:<[^>]*>)?\s*\(/g;
+  const bodies: string[] = [];
+  for (const m of source.matchAll(startPattern)) {
+    if (m.index === undefined) continue;
+    const openParenIndex = m.index + m[0].length - 1;
+    const closeParenIndex = matchingDelimiterIndex(
+      source,
+      openParenIndex,
+      "(",
+      ")"
+    );
+    if (closeParenIndex === -1) continue;
+    const openBraceIndex = functionBodyOpenBraceIndex(
+      source,
+      closeParenIndex + 1
+    );
+    if (openBraceIndex === -1) continue;
+    const closeBraceIndex = matchingDelimiterIndex(
+      source,
+      openBraceIndex,
+      "{",
+      "}"
+    );
+    if (closeBraceIndex === -1) continue;
+    bodies.push(source.slice(openBraceIndex, closeBraceIndex + 1));
+  }
+  return bodies;
+}
+
+/**
+ * The body of the **one function** in `source` whose body calls
+ * `.rpc(rpcName, ...)` — found by behaviour, not by an assumed function name,
+ * mirroring how {@link directTableWrites} scopes to `.from(...)` chains
+ * rather than scanning the whole file (GRADER-PRINCIPLES: grade behaviour,
+ * not a name list). `""` if no top-level function calls that rpc.
+ *
+ * This is the fix for the code-review finding that the discriminated-failure
+ * grader scanned the *whole* `shops.ts`, so a module that handled
+ * `create_shop`/`invite_to_shop` errors correctly but silently dropped a
+ * `shop_roster` failure to `{ ok: true, value: [] }` still passed — the
+ * *other* two functions' `ok: false` satisfied a whole-file regex regardless
+ * of what the roster function itself did (T3-202b code review, fix 2).
+ */
+function functionBodyCallingRpc(source: string, rpcName: string): string {
+  return (
+    topLevelFunctionBodies(source).find((body) => callsRpc(body, rpcName)) ?? ""
+  );
+}
+
 /* -------------------------------------------------------------------------
  * Helper self-tests (mutation-proofing the probes). These pass today.
  * ---------------------------------------------------------------------- */
@@ -300,6 +463,146 @@ describe("distinguishesFailureFromEmpty — helper self-test", () => {
   });
 });
 
+describe("elementCarriesHiddenAttribute — helper self-test", () => {
+  it("recognises hidden on the same opening tag, either attribute order — POSITIVE CONTROL", () => {
+    expect(
+      elementCarriesHiddenAttribute(
+        `<div data-shop-app hidden>`,
+        "data-shop-app"
+      )
+    ).toBe(true);
+    expect(
+      elementCarriesHiddenAttribute(
+        `<div hidden data-shop-app>`,
+        "data-shop-app"
+      )
+    ).toBe(true);
+  });
+
+  it("does NOT match a <script> reference to the hook plus an unrelated later `.hidden` — NEGATIVE CONTROL", () => {
+    // The exact bypass code review found: the hook string reappears inside a
+    // query-selector literal in a <script>, and `hidden` reappears far later
+    // as a JS property write — neither lives inside the actual opening tag,
+    // which here carries no `hidden` attribute at all.
+    const bypass = `
+      <div data-shop-app>
+        <p>content</p>
+      </div>
+      <script>
+        const app = document.querySelector("[data-shop-app]");
+        app.hidden = false;
+      </script>
+    `;
+    expect(elementCarriesHiddenAttribute(bypass, "data-shop-app")).toBe(false);
+  });
+
+  it("does NOT accept aria-hidden as standing in for hidden — NEGATIVE CONTROL", () => {
+    expect(
+      elementCarriesHiddenAttribute(
+        `<div data-shop-app aria-hidden="true">`,
+        "data-shop-app"
+      )
+    ).toBe(false);
+  });
+});
+
+describe("checksSessionBeforeReveal — helper self-test", () => {
+  it("recognises an actual getSession()/onAuthStateChange() call — POSITIVE CONTROL", () => {
+    expect(
+      checksSessionBeforeReveal(
+        `const { data } = await client.auth.getSession();`
+      )
+    ).toBe(true);
+    expect(
+      checksSessionBeforeReveal(
+        `client.auth.onAuthStateChange((event, session) => {});`
+      )
+    ).toBe(true);
+  });
+
+  it("does NOT match a bare, unused import of the browser config — NEGATIVE CONTROL", () => {
+    // The exact bypass code review found: importing SUPABASE_BROWSER_CONFIG
+    // satisfied the old regex whether or not the page ever checked a session.
+    const bypass =
+      'import { SUPABASE_BROWSER_CONFIG } from "../../lib/supabase/config";\n' +
+      "const configured = SUPABASE_BROWSER_CONFIG !== null;";
+    expect(checksSessionBeforeReveal(bypass)).toBe(false);
+  });
+});
+
+describe("topLevelFunctionBodies / functionBodyCallingRpc — helper self-test", () => {
+  it("extracts exactly the function whose body calls the named rpc, not a sibling's — POSITIVE CONTROL", () => {
+    const source = `
+      export async function createShop(name: string) {
+        const { data, error } = await client.rpc("create_shop", { p_name: name });
+        if (error) return { ok: false, reason: "failed" };
+        return { ok: true, value: data };
+      }
+
+      export async function readShopRoster(shopId: string) {
+        if (shopId.length > 0) {
+          const nested = { marker: true };
+        }
+        const { data, error } = await client.rpc("shop_roster", { p_shop_id: shopId });
+        if (error) return { ok: false, reason: "failed" };
+        return { ok: true, value: data };
+      }
+    `;
+    const body = functionBodyCallingRpc(source, "shop_roster");
+    expect(body).toContain("shop_roster");
+    expect(body).not.toContain("create_shop");
+    // A nested `if` block's own closing brace must not truncate extraction.
+    expect(body).toContain("marker: true");
+    expect(body).toContain("ok: false");
+  });
+
+  it("returns an empty string when no top-level function calls the named rpc — NEGATIVE CONTROL", () => {
+    const source = `export async function createShop() { await client.rpc("create_shop"); }`;
+    expect(functionBodyCallingRpc(source, "shop_roster")).toBe("");
+  });
+
+  it("does not mistake an inline-union return type's own braces for the function body", () => {
+    // `Promise<{ ok: true } | { ok: false }>` is a plausible discriminated-
+    // result type, and its first `{` is *not* the function's opening brace —
+    // it is nested inside the `Promise<...>` generic. A naive "skip to the
+    // first `{`" extractor grabs `{ ok: true; value: unknown[] }` as if it
+    // were the whole function, finds no `.rpc(...)` call inside that
+    // fragment, and reports "no such function" even though the real function
+    // (and its real `.rpc("shop_roster", ...)` call) is right there.
+    const source = `
+      export async function readShopRoster(
+        shopId: string
+      ): Promise<{ ok: true; value: unknown[] } | { ok: false; reason: string }> {
+        const { data } = await client.rpc("shop_roster", { p_shop_id: shopId });
+        return { ok: true, value: (data as unknown[]) ?? [] };
+      }
+    `;
+    const body = functionBodyCallingRpc(source, "shop_roster");
+    expect(body, "the real function body was not found").not.toBe("");
+    expect(body).toContain("shop_roster");
+  });
+
+  it("does not truncate the parameter list at a nested paren inside a parameter's own type", () => {
+    // `garage.ts`'s real `currentUserIdIfAny(win: Window, ask: () =>
+    // Promise<string | null> = currentUserId)` shape: the second parameter's
+    // *type* is itself a parenthesized arrow-function type, so the first `)`
+    // encountered after the opening `(` is not the parameter list's own close.
+    const source = `
+      export async function readShopRoster(
+        shopId: string,
+        ask: () => Promise<string | null> = currentUserId
+      ) {
+        const { data, error } = await client.rpc("shop_roster", { p_shop_id: shopId });
+        if (error) return { ok: false, reason: "failed" };
+        return { ok: true, value: data };
+      }
+    `;
+    const body = functionBodyCallingRpc(source, "shop_roster");
+    expect(body, "the real function body was not found").not.toBe("");
+    expect(body).toContain("ok: false");
+  });
+});
+
 /* =========================================================================
  * Shipped-code POSITIVE CONTROLS — prove the probes recognise the correct
  * pattern in real code, so a marked shop grader failing today means
@@ -321,6 +624,34 @@ describe("shipped-code positive controls (the probes are not vacuous)", () => {
     expect(callsRpc(shares, "create_share_grant")).toBe(true);
     expect(callsRpc(shares, "mechanic_roster")).toBe(true);
     expect(callsRpc(shares, "shop_roster")).toBe(false); // not wired there yet
+  });
+
+  it("elementCarriesHiddenAttribute finds the garage page's own data-garage-app hidden tag", () => {
+    const garage = readShippedSource(GARAGE_PAGE_PATH);
+    expect(elementCarriesHiddenAttribute(garage, "data-garage-app")).toBe(true);
+  });
+
+  it("checksSessionBeforeReveal finds shares.ts's real getSession() call", () => {
+    const shares = readShippedSource(SHARES_CLIENT_PATH);
+    expect(checksSessionBeforeReveal(shares)).toBe(true);
+  });
+
+  it("functionBodyCallingRpc finds shares.ts's real readMechanicRoster body, and it discriminates its failure", () => {
+    // Proves the extractor works against real, non-fixture TS (not just a
+    // fixture shaped to fit the regex), and that the shipped `readMechanicRoster`
+    // — which reaches its failure via a shared `failed()` helper rather than an
+    // inline `{ ok: false }` literal — still reads as discriminated, which is
+    // the exact idiom the shop client module is expected to copy.
+    const shares = readShippedSource(SHARES_CLIENT_PATH);
+    const body = functionBodyCallingRpc(shares, "mechanic_roster");
+    expect(
+      body,
+      'no function body calls .rpc("mechanic_roster", ...)'
+    ).not.toBe("");
+    expect(body).not.toContain("create_share_grant");
+    expect(body).toMatch(
+      /if\s*\(\s*error\s*\)[\s\S]{0,80}(?:ok:\s*false|failed\s*\(|refused\s*\()/
+    );
   });
 
   it("the garage page carries the distinct roster states this page must mirror", () => {
@@ -497,9 +828,15 @@ describe("the shop page is account-gated (SHP-01: an account is what makes a mec
       expect(page).toContain(SHOP_PAGE_HOOKS.app);
       // The app is private by default — hidden in the markup, revealed by script
       // only once a session is confirmed (the garage page's own posture).
-      expect(page).toMatch(
-        new RegExp(`${SHOP_PAGE_HOOKS.app}[^>]*\\bhidden\\b`)
-      );
+      // Anchored to the element's own opening tag (elementCarriesHiddenAttribute),
+      // not a bare "hidden somewhere before the next >" scan — the latter is
+      // satisfied by `app.hidden = false` in the page's own <script>, which is
+      // exactly backwards: it passes when the server-rendered element carries
+      // no `hidden` attribute at all (T3-202b code review, fix 1).
+      expect(
+        elementCarriesHiddenAttribute(page, SHOP_PAGE_HOOKS.app),
+        `<... ${SHOP_PAGE_HOOKS.app} ...> does not carry a literal hidden attribute`
+      ).toBe(true);
     }
   );
 
@@ -525,12 +862,17 @@ describe("the shop page is account-gated (SHP-01: an account is what makes a mec
         `shop page not built yet at ${SHOP_PAGE_SOURCE_PATH}`
       ).not.toBeNull();
       if (page === null) return;
-      // A session/auth read must exist somewhere in the page's wiring — the gate
-      // is meaningless if nothing ever consults `auth.getSession()` / the browser
-      // Supabase config to decide whether to reveal the app.
-      expect(page).toMatch(
-        /getSession|onAuthStateChange|SUPABASE_BROWSER_CONFIG/
-      );
+      // A session/auth read must exist somewhere in the page's wiring — an
+      // *actual call*, not merely importing the browser config, which every
+      // RPC-calling page does whether or not it ever checks who is signed in.
+      // A bare import was enough to satisfy the old regex — the gate is
+      // meaningless if nothing ever calls `getSession()`/`onAuthStateChange()`
+      // to decide whether to reveal the app (T3-202b code review, fix 3).
+      expect(
+        checksSessionBeforeReveal(page),
+        "page never calls getSession()/onAuthStateChange() — importing the " +
+          "browser config alone says nothing about whether a session was checked"
+      ).toBe(true);
     }
   );
 });
@@ -703,15 +1045,36 @@ describe("a failed shop_roster read is not rendered as an empty roster (a failur
         `shop client module not built yet at ${SHOP_CLIENT_MODULE_PATH}`
       ).not.toBeNull();
       if (client === null) return;
-      // The `shares.ts` shape: a `{ ok: false; reason }` result and an
-      // `if (error) return failed()` / `{ ok: false` on the roster read — so a
-      // dropped request reaches the page as `failed`, not as `[]` (which would
-      // read as "this shop holds no trucks"). Structural, mirroring shares.ts.
-      expect(client, "no discriminated `ok: false` result").toMatch(
-        /ok:\s*false/
-      );
-      expect(client, "no failure branch on an error").toMatch(
-        /if\s*\(\s*error\s*\)[\s\S]{0,80}(?:ok:\s*false|failed\s*\()/
+      // Scoped to the roster-reading function's *own* body — the one function
+      // whose body calls `.rpc(SHOP_UI_RPCS.roster, ...)`, found by behaviour
+      // (mirroring how `directTableWrites` scopes to `.from(...)` chains
+      // rather than scanning the whole file). A module that handles
+      // create_shop/invite_to_shop errors correctly but silently drops a
+      // shop_roster failure to `{ ok: true, value: [] }` used to pass this
+      // grader because the *other two* functions' `ok: false` satisfied a
+      // whole-file scan regardless of what the roster function did
+      // (T3-202b code review, fix 2).
+      const rosterBody = functionBodyCallingRpc(client, SHOP_UI_RPCS.roster);
+      expect(
+        rosterBody,
+        `no function body calls .rpc("${SHOP_UI_RPCS.roster}", ...)`
+      ).not.toBe("");
+      // The `shares.ts` shape: a `{ ok: false; reason }` result — or an
+      // equivalent failure-helper call, the `readMechanicRoster` idiom this
+      // module is expected to copy — and an `if (error)` branch that reaches
+      // it, so a dropped request reaches the page as `failed`, not as `[]`
+      // (which would read as "this shop holds no trucks").
+      expect(
+        rosterBody,
+        "the roster function has no discriminated `ok: false` result (or " +
+          "equivalent failure-helper call) anywhere in its own body"
+      ).toMatch(/ok:\s*false|failed\s*\(|refused\s*\(/);
+      expect(
+        rosterBody,
+        "the roster function's `if (error)` branch never reaches a " +
+          "discriminated failure"
+      ).toMatch(
+        /if\s*\(\s*error\s*\)[\s\S]{0,80}(?:ok:\s*false|failed\s*\(|refused\s*\()/
       );
     }
   );
