@@ -67,6 +67,7 @@ import {
 import {
   authUidComparands,
   definerSearchPathIssues,
+  effectiveCheck,
   isAnonExecutable,
   isContractRoutine,
   sharedTableCascadeIssues,
@@ -85,6 +86,7 @@ import {
   grants,
   isNotNullFor,
   migrationSql,
+  normalizeSql,
   policies,
   privilegeVerdict,
   type FunctionDefinition,
@@ -170,20 +172,182 @@ function requireProposalRoutine(name: string): FunctionDefinition {
   return found[0];
 }
 
+/** Every policy on the proposals table in `sql`, in force at the end. */
+function proposalPoliciesIn(sql: string): PolicyDefinition[] {
+  return policies(sql).filter((policy) => policy.table === PROPOSALS_TABLE);
+}
+
 /** Every policy on the proposals table, in force at the end of the directory. */
 function proposalPolicies(): PolicyDefinition[] {
-  return policies(migrationSql()).filter(
-    (policy) => policy.table === PROPOSALS_TABLE
+  return proposalPoliciesIn(migrationSql());
+}
+
+/** The proposals policy in `sql` tying a row to `auth.uid()` via `column`. */
+function policyKeyedOnIn(
+  sql: string,
+  column: string
+): PolicyDefinition | undefined {
+  return proposalPoliciesIn(sql).find((policy) =>
+    [policy.usingExpr, policy.withCheckExpr].some(
+      (expr) => expr !== null && authUidComparands(expr).includes(column)
+    )
   );
 }
 
 /** The proposal policy whose predicate ties a row to `auth.uid()` via `column`. */
 function policyKeyedOn(column: string): PolicyDefinition | undefined {
-  return proposalPolicies().find((policy) =>
-    [policy.usingExpr, policy.withCheckExpr].some(
-      (expr) => expr !== null && authUidComparands(expr).includes(column)
-    )
+  return policyKeyedOnIn(migrationSql(), column);
+}
+
+/* -------------------------------------------------------------------------
+ * The live-can_propose check, resolved through the proposer policy (PRO-01,
+ * PRO-06) — owner ruling 2026-09-09.
+ *
+ * The check may live INLINE in the proposer policy's predicate, OR in a
+ * `security definer` helper the predicate CALLS. The ruling's reason: an inline
+ * `exists (select … from shares join vehicles …)` is evaluated under the
+ * *caller's* RLS, and `shares`/`vehicles` are owner-scoped `force`-RLS, so a
+ * mechanic caller can never satisfy it — PRO-01 ("a holder of a live
+ * can_propose grant may submit") would fail outright (the Tier-B positive
+ * control at `submitted.ok === false` is exactly that). A `security definer`
+ * helper bypasses RLS the way `accept_proposal` and T3-102's mechanic RPCs do.
+ * So the grader reads THROUGH the reference rather than demanding the four
+ * tokens inline — and it does NOT hard-code the helper's name (that would only
+ * move the over-constraint): a function is reachable iff the predicate calls it.
+ * ---------------------------------------------------------------------- */
+
+/** The grant-liveness tokens the check must consult, wherever it lives. */
+const LIVENESS_TOKENS = [
+  SHARES_TABLE,
+  CAN_PROPOSE_COLUMN,
+  GRANT_REVOCATION_COLUMN,
+  GRANT_EXPIRY_COLUMN,
+] as const;
+
+/** The proposals policy in `sql` that carries the proposer (submit) path. */
+function proposerPolicyIn(sql: string): PolicyDefinition | undefined {
+  return policyKeyedOnIn(sql, PROPOSAL_PROPOSED_BY_COLUMN);
+}
+
+/** Escape a string for use as a literal inside a `RegExp`. */
+function escapeRegExp(literal: string): string {
+  return literal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** `true` when `text` mentions every grant-liveness token. */
+function carriesLiveness(text: string): boolean {
+  return LIVENESS_TOKENS.every((token) => text.includes(token));
+}
+
+/**
+ * The SQL the proposer policy's live-grant check is reachable through: the
+ * policy predicate, PLUS the body of every migration function the predicate
+ * calls by name. One level of resolution — the owner-ruled design is a single
+ * helper — and no helper name is hard-coded: a function counts as reachable iff
+ * the predicate calls it (`name(`, on a word boundary so a `can_propose`
+ * *column* is never mistaken for a call).
+ */
+function reachableLiveness(
+  sql: string,
+  policy: PolicyDefinition
+): {
+  readonly text: string;
+  readonly inline: boolean;
+  readonly livenessHelpers: readonly FunctionDefinition[];
+} {
+  const predicate = `${policy.usingExpr ?? ""} ${policy.withCheckExpr ?? ""}`;
+  const called = functions(sql).filter((fn) =>
+    new RegExp(`(^|[^a-z0-9_])${escapeRegExp(fn.name)}\\s*\\(`).test(predicate)
   );
+  return {
+    text: [predicate, ...called.map((fn) => fn.body)].join(" "),
+    inline: carriesLiveness(predicate),
+    livenessHelpers: called.filter((fn) => carriesLiveness(fn.body)),
+  };
+}
+
+/**
+ * Findings against the proposer policy's live-can_propose check (PRO-01,
+ * PRO-06). The liveness (`shares` + `can_propose` + `revoked_at` + `expires_at`)
+ * and the vehicle-owner correlation (the proposal's `vehicle_id` AND `owner_id`,
+ * tied into the check as a helper's call args or an inline correlation) must be
+ * reachable from the policy; and if the liveness lives in a helper rather than
+ * inline, that helper must be `security definer` — a non-definer helper called
+ * from an RLS predicate runs under the caller's RLS and reintroduces the exact
+ * hole the 2026-09-09 ruling closes.
+ *
+ * A structural floor only: it cannot prove the helper USES its arguments — the
+ * Tier-B PRO-01 proofs below are that behavioural bar. It fails **closed** on a
+ * liveness split across two helpers (an exotic design the owner-ruled single
+ * helper is not), which is a one-line renegotiation, not a silent pass.
+ */
+function proposerLivenessIssues(
+  sql: string,
+  policy: PolicyDefinition
+): string[] {
+  const reach = reachableLiveness(sql, policy);
+  const issues: string[] = [];
+  for (const token of LIVENESS_TOKENS) {
+    if (!reach.text.includes(token)) {
+      issues.push(
+        `the live can_propose check never consults \`${token}\` — not inline ` +
+          `in the proposer policy, and not in any helper it calls`
+      );
+    }
+  }
+  for (const column of [PROPOSAL_VEHICLE_COLUMN, PROPOSAL_OWNER_COLUMN]) {
+    if (!reach.text.includes(column)) {
+      issues.push(
+        `the live-grant check is not correlated to the proposal's ` +
+          `\`${column}\` (the vehicle-owner correlation is absent)`
+      );
+    }
+  }
+  if (!reach.inline) {
+    if (reach.livenessHelpers.length === 0) {
+      issues.push(
+        `the proposer policy carries no inline live-grant check and calls no ` +
+          `helper whose body carries one`
+      );
+    } else if (!reach.livenessHelpers.some((fn) => fn.securityDefiner)) {
+      issues.push(
+        `the live-grant helper is not \`security definer\` — called from an ` +
+          `RLS predicate it runs under the caller's RLS, so a mechanic can ` +
+          `never satisfy it (the exact bug the 2026-09-09 ruling fixes)`
+      );
+    }
+  }
+  return issues;
+}
+
+/** Commands whose *permissive* policy admits an INSERT (they OR together). */
+const INSERT_ADMITTING_COMMANDS = new Set(["insert", "all"]);
+
+/**
+ * Proposals policies that admit an INSERT the caller did NOT author — the
+ * forgery gap (finding #3). Permissive INSERT policies OR together, so ANY
+ * policy that admits an INSERT is a submit path; PRO-01 makes the ONLY
+ * legitimate submit path a holder of a live can_propose grant, whose new row is
+ * `proposed_by = auth.uid()`. A policy that admits an INSERT without tying the
+ * new row's `proposed_by` to the caller (e.g. an owner `for all` whose
+ * `with check` only tests `owner_id`) lets the vehicle owner insert a proposal
+ * with an arbitrary `proposed_by`, forging a mechanic's authorship and, on
+ * acceptance, fabricating the provenance §7.1 and PRO-05 exist to keep honest.
+ */
+function forgingInsertPolicies(
+  policyList: readonly PolicyDefinition[]
+): string[] {
+  return policyList
+    .filter((policy) => {
+      if (!policy.permissive) return false; // restrictive only narrows
+      if (!INSERT_ADMITTING_COMMANDS.has(policy.command)) return false;
+      const check = effectiveCheck(policy);
+      const tiesProposer =
+        check !== null &&
+        authUidComparands(check).includes(PROPOSAL_PROPOSED_BY_COLUMN);
+      return !tiesProposer;
+    })
+    .map((policy) => `${policy.name} (for ${policy.command})`);
 }
 
 /* =========================================================================
@@ -432,53 +596,248 @@ describe("the proposal write path requires a live can_propose grant (PRO-01, PRO
   );
 
   it.fails(
-    "the proposer policy's predicate checks a live can_propose grant",
+    "the proposer policy consults a live can_propose grant — inline, or via a helper it calls",
     () => {
-      // PRO-01 + PRO-06's structural floor: the policy that lets a mechanic
-      // write must consult the `shares` grant, its `can_propose` capability,
-      // and BOTH liveness columns — a policy that skips `revoked_at`/
-      // `expires_at` is a proposal path a revoked grant still opens. Graded on
-      // the predicate text because this is a policy, not a routine body.
+      // PRO-01 + PRO-06's structural floor, corrected by the 2026-09-09 ruling:
+      // the mechanic's submit path must consult the `shares` grant, its
+      // `can_propose` capability, and BOTH liveness columns, correlated to the
+      // proposal's vehicle and owner — a check that skips `revoked_at`/
+      // `expires_at` is a path a revoked grant still opens. The check may be
+      // inline OR in a `security definer` helper the policy calls; the grader
+      // reads THROUGH the reference (see `reachableLiveness`) so it does not
+      // force the inline `exists (select … from shares …)` a mechanic can never
+      // satisfy under RLS — the very defect this ruling fixes. The Tier-B
+      // PRO-01 proofs are the behavioural bar this structural floor stands on.
       requireProposalsTable();
-      const policy = policyKeyedOn(PROPOSAL_PROPOSED_BY_COLUMN);
+      const policy = proposerPolicyIn(migrationSql());
       if (!policy) {
         throw proposalSeam(
           `no proposer-scoped policy on ${PROPOSALS_TABLE} to carry the ` +
             `live-grant check`
         );
       }
-      const predicate = `${policy.usingExpr ?? ""} ${policy.withCheckExpr ?? ""}`;
-      expect(predicate, `never consults ${SHARES_TABLE}`).toContain(
-        SHARES_TABLE
-      );
-      expect(predicate, `never checks ${CAN_PROPOSE_COLUMN}`).toContain(
-        CAN_PROPOSE_COLUMN
-      );
-      expect(predicate, `never checks ${GRANT_REVOCATION_COLUMN}`).toContain(
-        GRANT_REVOCATION_COLUMN
-      );
-      expect(predicate, `never checks ${GRANT_EXPIRY_COLUMN}`).toContain(
-        GRANT_EXPIRY_COLUMN
-      );
+      expect(proposerLivenessIssues(migrationSql(), policy)).toEqual([]);
     }
   );
 
-  it("the live-grant predicate check bites a policy missing liveness (mutation control)", () => {
-    // The tempted proposer policy checks the grant exists and its capability,
-    // but forgets to re-read revocation/expiry — a revoked grant that still
-    // proposes. The four `toContain` clauses above must, together, reject it.
-    const complete =
-      `exists (select 1 from ${SHARES_TABLE} s where s.can_propose ` +
-      `and s.revoked_at is null and s.expires_at > now())`;
-    const missingLiveness = `exists (select 1 from ${SHARES_TABLE} s where s.can_propose)`;
-    const clauses = [
-      SHARES_TABLE,
-      CAN_PROPOSE_COLUMN,
-      GRANT_REVOCATION_COLUMN,
-      GRANT_EXPIRY_COLUMN,
-    ];
-    expect(clauses.every((c) => complete.includes(c))).toBe(true);
-    expect(clauses.every((c) => missingLiveness.includes(c))).toBe(false);
+  /** A proposer policy whose live-grant check lives in a named helper, built
+   * from synthetic DDL so each mutation control varies exactly one thing. Fake
+   * objects only (the reserved `test_` namespace); no migration is read. */
+  const helperProposals = (opts: {
+    readonly helperBody: string;
+    readonly definer: boolean;
+    readonly callsHelper: boolean;
+  }): string =>
+    `create table public.${PROPOSALS_TABLE} ` +
+    `(id uuid primary key, ${PROPOSAL_OWNER_COLUMN} uuid, ` +
+    `${PROPOSAL_PROPOSED_BY_COLUMN} uuid, ${PROPOSAL_VEHICLE_COLUMN} uuid);\n` +
+    `create function public.test_live_grant(p_vehicle_id uuid, p_owner_id uuid) ` +
+    `returns boolean language sql ` +
+    `${opts.definer ? "security definer set search_path = '' " : ""}` +
+    `as $$ select exists (${opts.helperBody}) $$;\n` +
+    `create policy "proposer" on public.${PROPOSALS_TABLE} ` +
+    `for all to authenticated ` +
+    `using (${PROPOSAL_PROPOSED_BY_COLUMN} = auth.uid()) ` +
+    `with check (${PROPOSAL_PROPOSED_BY_COLUMN} = auth.uid()` +
+    (opts.callsHelper
+      ? ` and public.test_live_grant(${PROPOSAL_VEHICLE_COLUMN}, ` +
+        `${PROPOSAL_OWNER_COLUMN}))`
+      : `)`);
+
+  const fullLiveness =
+    `select 1 from public.${SHARES_TABLE} s ` +
+    `join public.vehicles v on v.id = s.${PROPOSAL_VEHICLE_COLUMN} ` +
+    `where s.${PROPOSAL_VEHICLE_COLUMN} = p_vehicle_id ` +
+    `and v.${PROPOSAL_OWNER_COLUMN} = p_owner_id ` +
+    `and s.bound_account_id = auth.uid() and s.${CAN_PROPOSE_COLUMN} ` +
+    `and s.${GRANT_REVOCATION_COLUMN} is null ` +
+    `and s.${GRANT_EXPIRY_COLUMN} > now()`;
+
+  const staleLiveness =
+    `select 1 from public.${SHARES_TABLE} s ` +
+    `where s.${PROPOSAL_VEHICLE_COLUMN} = p_vehicle_id ` +
+    `and s.bound_account_id = auth.uid() and s.${CAN_PROPOSE_COLUMN}`;
+
+  it("the live-grant check accepts a definer helper and bites missing liveness / a non-definer helper (mutation control)", () => {
+    // (a) a `security definer` helper carrying FULL liveness → accepted.
+    const good = normalizeSql(
+      helperProposals({
+        helperBody: fullLiveness,
+        definer: true,
+        callsHelper: true,
+      })
+    );
+    const goodPolicy = proposerPolicyIn(good);
+    expect(goodPolicy, "(a) fixture has no proposer policy").toBeDefined();
+    expect(
+      proposerLivenessIssues(good, goodPolicy as PolicyDefinition),
+      "(a) a definer helper with full liveness must be accepted"
+    ).toEqual([]);
+
+    // (b) a helper MISSING `revoked_at`/`expires_at` → rejected, and the
+    // finding NAMES the columns it is missing (assert the reason, not the throw).
+    const stale = normalizeSql(
+      helperProposals({
+        helperBody: staleLiveness,
+        definer: true,
+        callsHelper: true,
+      })
+    );
+    const staleIssues = proposerLivenessIssues(
+      stale,
+      proposerPolicyIn(stale) as PolicyDefinition
+    );
+    expect(
+      staleIssues.some((i) => i.includes(GRANT_REVOCATION_COLUMN)),
+      "(b) a helper missing revoked_at must be rejected for that reason"
+    ).toBe(true);
+    expect(
+      staleIssues.some((i) => i.includes(GRANT_EXPIRY_COLUMN)),
+      "(b) a helper missing expires_at must be rejected for that reason"
+    ).toBe(true);
+
+    // (c) a proposer policy that carries NEITHER an inline check NOR a
+    // live-grant helper it calls → rejected (the helper exists but is uncalled).
+    const bare = normalizeSql(
+      helperProposals({
+        helperBody: fullLiveness,
+        definer: true,
+        callsHelper: false,
+      })
+    );
+    expect(
+      proposerLivenessIssues(bare, proposerPolicyIn(bare) as PolicyDefinition)
+        .length,
+      "(c) a policy reaching no live-grant check must be rejected"
+    ).toBeGreaterThan(0);
+
+    // (d) FULL liveness in a helper that is NOT `security definer` → rejected:
+    // called from an RLS predicate it runs under the caller's RLS and
+    // reintroduces the exact bug the ruling fixes.
+    const invoker = normalizeSql(
+      helperProposals({
+        helperBody: fullLiveness,
+        definer: false,
+        callsHelper: true,
+      })
+    );
+    const invokerIssues = proposerLivenessIssues(
+      invoker,
+      proposerPolicyIn(invoker) as PolicyDefinition
+    );
+    expect(
+      invokerIssues.some((i) => i.includes("security definer")),
+      "(d) a non-definer liveness helper must be rejected for that reason"
+    ).toBe(true);
+  });
+
+  it("an inline live-grant check is accepted too (mutation control)", () => {
+    // The other accepted spelling: the four liveness tokens + the vehicle-owner
+    // correlation inline in the predicate, no helper. Tier A grades the
+    // spelling; Tier B grades whether a mechanic can actually satisfy it.
+    const inline = normalizeSql(
+      `create table public.${PROPOSALS_TABLE} ` +
+        `(id uuid primary key, ${PROPOSAL_OWNER_COLUMN} uuid, ` +
+        `${PROPOSAL_PROPOSED_BY_COLUMN} uuid, ${PROPOSAL_VEHICLE_COLUMN} uuid);\n` +
+        `create policy "proposer" on public.${PROPOSALS_TABLE} ` +
+        `for all to authenticated ` +
+        `using (${PROPOSAL_PROPOSED_BY_COLUMN} = auth.uid()) with check (` +
+        `${PROPOSAL_PROPOSED_BY_COLUMN} = auth.uid() and exists (` +
+        `select 1 from public.${SHARES_TABLE} s join public.vehicles v ` +
+        `on v.id = s.${PROPOSAL_VEHICLE_COLUMN} ` +
+        `where s.${PROPOSAL_VEHICLE_COLUMN} = ` +
+        `${PROPOSALS_TABLE}.${PROPOSAL_VEHICLE_COLUMN} ` +
+        `and v.${PROPOSAL_OWNER_COLUMN} = ` +
+        `${PROPOSALS_TABLE}.${PROPOSAL_OWNER_COLUMN} ` +
+        `and s.bound_account_id = auth.uid() and s.${CAN_PROPOSE_COLUMN} ` +
+        `and s.${GRANT_REVOCATION_COLUMN} is null ` +
+        `and s.${GRANT_EXPIRY_COLUMN} > now()))`
+    );
+    const inlinePolicy = proposerPolicyIn(inline);
+    expect(
+      inlinePolicy,
+      "the inline fixture has no proposer policy"
+    ).toBeDefined();
+    expect(
+      proposerLivenessIssues(inline, inlinePolicy as PolicyDefinition),
+      "a full inline live-grant check must be accepted"
+    ).toEqual([]);
+  });
+});
+
+describe("the owner cannot forge a proposal (PRO-01, §7.1 provenance integrity)", () => {
+  // Permissive INSERT policies OR together. PRO-01 makes a live can_propose
+  // grant the ONLY submit path, so the ONLY policy that may admit an INSERT is
+  // the proposer policy, whose new row is `proposed_by = auth.uid()`. An owner
+  // `for all` policy whose `with check` only tests `owner_id` would ALSO admit
+  // an INSERT — letting the vehicle owner insert a proposal with an arbitrary
+  // `proposed_by`, forging a mechanic's authorship and, on acceptance,
+  // fabricating the provenance §7.1 and PRO-05 exist to keep honest.
+  //
+  // Unmarked (not an `it.fails`), on purpose: it is a live constraint T3-302
+  // cannot ship a forgery design past — it bites the moment T3-302 creates the
+  // proposals policies — and is vacuously clean until then (no proposals policy
+  // exists on `main`). Its teeth are proven NOW by the adjacent mutation
+  // control, per "a test that cannot fail is worse than none" — the same
+  // unmarked-guard-plus-mutation-control shape the PRO-03/PRO-05 absence guards
+  // below use.
+  it("no proposals policy admits an INSERT not tied to proposed_by = auth.uid()", () => {
+    expect(
+      forgingInsertPolicies(proposalPolicies()),
+      "a proposals policy admits an INSERT the caller did not author — the " +
+        "owner can forge a mechanic's proposal (PRO-01, §7.1)"
+    ).toEqual([]);
+  });
+
+  it("the forgery guard bites an owner `for all` insert path and clears a split owner policy (mutation control)", () => {
+    // Forgery-permitting: the owner policy is `for all`, so its
+    // `with check (owner_id = auth.uid())` admits an owner-authored INSERT that
+    // skips the proposer/can_propose check entirely.
+    const forging = normalizeSql(
+      `create table public.${PROPOSALS_TABLE} ` +
+        `(id uuid primary key, ${PROPOSAL_OWNER_COLUMN} uuid, ` +
+        `${PROPOSAL_PROPOSED_BY_COLUMN} uuid, ${PROPOSAL_VEHICLE_COLUMN} uuid);\n` +
+        `create policy "owner all" on public.${PROPOSALS_TABLE} ` +
+        `for all to authenticated ` +
+        `using (${PROPOSAL_OWNER_COLUMN} = auth.uid()) ` +
+        `with check (${PROPOSAL_OWNER_COLUMN} = auth.uid());\n` +
+        `create policy "proposer" on public.${PROPOSALS_TABLE} ` +
+        `for all to authenticated ` +
+        `using (${PROPOSAL_PROPOSED_BY_COLUMN} = auth.uid()) ` +
+        `with check (${PROPOSAL_PROPOSED_BY_COLUMN} = auth.uid())`
+    );
+    const forgingFindings = forgingInsertPolicies(proposalPoliciesIn(forging));
+    expect(
+      forgingFindings.length,
+      "an owner `for all` policy is a forgery path and must be flagged"
+    ).toBeGreaterThan(0);
+    expect(
+      forgingFindings.some((f) => f.includes("owner all")),
+      "the finding must name the owner `for all` policy"
+    ).toBe(true);
+
+    // Safe: the owner only READS (select) and REJECTS (delete); the proposer
+    // alone submits, and its `with check` ties the new row to the caller. No
+    // policy admits a forged INSERT — the positive control for this guard.
+    const safe = normalizeSql(
+      `create table public.${PROPOSALS_TABLE} ` +
+        `(id uuid primary key, ${PROPOSAL_OWNER_COLUMN} uuid, ` +
+        `${PROPOSAL_PROPOSED_BY_COLUMN} uuid, ${PROPOSAL_VEHICLE_COLUMN} uuid);\n` +
+        `create policy "owner reads" on public.${PROPOSALS_TABLE} ` +
+        `for select to authenticated ` +
+        `using (${PROPOSAL_OWNER_COLUMN} = auth.uid());\n` +
+        `create policy "owner rejects" on public.${PROPOSALS_TABLE} ` +
+        `for delete to authenticated ` +
+        `using (${PROPOSAL_OWNER_COLUMN} = auth.uid());\n` +
+        `create policy "proposer" on public.${PROPOSALS_TABLE} ` +
+        `for all to authenticated ` +
+        `using (${PROPOSAL_PROPOSED_BY_COLUMN} = auth.uid()) ` +
+        `with check (${PROPOSAL_PROPOSED_BY_COLUMN} = auth.uid())`
+    );
+    expect(
+      forgingInsertPolicies(proposalPoliciesIn(safe)),
+      "the split owner (select + delete) design admits no forged INSERT"
+    ).toEqual([]);
   });
 });
 
