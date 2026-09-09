@@ -126,7 +126,7 @@ entitlements are hard-Opus. The billing webhook is `secrets-or-deploy`.
 AGENTS.md writable-surface carve-out. It is narrow, and its narrowness is the
 whole reason it was authorized.
 
-- [ ] **T3-301 [TEST]** Proposal graders. Depends: T3-202. *(PRO-01..06)*
+- [x] **T3-301 [TEST]** Proposal graders. Depends: T3-202. *(PRO-01..06)*
   <br>The RLS shape is the reassuring part and should be graded as such: a
   `proposals` table with `owner_id` (the vehicle owner) and `proposed_by` (the
   mechanic) needs two ordinary policies, and **both pass `rules.ts` unchanged** —

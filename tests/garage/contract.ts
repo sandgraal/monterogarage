@@ -1499,6 +1499,46 @@ export const SHARED_USER_TABLES: readonly SharedUserTableContract[] = [
     // The whole lifecycle is the parent hop — graded by sharedTableCascadeIssues.
     parentCascadeColumns: [{ column: "shop_id", parent: "shops" }],
   },
+  {
+    // Declared by T3-301 [TEST] ahead of T3-302's migration. `pending` holds it
+    // out of the shipped sweeps; its cascade grader runs under `it.fails` in
+    // `tests/shop/proposals.test.ts` (not here — this file does not import the
+    // 003 shop suite) until T3-302 ships `proposals` and deletes the marker.
+    //
+    // ## Why a proposal is a SHARED table, not a single-owner USER_TABLE
+    //
+    // A pending proposal is a TWO-principal row: the vehicle **owner** (who
+    // decides) and the **mechanic** who drafted it (`proposed_by`) each get a
+    // policy that returns it to them (003 §7.1 / PRO-04). Two principals with a
+    // policy each is precisely what separates this class from the single-owner
+    // tables (`records`, `shares`) that only their one owner ever reads — so it
+    // belongs here beside `shop_members`, not in `USER_TABLES`. (It also cannot
+    // go in `USER_TABLES`: that class's pending marker is pinned to `/^T2-/` by
+    // `schema-shape.test.ts`, a 002-only assumption. The single-owner-style RLS
+    // the two policies use is still graded — directly, by
+    // `userTablePolicyIssues(migrationSql(), ["proposals"])` in the proposals
+    // suite, which takes an explicit table list.)
+    //
+    // ## The account-deletion lifecycle (ACC-03): BOTH accounts cascade
+    //
+    // A pending proposal is a draft, inert until accepted — so it must vanish
+    // if EITHER party deletes their account: the owner (their vehicle and its
+    // proposal-inbox go, ACC-03) OR the mechanic (their unaccepted draft is
+    // theirs and goes with them). Both `owner_id` and `proposed_by` are
+    // therefore `on delete cascade` to `auth.users`. An ACCEPTED proposal is no
+    // longer here — it has become a `records` row owned by the owner, whose own
+    // `proposed_by` provenance column is `set null` so the record SURVIVES the
+    // mechanic's deletion (PRO-06: "proposals already accepted are records and
+    // are unaffected"). That records-side lifecycle is graded in the proposals
+    // suite, not by this shared entry.
+    name: "proposals",
+    requirement:
+      "PRO-01..04 (a mechanic's draft on an owner's vehicle; two principals, " +
+      "inert until the owner accepts; vanishes with either account)",
+    pending: "T3-302",
+    accountCascadeColumns: ["owner_id", "proposed_by"],
+    founderSetNullColumns: [],
+  },
 ] as const;
 
 /** Convenience: the shared-table names, for the `ungradedTableIssues` sweep. */

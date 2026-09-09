@@ -657,3 +657,325 @@ export const SHOP_UI_STRING_KEYS = [
   "shopRosterUnavailable",
   "shopRosterEmpty",
 ] as const;
+
+/* =========================================================================
+ * T3-301 [TEST] — propose-and-accept (PRO-01..06)
+ *
+ * The AGENTS.md writable-surface carve-out (003 §7.1), the narrowest one the
+ * owner authorized: a holder of a live `can_propose` grant may submit a
+ * *proposal*, which is inert until the vehicle's owner accepts it — the owner's
+ * acceptance is the write. A proposal is never written into `records` in a
+ * pending state.
+ *
+ * Everything below is **additive** and self-contained (nothing above is renamed
+ * or re-ordered), following the T3-201 / T3-202b banner discipline so a sibling
+ * branch rebases trivially. As with every block in this file, each table /
+ * column / function / argument name is a **decision this file makes on the
+ * spec's behalf** so the graders can be concrete (the T2-201 / T3-101 / T3-201
+ * precedent). A name is one line to renegotiate with the conductor if
+ * T3-302 / T3-303 prefer another; the *behaviour* graded around these names —
+ * PRO-01..06 verbatim — is not renegotiable.
+ *
+ * It reuses the 002/003 grant vocabulary rather than minting a parallel one: a
+ * proposal rides on 002's `shares` grant (one new capability column,
+ * `can_propose`), acceptance writes a 002 `records` row (three new provenance
+ * columns), and liveness is 002's `revoked_at`/`expires_at` on the same grant.
+ *
+ * ## The design this contract pins (from 003 §7.1 / PRO-01..06, and the T3-301
+ *    task line's own note that the write path needs "two ordinary policies …
+ *    both pass `rules.ts` unchanged")
+ *
+ * - **`proposals`** — a new two-principal table (`owner_id` = the vehicle
+ *   owner, `proposed_by` = the mechanic), registered as a SHARED user table in
+ *   `tests/garage/contract.ts` so `ungradedTableIssues` knows it. Behind RLS,
+ *   with **two ordinary policies**: an owner policy keyed on `owner_id =
+ *   auth.uid()` (the owner reads and rejects), and a proposer policy keyed on
+ *   `proposed_by = auth.uid()` **and** a conjunctive live-`can_propose`-grant
+ *   check (the mechanic submits, reads, and withdraws — and loses submit and
+ *   withdraw the instant the grant is revoked or expires, PRO-06). Both pass
+ *   `userTablePolicyIssues` unchanged.
+ * - **submit / withdraw / reject are table ops governed by those policies** —
+ *   the mechanic INSERTs and DELETEs their own row; the owner DELETEs (rejects)
+ *   a pending row. No RPC, no `records` write — this is what PRO-03 buys.
+ * - **`accept_proposal`** — the ONE new RPC, and the ONE write into `records`.
+ *   `security definer`, keyed on `auth.uid()` = the proposal's `owner_id` (the
+ *   owner's own action), it reads the proposal server-side and writes exactly
+ *   one `records` row carrying the *true* provenance, then removes the
+ *   proposal. A definer RPC precisely so the owner cannot forge a mechanic's
+ *   provenance by hand and a mechanic cannot write `records` at all.
+ *
+ * refs specs/003-shop-tools (PRO-01..06), specs/002-montero-garage (SHR-05..09,
+ * ACC-03), AGENTS.md (Facts — testimony; Boundaries — the §7.1 carve-out)
+ * ====================================================================== */
+
+/* -------------------------------------------------------------------------
+ * Seams — every T3-301 declaration-tier grader fails TODAY with one of these,
+ * or with a named "column/argument/function absent", never with an import error.
+ * ---------------------------------------------------------------------- */
+
+/** Seam for the proposal write/accept surface T3-302 has not built. */
+export const SEAM_PROPOSAL = "not implemented: T3-302";
+
+/** The seam error for a proposal object/routine T3-302 has not shipped. */
+export function proposalSeam(what: string): Error {
+  return new Error(
+    `${SEAM_PROPOSAL} — ${what}. T3-301 [TEST] declared the propose-and-accept ` +
+      `contract as graders; T3-302 [PLATFORM] ships the migration — the ` +
+      `\`${PROPOSALS_TABLE}\` table with its two policies, the ` +
+      `\`${CAN_PROPOSE_COLUMN}\` capability on \`${SHARES_TABLE}\`, the ` +
+      `\`${ACCEPT_PROPOSAL_FUNCTION}\` RPC, and the \`records\` provenance ` +
+      `columns — that satisfies it (refs specs/003-shop-tools PRO-01..06)`
+  );
+}
+
+/** Seam for the provenance-rendering surface (PRO-05) T3-303 has not built. */
+export const SEAM_PROVENANCE = "not built yet: T3-303";
+
+/** The seam error for the PRO-05 provenance render module T3-303 has not shipped. */
+export function provenanceSeam(what: string): Error {
+  return new Error(
+    `${SEAM_PROVENANCE} — ${what}. T3-301 [TEST] declared the PRO-05 ` +
+      `provenance-as-testimony contract as render graders; T3-303 [PLATFORM] ` +
+      `ships the pure label module (\`${PROVENANCE_MODULE}\`, export ` +
+      `\`${PROVENANCE_LABEL_EXPORT}\`) that satisfies it — an accepted record ` +
+      `shows who proposed it and when it was accepted, as the owner's own ` +
+      `testimony, NEVER as a site-verified fact (refs specs/003-shop-tools ` +
+      `PRO-05, AGENTS.md Facts)`
+  );
+}
+
+/* -------------------------------------------------------------------------
+ * The proposals table (PRO-01..04) — two principals, one owner column each
+ * ---------------------------------------------------------------------- */
+
+/** A mechanic's draft record, inert until the owner accepts it (spec §2, PRO-01). */
+export const PROPOSALS_TABLE = "proposals";
+
+/**
+ * The vehicle **owner** — the acceptance authority. The owner policy keys on
+ * `owner_id = auth.uid()` (reads and rejects); `accept_proposal` gates on it.
+ * A `uuid` referencing `auth.users`, `on delete cascade` (ACC-03).
+ */
+export const PROPOSAL_OWNER_COLUMN = "owner_id";
+
+/**
+ * The **mechanic** who drafted it. The proposer policy keys on `proposed_by =
+ * auth.uid()` (submit / read own / withdraw). A `uuid` referencing
+ * `auth.users`, `on delete cascade` (an unaccepted draft dies with its author).
+ */
+export const PROPOSAL_PROPOSED_BY_COLUMN = "proposed_by";
+
+/**
+ * The vehicle the proposal is against (PRO-01: "against that vehicle"). A
+ * `uuid` referencing `vehicles`, `on delete cascade` — a proposal on a deleted
+ * vehicle is meaningless. Graded directly in the proposals suite (not part of
+ * the SHARED account-cascade model, which owns only the two `auth.users` hops).
+ */
+export const PROPOSAL_VEHICLE_COLUMN = "vehicle_id";
+
+/**
+ * The pinned identity columns, for the schema graders.
+ */
+export const PROPOSAL_COLUMNS = [
+  PROPOSAL_OWNER_COLUMN,
+  PROPOSAL_PROPOSED_BY_COLUMN,
+  PROPOSAL_VEHICLE_COLUMN,
+] as const;
+
+/* -------------------------------------------------------------------------
+ * The `can_propose` capability (PRO-01) — additive to 002's `shares`
+ *
+ * SHR-05 forbids branching on `kind`: a grant's powers are explicit capability
+ * columns, never `if kind = 'mechanic'`. So "may this holder propose?" is its
+ * own column beside `includes_costs` / `includes_receipts`, private by default
+ * (SHR-01: `not null default false`). It is NOT added to 002's
+ * `SHARE_CAPABILITY_COLUMNS` (the cost/receipts pair 002's SHR-06 graders
+ * pair-test) — it is a 003 capability, graded here, exactly as T3-102's
+ * `is_shop_visible` was graded in this file rather than in the 002 `shares`
+ * contract entry.
+ * ---------------------------------------------------------------------- */
+
+/** Whether a grant opens the propose-and-accept write path (PRO-01). */
+export const CAN_PROPOSE_COLUMN = "can_propose";
+
+/**
+ * The `create_share_grant` argument that sets it at issue time.
+ *
+ * Added to the extended 002/003 `create_share_grant`, defaulted so the prior
+ * 7-argument call (T3-102: `+ p_grantee_email + p_is_shop_visible`) still
+ * resolves. Adding a defaulted argument changes the routine's identity, so —
+ * exactly as T3-102's contract notes for its own two arguments — T3-302 must
+ * `drop function` the current signature and create the widened one, then
+ * re-`grant execute … to authenticated`.
+ */
+export const SHARE_CAN_PROPOSE_ARGUMENT = "p_can_propose";
+
+/* -------------------------------------------------------------------------
+ * The records provenance columns (PRO-02, PRO-05) — additive to 002's `records`
+ *
+ * Acceptance "SHALL create a record carrying the proposal's provenance — who
+ * authored it, under which grant, and when it was accepted" (PRO-02). Three
+ * nullable columns on `records`: null on an owner's own (non-proposal) record,
+ * set by `accept_proposal` on an accepted one. Nullable because a normal record
+ * has no proposal behind it — and the distinction between "owner wrote this"
+ * and "owner accepted a proposal" is exactly what PRO-05 renders.
+ * ---------------------------------------------------------------------- */
+
+/**
+ * Who authored the accepted proposal. `uuid` referencing `auth.users`,
+ * **`on delete set null`** — the accepted record is the OWNER's and SURVIVES
+ * the mechanic deleting their account (PRO-06: "proposals already accepted are
+ * records and are unaffected"); only the attribution unbinds. This is the
+ * opposite of `proposals.proposed_by` (cascade), and the difference is the
+ * whole of "a draft dies with its author, an accepted record does not".
+ */
+export const RECORD_PROPOSED_BY_COLUMN = "proposed_by";
+
+/** Under which grant it was proposed. `uuid` referencing `shares` (PRO-02). */
+export const RECORD_PROPOSAL_SHARE_COLUMN = "proposed_under_share_id";
+
+/** When the owner accepted it. `timestamptz`, null on a non-proposal record. */
+export const RECORD_ACCEPTED_AT_COLUMN = "accepted_at";
+
+/** The three provenance columns `accept_proposal` writes onto the record. */
+export const RECORD_PROVENANCE_COLUMNS = [
+  RECORD_PROPOSED_BY_COLUMN,
+  RECORD_PROPOSAL_SHARE_COLUMN,
+  RECORD_ACCEPTED_AT_COLUMN,
+] as const;
+
+/** 002's records table, re-used — acceptance writes here, and only here. */
+export const RECORDS_TABLE = "records";
+
+/**
+ * The "pending record" column category PRO-03 forbids on `records`, graded as
+ * an **absence** (the tempting shortcut is a `status`/`pending` column that
+ * lets a proposal live in `records` before acceptance). Enumerated as a
+ * category, not one spelling — the "grade behaviour, not name lists" principle.
+ * None of these is a provenance column: `accepted_at` (allowed) is a distinct
+ * token from `accepted` (forbidden), and the graders match on exact column
+ * names, so a legitimate provenance column never trips this.
+ */
+export const RECORD_FORBIDDEN_STATE_COLUMNS = [
+  "status",
+  "state",
+  "pending",
+  "is_pending",
+  "accepted",
+  "is_accepted",
+  "acceptance_state",
+  "proposal_status",
+  "draft",
+  "is_draft",
+] as const;
+
+/**
+ * The "the site vouches for this" column category PRO-05 (and AGENTS.md Facts)
+ * forbids on `records`, graded as an absence. A user record — including one
+ * created by accepting a proposal — is the owner's own testimony, never a
+ * site-verified fact; a `verified`/`fact_checked` flag on the record would be
+ * the schema making the over-claim the requirement forbids.
+ */
+export const RECORD_FORBIDDEN_VERIFICATION_COLUMNS = [
+  "verified",
+  "is_verified",
+  "site_verified",
+  "is_site_verified",
+  "fact_checked",
+  "is_fact_checked",
+  "verified_by_site",
+] as const;
+
+/* -------------------------------------------------------------------------
+ * The accept RPC (PRO-02) — the owner's action, the one records write
+ * ---------------------------------------------------------------------- */
+
+/**
+ * The routine the **owner** calls to accept a proposal (PRO-02). `security
+ * definer` (it writes `records`, whose insert policy is owner-only, and it must
+ * carry the *true* server-side provenance, not whatever the caller supplies),
+ * pinning `search_path = ''`. Its body gates on `auth.uid()` = the proposal's
+ * `owner_id` — "acceptance is the owner's own action, keyed to `auth.uid()`" —
+ * reads the proposal, inserts exactly one `records` row with provenance, and
+ * removes the proposal. Returns the new record's id.
+ */
+export const ACCEPT_PROPOSAL_FUNCTION = "accept_proposal";
+export const ACCEPT_PROPOSAL_ARGUMENTS = ["p_proposal_id"] as const;
+export const ACCEPT_PROPOSAL_RESULT_ID_FIELD = "record_id";
+
+/**
+ * Rejection and withdrawal are **not** RPCs: the owner DELETEs a pending
+ * proposal (reject, via the owner policy) and the mechanic DELETEs their own
+ * (withdraw, via the proposer policy, which the live-grant check gates so
+ * revocation kills it — PRO-06). Named here only so a reader looking for a
+ * `reject_proposal` RPC finds the reason there is none: a delete governed by an
+ * ordinary policy is the whole of it, and "nothing is created" (PRO-02) is a
+ * property a delete has for free.
+ */
+export const PROPOSAL_REJECT_IS_OWNER_DELETE = true;
+
+/**
+ * The account surface a mechanic/owner reaches only *as* an account (spec §1:
+ * "the accountless path is read-only because it has no auth.uid()"). No
+ * anon/public execute on `accept_proposal`; `authenticated` execute on it.
+ * Graded both ways, because a closed door nobody can open is as broken as one
+ * that will not shut.
+ */
+export const PROPOSAL_ACCOUNT_ONLY_FUNCTIONS = [
+  ACCEPT_PROPOSAL_FUNCTION,
+] as const;
+
+/* -------------------------------------------------------------------------
+ * The PRO-05 provenance render module (T3-303)
+ *
+ * PRO-05's "renders as the owner's own testimony … never as a site-verified
+ * fact" is a render property, best graded as an extracted pure function — the
+ * same reason `src/lib/directory/*.ts` and `src/lib/community-filter.ts` were
+ * split out of their `.astro` pages. T3-303 ships this module; the graders load
+ * it by variable-path dynamic import and, until it exists, fail with
+ * `provenanceSeam` rather than an import error. Module path is relative to
+ * `tests/shop/`. T3-303 has no paired [TEST] task of its own, so PRO-05 is
+ * graded here.
+ * ---------------------------------------------------------------------- */
+
+/**
+ * The provenance-label module (PRO-05). Exports
+ * `proposalProvenanceLabel(provenance, locale)`: the bilingual, `usted`-register
+ * line an accepted record shows — who proposed it and when it was accepted —
+ * which must frame it as a first-hand claim and must NOT assert site
+ * verification. The grader proves the negative (no "verified by the site"
+ * spelling in either locale, enumerated as a category) because that is the
+ * load-bearing half of "never as a site-verified fact".
+ */
+export const PROVENANCE_MODULE = "../../src/lib/proposals/provenance.ts";
+export const PROVENANCE_LABEL_EXPORT = "proposalProvenanceLabel";
+
+/**
+ * Phrases that would present an accepted record as something the SITE vouches
+ * for, in either locale — forbidden by PRO-05. A category, not one spelling
+ * (the "grade behaviour, not name lists" principle); the mutation control in
+ * the provenance suite proves a tempted "verified by the site" label trips it.
+ */
+export const PROVENANCE_SITE_VERIFICATION_PHRASES = {
+  en: [
+    "verified by the site",
+    "verified by monterogarage",
+    "site-verified",
+    "site verified",
+    "fact-checked",
+    "fact checked",
+    "confirmed by the site",
+    "we verified",
+    "montero garage confirms",
+  ],
+  es: [
+    "verificado por el sitio",
+    "verificado por monterogarage",
+    "confirmado por el sitio",
+    "el sitio verifica",
+    "el sitio confirma",
+    "hecho verificado",
+    "dato verificado",
+    "verificado por montero garage",
+  ],
+} as const;
