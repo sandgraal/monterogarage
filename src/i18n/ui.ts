@@ -629,6 +629,12 @@ export interface UiStrings
   readonly shopSignedOutHeading: string;
   readonly shopSignedOutBody: string;
   /**
+   * Shown when `SUPABASE_BROWSER_CONFIG` is null — no Supabase project is
+   * configured at build time, so there is no shop surface to open at all
+   * (distinct from `shopScriptRequired` below, the garage precedent split).
+   */
+  readonly shopUnavailable: string;
+  /**
    * Shown when the shop page's own JavaScript could not load — the app and its
    * rosters are fetched in the browser after sign-in, so a scriptless visitor
    * gets the sign-in prompt and this note (the garage/share/sign-in
@@ -1560,6 +1566,8 @@ const en: UiStrings = {
   shopSignedOutHeading: "Sign in to manage your shops",
   shopSignedOutBody:
     "A shop is a business that several accounts share. Sign in to create one, invite mechanics into it by email, and see every truck its members can reach.",
+  shopUnavailable:
+    "Accounts are not switched on yet on this deployment, so there is no shop to open. The reference side of the site works without one.",
   shopScriptRequired:
     "Managing shops needs JavaScript: your shops and their rosters load in your browser after you sign in. Everything else on this site works without it.",
   shopCreateNameLabel: "Shop name",
@@ -2312,6 +2320,8 @@ const es: UiStrings = {
   shopSignedOutHeading: "Ingrese para administrar sus talleres",
   shopSignedOutBody:
     "Un taller es un negocio que varias cuentas comparten. Ingrese para crear uno, invitar mecánicos por correo y ver todos los carros que sus miembros pueden alcanzar.",
+  shopUnavailable:
+    "Las cuentas todavía no están activas en este despliegue, así que no hay taller que abrir. La parte de referencia del sitio funciona sin cuenta.",
   shopScriptRequired:
     "Administrar los talleres necesita JavaScript: sus talleres y sus listas se cargan en su navegador después de ingresar. Todo lo demás en este sitio funciona sin él.",
   shopCreateNameLabel: "Nombre del taller",
