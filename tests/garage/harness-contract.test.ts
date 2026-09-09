@@ -718,11 +718,17 @@ describe("the declared contract is internally coherent", () => {
     // the fourth of this shape, exactly like `shares` joined `USER_TABLE_NAMES`
     // — even though it is `pending`: its NAME must be an allowed target of the
     // `ungradedTableIssues` sweep the day T3-203's migration creates it.
+    // `proposals` (T3-301a) is the fifth, joined the same deliberate way: a
+    // pending two-principal table (owner + proposer, PRO-04) whose NAME must be
+    // an allowed `ungradedTableIssues` target the day T3-302's migration
+    // creates it — see the entry's docstring in `contract.ts` for why a
+    // proposal is SHARED rather than single-owner.
     expect(SHARED_USER_TABLE_NAMES).toEqual([
       "shops",
       "shop_members",
       "shop_invites",
       "directory_claims",
+      "proposals",
     ]);
   });
 
@@ -730,9 +736,10 @@ describe("the declared contract is internally coherent", () => {
     // The partition `sharedTableCascadeIssues` defaults over and the
     // shipped-migration sweeps in `shared-table-cascade.test.ts` iterate. The
     // SHIPPED half must never empty (it is what those unmarked sweeps iterate);
-    // the pending half holds `directory_claims` until T3-203 deletes its
-    // `pending` marker, exactly as `["shares"]` sat in the single-owner pending
-    // half until T2-404. Pinned by name so a table changing sides fails here.
+    // the pending half holds `directory_claims` (T3-203) and `proposals`
+    // (T3-302) until each deletes its `pending` marker, exactly as `["shares"]`
+    // sat in the single-owner pending half until T2-404. Pinned by name so a
+    // table changing sides fails here.
     expect(SHIPPED_SHARED_USER_TABLE_NAMES).toEqual([
       "shops",
       "shop_members",
@@ -740,6 +747,7 @@ describe("the declared contract is internally coherent", () => {
     ]);
     expect(UNSHIPPED_SHARED_USER_TABLES.map((table) => table.name)).toEqual([
       "directory_claims",
+      "proposals",
     ]);
     expect(SHIPPED_SHARED_USER_TABLE_NAMES.length).toBeGreaterThan(0);
   });
