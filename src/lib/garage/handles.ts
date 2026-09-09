@@ -209,6 +209,12 @@ const SITE_ROUTE_HANDLES = [
   // what named them the moment the registry grew.
   "share",
   "compartir",
+  // T3-202c's shop-management page. The ES segment is the plural `talleres`,
+  // distinct from the singular `taller` (the owner's garage) reserved above;
+  // both are reserved because `/es/{handle}/` and a handle equal to a segment
+  // collide at the same URL position (see `src/i18n/routes.ts`).
+  "shops",
+  "talleres",
 ] as const;
 
 /**

@@ -214,6 +214,29 @@ export const COLLECTION_ROUTE_SEGMENTS = {
    * drift. Same shape, same reason, as `handles.ts`' `GARAGE_ROUTE_SEGMENTS`.
    */
   share: { en: "share", es: "compartir" },
+  /**
+   * T3-202c — the shop-management page: create a shop, invite accounts into
+   * it, and read a shop's roster (003 SHP-01, SHP-03).
+   *
+   * Not a content collection (same shape as `signIn`, `search` and `share`
+   * above): it has no entries of its own and lists the shops the signed-in
+   * account belongs to. It is here because this registry is what `BaseLayout`
+   * reads to emit hreflang pairs and what the locale switcher reads to cross
+   * between `/en/shops/` and `/es/talleres/`.
+   *
+   * **The ES segment is the plural `talleres`, not the singular `taller`.**
+   * A mechanic's shop *is* a `taller` in Costa Rican Spanish — the glossary's
+   * canonical term (`all-general-taller`), which is exactly why the singular
+   * is already the owner's garage segment (`garage.es`, reserved in
+   * `handles.ts` since T2-301). Two route segments cannot be the same string,
+   * so the shop surface takes the plural: the businesses a mechanic belongs
+   * to, distinct from the one `taller` that is their own garage. Plural on
+   * both sides matches the "the segment names the section, and the section is
+   * a list" convention every other list collection here follows
+   * (`repuestos`, `procedimientos`, `comunidad`) — this page lists the shops
+   * the account belongs to, each with its roster.
+   */
+  shops: { en: "shops", es: "talleres" },
 } as const satisfies Readonly<Record<string, Readonly<Record<Locale, string>>>>;
 
 export type CollectionRouteId = keyof typeof COLLECTION_ROUTE_SEGMENTS;
