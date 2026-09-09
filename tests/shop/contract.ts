@@ -478,3 +478,182 @@ export const DIRECTORY_LISTING_EXPORT = "directoryListing";
  */
 export const DIRECTORY_CLAIM_MODULE = "../../src/lib/directory/claim-badge.ts";
 export const RESOLVE_CLAIM_BADGES_EXPORT = "resolveClaimBadges";
+
+/* =========================================================================
+ * T3-202b [TEST] — the shop-management UI (create / invite / roster page)
+ *
+ * T3-202 shipped the shops **data layer** — the three tables and the four RPCs
+ * in `supabase/migrations/20260908120000_shops_membership.sql` — but code
+ * review found no task owned the **user-facing page**, so SHP-01 ("a user SHALL
+ * be able to create a shop, and to invite other accounts into it as members")
+ * and SHP-03 (a member seeing the shop roster) are unreachable end-to-end. This
+ * block is the fixed seam T3-202c [PLATFORM] builds the page against; the render
+ * graders live in `tests/pages/shop-management.render.test.ts`.
+ *
+ * Everything below is **additive** and self-contained (nothing above is renamed
+ * or re-ordered) so the sibling `test/003-t3-203a-*` branch, which also edits
+ * `specs/003-shop-tools/tasks.md`, rebases trivially — the same discipline the
+ * T3-201 banner above states for its own block.
+ *
+ * As with every block in this file, each route / hook / key / path name is a
+ * **decision this file makes on the spec's behalf** so the graders can be
+ * concrete (the T2-201 / T3-101 / T3-201 precedent). A name is one line to
+ * renegotiate with the conductor if T3-202c prefers another; the *behaviour*
+ * graded around these names — an account-gated bilingual page, a create control,
+ * an email invite control, a roster fed by `shop_roster`, writes only through
+ * the definer RPCs, and a failed roster read that is never rendered as an empty
+ * roster — is SHP-01 / SHP-03 and AGENTS.md's "a failure is not a zero", and is
+ * not renegotiable.
+ *
+ * refs specs/003-shop-tools (SHP-01, SHP-03), specs/002-montero-garage (ACC-02),
+ * specs/001-foundation (I18N-01, I18N-04, I18N-05, I18N-08)
+ * ====================================================================== */
+
+/**
+ * The seam string every T3-202b page/module structural grader names when it
+ * fails today — so an `it.fails` marker is honest about what it is waiting for
+ * (a page/module T3-202c has not built yet), never a silent import or path
+ * error (the T2-401a lesson, re-applied at the page tier).
+ */
+export const SEAM_SHOP_UI = "not built yet: T3-202c";
+
+/* -------------------------------------------------------------------------
+ * The route / segment (decided on the spec's behalf) — SHP-01, I18N-01/04/05
+ *
+ * ## Why the ES segment is `talleres` and not `taller`
+ *
+ * A mechanic's shop *is* a `taller` in Costa Rican Spanish — the SHP-04 consent
+ * copy already shipped in `src/i18n/ui.ts` says exactly that ("alguien que
+ * trabaja en un taller"). But the **singular** `taller` is already the owner's
+ * garage segment (`COLLECTION_ROUTE_SEGMENTS.garage.es`, and reserved in
+ * `handles.ts`' `SITE_ROUTE_HANDLES`), decided and shipped in T2-301. Two route
+ * segments cannot be the same string, so the shop surface takes the **plural**
+ * `talleres`: the businesses a mechanic belongs to, distinct from the one
+ * `taller` that is their own garage. Plural on both sides matches the
+ * "the segment names the section, and the section is a list" convention every
+ * other list collection in `routes.ts` follows (`repuestos`, `procedimientos`,
+ * `problemas`, `comunidad`) — the shop page lists the shops you belong to, with
+ * a create control and, per shop, its roster.
+ *
+ * This is the one genuinely contestable decision in this block and is recorded
+ * as an open question in the T3-202b report; if the owner prefers a different
+ * ES word the change is this one line plus `routes.ts`/`handles.ts`.
+ */
+export const SHOP_ROUTE_COLLECTION_ID = "shops";
+export const SHOP_ROUTE_SEGMENTS = { en: "shops", es: "talleres" } as const;
+
+/**
+ * The dynamic-param name the page file uses, and the file's own path. Matches
+ * the plural-collection precedent (`parts` → `[partsSegment].astro`, `mods` →
+ * `[modsSegment].astro`), so the page is one file that builds both locales'
+ * routes from `collectionRouteParams("shops", "shopsSegment")`.
+ */
+export const SHOP_PAGE_PARAM = "shopsSegment";
+export const SHOP_PAGE_SOURCE_PATH = "src/pages/[locale]/[shopsSegment].astro";
+
+/**
+ * The browser-only client module the page imports its shop calls from — the
+ * `shares.ts` / `garage.ts` precedent (RPC wrappers returning a discriminated
+ * result, never throwing, never coalescing a failure to an empty list). The
+ * page must not reach Supabase inline; it delegates to this module, which is
+ * where the RPC wiring and the failure-is-not-a-zero discipline are graded.
+ */
+export const SHOP_CLIENT_MODULE_PATH = "src/lib/supabase/shops.ts";
+
+/**
+ * The three shipped RPCs the page's write/read paths must go through (SHP-01),
+ * by their migration names — re-exported from the T3-201 block above so the
+ * page grader and the migration cannot drift. `accept_shop_invite` is not here:
+ * accepting an invite is a separate surface (an invitee's inbox/link), not part
+ * of the create/invite/roster page this task grades.
+ */
+export const SHOP_UI_RPCS = {
+  create: CREATE_SHOP_FUNCTION,
+  invite: INVITE_TO_SHOP_FUNCTION,
+  roster: SHOP_ROSTER_FUNCTION,
+} as const;
+
+/**
+ * The PostgREST write verbs a browser client must NEVER call on a shop table
+ * (SHP-01: every membership write is a `security definer` RPC; the migration
+ * grants `authenticated` no direct insert/update/delete on any shop table). The
+ * grader enumerates the whole category rather than one spelling — the
+ * "grade behaviour, not name lists" principle — and matches them only when
+ * chained onto a `.from(...)` call, so a `Map`/`Set` `.delete(...)` is not a
+ * false positive.
+ */
+export const POSTGREST_WRITE_METHODS = [
+  "insert",
+  "update",
+  "upsert",
+  "delete",
+] as const;
+
+/* -------------------------------------------------------------------------
+ * The page's structural hooks (SHP-01, SHP-03) — the `data-*` attributes the
+ * render graders read, modelled on the garage page's `data-garage-*` set.
+ * ---------------------------------------------------------------------- */
+
+/**
+ * The DOM hooks the shop-management page must carry. Names mirror the garage
+ * page's `data-garage-*` convention one collection over, so the same reviewer
+ * reads both. The four roster hooks are deliberately distinct states —
+ * `loading`, `message` (a failed read), `empty` (a genuine zero), and the list
+ * itself — because collapsing "we could not check" into "you have none" is the
+ * exact failure AGENTS.md's "a failure is not a zero" forbids, and the garage
+ * page's own `data-garage-roster-{loading,message,empty}` set is the shipped
+ * precedent for keeping them apart.
+ */
+export const SHOP_PAGE_HOOKS = {
+  /** The signed-out prompt, shown by default (the surface is account-gated). */
+  gate: "data-shop-gate",
+  /** The authenticated app, `hidden` until a session resolves. */
+  app: "data-shop-app",
+  /** The create-shop control (a form/button). */
+  createControl: "data-shop-create",
+  /** The shop-name input inside the create control. */
+  nameInput: "data-shop-name-input",
+  /** The invite control (a form). */
+  inviteControl: "data-shop-invite",
+  /** The invitee-email input inside the invite control (`type="email"`). */
+  inviteEmailInput: "data-shop-invite-email",
+  /** The roster list, fed by `shop_roster`. */
+  roster: "data-shop-roster",
+  /** The roster's loading state. */
+  rosterLoading: "data-shop-roster-loading",
+  /** The roster's FAILED-read message — distinct from empty (failure ≠ zero). */
+  rosterMessage: "data-shop-roster-message",
+  /** The roster's genuine-empty note. */
+  rosterEmpty: "data-shop-roster-empty",
+} as const;
+
+/* -------------------------------------------------------------------------
+ * The bilingual UI strings the page requires (ACC-02, I18N-08)
+ * ---------------------------------------------------------------------- */
+
+/**
+ * The `UiStrings` keys the shop page needs, one per user-facing string the four
+ * graded properties touch. The page renders every one of these through the
+ * typed `src/i18n/ui.ts` (both locales, usted register) — never hardcoded — so
+ * the grader asserts each key exists and is non-empty in **both** locales.
+ *
+ * Key-set parity across locales, non-emptiness, the usted register, and "no
+ * figure retyped per locale" are already enforced *globally* over the whole
+ * `ui` object by `src/i18n/ui.test.ts`; this list is the shop-specific
+ * *existence* requirement that test cannot express (it grades whatever keys are
+ * present, not which keys must be). Names follow the `garageHeading` /
+ * `signInHeading` convention and are renegotiable per this block's header.
+ */
+export const SHOP_UI_STRING_KEYS = [
+  "shopHeading",
+  "shopSignedOutHeading",
+  "shopSignedOutBody",
+  "shopCreateNameLabel",
+  "shopCreateButton",
+  "shopInviteEmailLabel",
+  "shopInviteButton",
+  "shopRosterHeading",
+  "shopRosterLoading",
+  "shopRosterUnavailable",
+  "shopRosterEmpty",
+] as const;

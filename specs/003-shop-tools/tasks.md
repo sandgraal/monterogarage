@@ -75,6 +75,23 @@ entitlements are hard-Opus. The billing webhook is `secrets-or-deploy`.
   *(SHP-01; 002 ACC-03)*
 - [x] **T3-202 [PLATFORM]** Shops: create, invite, membership, roster sharing
   subject to SHP-04's consent prompt. Activates T3-201's membership graders (SHP-01/03/04). Depends: T3-201 merged. *(SHP-01, SHP-03, SHP-04)*
+- [x] **T3-202b [TEST]** Shop-management UI render/structural graders: the
+  create/invite/roster page is account-gated and bilingual (both `/en/` and
+  `/es/` via the typed `ui.ts`), carries a create control, an email invite
+  control, and a roster fed by `shop_roster`, wires the real RPCs with no direct
+  table writes from the client, and never renders a failed `shop_roster` read as
+  an empty roster. Backfilled because T3-202 shipped the data layer but no task
+  owned the page, leaving SHP-01/SHP-03 unreachable end-to-end (code review,
+  owner-approved 2026-09-08). Route/segment decided on the spec's behalf:
+  `shops`/`talleres`, recorded in `tests/shop/contract.ts`. Graders in
+  `tests/pages/shop-management.render.test.ts`; activates T3-202c. Depends:
+  T3-202 merged. *(SHP-01, SHP-03; 002 ACC-02)*
+- [ ] **T3-202c [PLATFORM]** Shop-management UI: the create/invite/roster page
+  (`src/pages/[locale]/[shopsSegment].astro`) plus its `src/lib/supabase/shops.ts`
+  RPC-wrapper, `shops`/`talleres` segment in `routes.ts`/`handles.ts`, and the
+  shop `ui.ts` strings — bilingual, account-gated. Activates T3-202b's render
+  graders (delete one `.fails` per satisfied grader). Depends: T3-202 merged.
+  *(SHP-01, SHP-03)*
 - [x] **T3-203a [TEST]** The directory-claim grader prerequisites T3-203 needs
   before its [PLATFORM] build — **must merge before T3-203** (the T802/T3-202a
   precedent: an independent test-writer lands the grader accommodation first, so
