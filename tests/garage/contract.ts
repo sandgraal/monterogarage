@@ -1403,15 +1403,33 @@ export const OPTIMISTIC_BOOLEAN_DEFAULTS: ReadonlyMap<string, string> = new Map<
  * conversation with the conductor. What is not negotiable is the lifecycle
  * behaviour graded around them.
  *
- * `directory_claims` (T3-203) is another table of this shape and is
- * **deliberately not here**: it is a later task's surface, and adding it now
- * would grade a migration nobody has been asked to write.
+ * `directory_claims` (SHP-02) is a fourth table of this shape, added by
+ * **T3-203a [TEST]** ahead of T3-203's migration and carried as `pending`
+ * (see {@link SHARED_USER_TABLES}) so the unmarked garage sweeps keep
+ * iterating only the shipped three. Its account-lifecycle is **indirect**: a
+ * claim belongs to a shop, not to a person, so it binds no `auth.users` column
+ * at all — {@link SharedUserTableContract.parentCascadeColumns} grades its
+ * `shop_id → shops on delete cascade` hop instead (delete the shop, its claims
+ * go; delete an account, the shop and its claims survive via
+ * `shops.created_by set null`, the same ACC-03 posture the founder columns
+ * above give a shop).
  */
 export interface SharedUserTableContract {
   /** Unqualified table name in the `public` schema. */
   readonly name: string;
   /** The requirement that puts this table in the schema. */
   readonly requirement: string;
+  /**
+   * The task that ships this table, when it does not exist yet. A `pending`
+   * shared table is enumerated in {@link SHARED_USER_TABLES} — so its name is
+   * an allowed target of the `ungradedTableIssues` sweep the day the migration
+   * creates it — but is held out of {@link SHIPPED_SHARED_USER_TABLES}, so the
+   * unmarked shipped-migration graders never iterate a table no migration
+   * creates yet. Its cascade graders run under `it.fails` until the migration
+   * lands — the same shipped/unshipped partition {@link UNSHIPPED_USER_TABLES}
+   * gives single-owner tables one class over.
+   */
+  readonly pending?: string;
   /**
    * Columns that ARE an account's own row and MUST be `on delete cascade` to
    * `auth.users` — the member's own data goes on account deletion (ACC-03).
@@ -1423,6 +1441,25 @@ export interface SharedUserTableContract {
    * departing account, and the departure is never blocked (ACC-03).
    */
   readonly founderSetNullColumns: readonly string[];
+  /**
+   * Columns that bind this row to a PARENT shared table (not `auth.users`) and
+   * MUST be `on delete cascade` to it — the row belongs to the parent and goes
+   * when the parent goes, and its account-lifecycle is honoured *transitively*
+   * through the parent rather than by a direct `auth.users` hop.
+   *
+   * `directory_claims.shop_id → shops` is the case this exists for: a claim
+   * belongs to a shop, so deleting the shop takes its claims (SHP-02), while an
+   * account deletion never touches the claim directly — the shop survives
+   * (`shops.created_by on delete set null`) and the claim survives with it.
+   * `parent` is the unqualified table name in {@link CONTRACT_SCHEMA}; the
+   * grader accepts it bare or `public.`-qualified and rejects any other schema
+   * (the namespace-identity discipline {@link SHARED_TABLE_ACCOUNT_TARGET}
+   * records — a `private.shops` is a different object with the same name).
+   */
+  readonly parentCascadeColumns?: readonly {
+    readonly column: string;
+    readonly parent: string;
+  }[];
 }
 
 export const SHARED_USER_TABLES: readonly SharedUserTableContract[] = [
@@ -1445,10 +1482,52 @@ export const SHARED_USER_TABLES: readonly SharedUserTableContract[] = [
     accountCascadeColumns: [],
     founderSetNullColumns: ["invited_by"],
   },
+  {
+    // Declared by T3-203a [TEST] ahead of T3-203's migration. `pending` holds
+    // it out of the shipped sweeps; its cascade grader runs under `it.fails`
+    // until T3-203 ships `directory_claims`. Names stated literally, matching
+    // `tests/shop/contract.ts` (DIRECTORY_CLAIMS_TABLE / CLAIM_SHOP_ID_COLUMN),
+    // so the 002 garage suite does not import the 003 shop suite.
+    name: "directory_claims",
+    requirement:
+      "SHP-02 (a claim belongs to a shop; delete the shop, its claims go)",
+    pending: "T3-203",
+    // No direct auth.users column: a claim is the shop's, never a person's, so
+    // account deletion reaches it only transitively via shop_id → shops.
+    accountCascadeColumns: [],
+    founderSetNullColumns: [],
+    // The whole lifecycle is the parent hop — graded by sharedTableCascadeIssues.
+    parentCascadeColumns: [{ column: "shop_id", parent: "shops" }],
+  },
 ] as const;
 
 /** Convenience: the shared-table names, for the `ungradedTableIssues` sweep. */
 export const SHARED_USER_TABLE_NAMES = SHARED_USER_TABLES.map(
+  (table) => table.name
+);
+
+/**
+ * The shared tables whose migration exists, so their cascade/RLS sweeps run
+ * unmarked and green. `sharedTableCascadeIssues` defaults to this set for the
+ * same reason the `USER_TABLES` sweeps iterate {@link SHIPPED_USER_TABLES}: a
+ * grader over a table no migration creates yet is a red test with no marker,
+ * the failure mode the expected-failure convention exists to prevent.
+ */
+export const SHIPPED_SHARED_USER_TABLES = SHARED_USER_TABLES.filter(
+  (table) => table.pending === undefined
+);
+
+/**
+ * The shared tables a named task still has to create — swept only by the
+ * `it.fails` graders that activate when the migration lands (T3-203's
+ * `directory_claims`). `UNSHIPPED`, mirroring {@link UNSHIPPED_USER_TABLES}.
+ */
+export const UNSHIPPED_SHARED_USER_TABLES = SHARED_USER_TABLES.filter(
+  (table) => table.pending !== undefined
+);
+
+/** Convenience: the shipped shared-table names, for the unmarked sweeps. */
+export const SHIPPED_SHARED_USER_TABLE_NAMES = SHIPPED_SHARED_USER_TABLES.map(
   (table) => table.name
 );
 

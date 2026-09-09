@@ -30,6 +30,7 @@ import {
   GRANT_EXPIRY_COLUMN,
   GRANT_REVOCATION_COLUMN,
   UNSHIPPED_USER_TABLES,
+  UNSHIPPED_SHARED_USER_TABLES,
   PLAINTEXT_TOKEN_COLUMNS,
   SHARED_USER_TABLE_NAMES,
   SHARE_CAPABILITY_COLUMNS,
@@ -37,6 +38,7 @@ import {
   SHARE_GRANT_KINDS,
   SHARE_TOKEN_HASH_COLUMN,
   SHIPPED_USER_TABLES,
+  SHIPPED_SHARED_USER_TABLE_NAMES,
   USER_TABLES,
   USER_TABLE_NAMES,
   testEmail,
@@ -709,17 +711,37 @@ describe("the declared contract is internally coherent", () => {
   });
 
   it("names the SHARED user-data tables (T3-202a) — a third, distinct class", () => {
-    // The same hard equality one class over. `SHARED_USER_TABLES` (shops,
-    // shop_members, shop_invites) is private user data with no single owner, so
-    // it is neither a `USER_TABLES` single-owner cascade row nor
-    // `EXEMPT_PUBLIC_TABLES` public reference content. A fourth shared table —
-    // T3-203's `directory_claims` is the next one of this shape — joins by a
-    // deliberate edit here, exactly like `shares` joined `USER_TABLE_NAMES`.
+    // The same hard equality one class over. `SHARED_USER_TABLES` is private
+    // user data with no single owner, so it is neither a `USER_TABLES`
+    // single-owner cascade row nor `EXEMPT_PUBLIC_TABLES` public reference
+    // content. `directory_claims` (T3-203a) joined by a deliberate edit here —
+    // the fourth of this shape, exactly like `shares` joined `USER_TABLE_NAMES`
+    // — even though it is `pending`: its NAME must be an allowed target of the
+    // `ungradedTableIssues` sweep the day T3-203's migration creates it.
     expect(SHARED_USER_TABLE_NAMES).toEqual([
       "shops",
       "shop_members",
       "shop_invites",
+      "directory_claims",
     ]);
+  });
+
+  it("splits the SHARED tables into a shipped half and a pending half, both named", () => {
+    // The partition `sharedTableCascadeIssues` defaults over and the
+    // shipped-migration sweeps in `shared-table-cascade.test.ts` iterate. The
+    // SHIPPED half must never empty (it is what those unmarked sweeps iterate);
+    // the pending half holds `directory_claims` until T3-203 deletes its
+    // `pending` marker, exactly as `["shares"]` sat in the single-owner pending
+    // half until T2-404. Pinned by name so a table changing sides fails here.
+    expect(SHIPPED_SHARED_USER_TABLE_NAMES).toEqual([
+      "shops",
+      "shop_members",
+      "shop_invites",
+    ]);
+    expect(UNSHIPPED_SHARED_USER_TABLES.map((table) => table.name)).toEqual([
+      "directory_claims",
+    ]);
+    expect(SHIPPED_SHARED_USER_TABLE_NAMES.length).toBeGreaterThan(0);
   });
 
   it("keeps the three table classes pairwise disjoint", () => {

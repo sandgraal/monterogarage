@@ -75,11 +75,33 @@ entitlements are hard-Opus. The billing webhook is `secrets-or-deploy`.
   *(SHP-01; 002 ACC-03)*
 - [x] **T3-202 [PLATFORM]** Shops: create, invite, membership, roster sharing
   subject to SHP-04's consent prompt. Activates T3-201's membership graders (SHP-01/03/04). Depends: T3-201 merged. *(SHP-01, SHP-03, SHP-04)*
+- [x] **T3-203a [TEST]** The directory-claim grader prerequisites T3-203 needs
+  before its [PLATFORM] build — **must merge before T3-203** (the T802/T3-202a
+  precedent: an independent test-writer lands the grader accommodation first, so
+  T3-203's implementer never grades its own taxonomy/neutrality decision). Two
+  additions, both `it.fails` T3-203 activates. (1) `directory_claims` joins
+  `SHARED_USER_TABLES` (T3-202a's third class) as a `pending` parent-hop table:
+  its account-lifecycle is indirect, so `sharedTableCascadeIssues` is extended
+  additively with `parentCascadeColumns` to grade `shop_id → shops` **ON DELETE
+  CASCADE** (a claim belongs to a shop; delete the shop, its claims go), while
+  `community_entry_id` stays a text pointer with no FK and `verified_at` stays
+  nullable (both T3-201's). Pins updated additively (`SHARED_USER_TABLE_NAMES`
+  equality + a shipped/pending split); the full 002 garage suite stays green.
+  (2) A page-neutrality render grader (`tests/pages/directory-neutrality.render.test.ts`)
+  asserting the built directory page routes its ordering through
+  `src/lib/directory/neutral-order.ts`'s `directoryListing`, not an inline sort —
+  the SHP-05 coverage gap T3-201's review flagged (the module is proven neutral;
+  nothing proved the page uses it). Depends: T3-202, T3-201 merged. Blocks:
+  T3-203. *(SHP-02, SHP-05; 002 ACC-03)*
 - [ ] **T3-203 [PLATFORM]** Directory claim: claim flow against the 001
   community collection's `shop` entries, verification, claimed badge. The
   community collection stays git-owned and read-only — a claim is a database
-  row pointing at a content id, never an edit to the entry. Activates T3-201's
-  directory graders (SHP-02/05). Depends: T3-202, 001-T703a. *(SHP-02, SHP-05)*
+  row pointing at a content id, never an edit to the entry. Extract
+  `src/lib/directory/neutral-order.ts` (the `community-filter.ts` precedent) and
+  route `[communitySegment].astro` through its `directoryListing` so SHP-05 holds
+  page-level. Activates T3-201's directory graders (SHP-02/05) and T3-203a's
+  `directory_claims` cascade + page-neutrality graders. Depends: T3-202,
+  T3-203a, 001-T703a. *(SHP-02, SHP-05)*
 
 ## Phase S3 — Propose-and-accept
 
