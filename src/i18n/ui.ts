@@ -619,6 +619,36 @@ export interface UiStrings
   readonly rosterLoading: string;
   readonly rosterError: string;
   readonly rosterAccessUntilTemplate: string;
+  /**
+   * The shop-management page — create a shop, invite accounts into it, and
+   * read a shop's roster (T3-202c, 003 SHP-01/SHP-03). `taller`/`talleres`
+   * are the businesses a mechanic belongs to, distinct from the owner's
+   * singular garage `taller`. Account-gated, `usted` register.
+   */
+  readonly shopHeading: string;
+  readonly shopSignedOutHeading: string;
+  readonly shopSignedOutBody: string;
+  /**
+   * Shown when `SUPABASE_BROWSER_CONFIG` is null — no Supabase project is
+   * configured at build time, so there is no shop surface to open at all
+   * (distinct from `shopScriptRequired` below, the garage precedent split).
+   */
+  readonly shopUnavailable: string;
+  /**
+   * Shown when the shop page's own JavaScript could not load — the app and its
+   * rosters are fetched in the browser after sign-in, so a scriptless visitor
+   * gets the sign-in prompt and this note (the garage/share/sign-in
+   * precedent, one dedicated string per JS-gated surface).
+   */
+  readonly shopScriptRequired: string;
+  readonly shopCreateNameLabel: string;
+  readonly shopCreateButton: string;
+  readonly shopInviteEmailLabel: string;
+  readonly shopInviteButton: string;
+  readonly shopRosterHeading: string;
+  readonly shopRosterLoading: string;
+  readonly shopRosterUnavailable: string;
+  readonly shopRosterEmpty: string;
   /* The accountless page a link opens — T2-404, SHR-07 */
   readonly sharePageTitle: string;
   readonly sharePageHeading: string;
@@ -1532,6 +1562,24 @@ const en: UiStrings = {
   rosterLoading: "Loading the trucks shared with you…",
   rosterError: "The roster could not be loaded. Try again in a moment.",
   rosterAccessUntilTemplate: "Access until {date}",
+  shopHeading: "Your shops",
+  shopSignedOutHeading: "Sign in to manage your shops",
+  shopSignedOutBody:
+    "A shop is a business that several accounts share. Sign in to create one, invite mechanics into it by email, and see every truck its members can reach.",
+  shopUnavailable:
+    "Accounts are not switched on yet on this deployment, so there is no shop to open. The reference side of the site works without one.",
+  shopScriptRequired:
+    "Managing shops needs JavaScript: your shops and their rosters load in your browser after you sign in. Everything else on this site works without it.",
+  shopCreateNameLabel: "Shop name",
+  shopCreateButton: "Create shop",
+  shopInviteEmailLabel: "Invite by email",
+  shopInviteButton: "Send invitation",
+  shopRosterHeading: "Shop roster",
+  shopRosterLoading: "Loading the shop's roster…",
+  shopRosterUnavailable:
+    "The roster could not be loaded. Try again in a moment.",
+  shopRosterEmpty:
+    "No trucks have been shared with this shop yet. When a member holds a grant they marked visible to the shop, the truck appears here.",
   sharePageTitle: "A truck shared with you",
   sharePageHeading: "A truck shared with you",
   sharePageIntro:
@@ -2268,6 +2316,24 @@ const es: UiStrings = {
   rosterLoading: "Cargando los carros compartidos con usted…",
   rosterError: "No se pudo cargar la lista. Inténtelo de nuevo en un momento.",
   rosterAccessUntilTemplate: "Acceso hasta el {date}",
+  shopHeading: "Sus talleres",
+  shopSignedOutHeading: "Ingrese para administrar sus talleres",
+  shopSignedOutBody:
+    "Un taller es un negocio que varias cuentas comparten. Ingrese para crear uno, invitar mecánicos por correo y ver todos los carros que sus miembros pueden alcanzar.",
+  shopUnavailable:
+    "Las cuentas todavía no están activas en este despliegue, así que no hay taller que abrir. La parte de referencia del sitio funciona sin cuenta.",
+  shopScriptRequired:
+    "Administrar los talleres necesita JavaScript: sus talleres y sus listas se cargan en su navegador después de ingresar. Todo lo demás en este sitio funciona sin él.",
+  shopCreateNameLabel: "Nombre del taller",
+  shopCreateButton: "Crear taller",
+  shopInviteEmailLabel: "Invitar por correo",
+  shopInviteButton: "Enviar invitación",
+  shopRosterHeading: "Lista del taller",
+  shopRosterLoading: "Cargando la lista del taller…",
+  shopRosterUnavailable:
+    "No se pudo cargar la lista. Inténtelo de nuevo en un momento.",
+  shopRosterEmpty:
+    "Todavía no se ha compartido ningún carro con este taller. Cuando un miembro tenga un permiso que marcó visible para el taller, el carro aparece aquí.",
   sharePageTitle: "Un carro compartido con usted",
   sharePageHeading: "Un carro compartido con usted",
   sharePageIntro:

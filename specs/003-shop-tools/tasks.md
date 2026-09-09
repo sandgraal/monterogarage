@@ -86,7 +86,7 @@ entitlements are hard-Opus. The billing webhook is `secrets-or-deploy`.
   `shops`/`talleres`, recorded in `tests/shop/contract.ts`. Graders in
   `tests/pages/shop-management.render.test.ts`; activates T3-202c. Depends:
   T3-202 merged. *(SHP-01, SHP-03; 002 ACC-02)*
-- [ ] **T3-202c [PLATFORM]** Shop-management UI: the create/invite/roster page
+- [x] **T3-202c [PLATFORM]** Shop-management UI: the create/invite/roster page
   (`src/pages/[locale]/[shopsSegment].astro`) plus its `src/lib/supabase/shops.ts`
   RPC-wrapper, `shops`/`talleres` segment in `routes.ts`/`handles.ts`, and the
   shop `ui.ts` strings — bilingual, account-gated. Activates T3-202b's render

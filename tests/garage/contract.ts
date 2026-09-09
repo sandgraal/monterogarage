@@ -1770,6 +1770,12 @@ export const RESERVED_HANDLES = [
   // `procedures` and `search` before this.
   "share",
   "compartir",
+  // T3-202c's shop-management page, added when its route segment landed — the
+  // same cross-check against `COLLECTION_ROUTE_SEGMENTS` that named `mods`,
+  // `procedures`, `search` and `share` before it. The ES segment is the plural
+  // `talleres`, distinct from the singular `taller` (the owner's garage) above.
+  "shops",
+  "talleres",
 ] as const;
 
 /* -------------------------------------------------------------------------

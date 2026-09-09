@@ -784,49 +784,40 @@ describe("the shop route is registered, bilingual, and reserved (SHP-01, I18N-01
     );
   });
 
-  it.fails(
-    "COLLECTION_ROUTE_SEGMENTS carries a `shops` segment in both locales",
-    () => {
-      expect(
-        Object.hasOwn(segments, "shops"),
-        "no `shops` segment registered in COLLECTION_ROUTE_SEGMENTS (routes.ts)"
-      ).toBe(true);
-      expect(segments.shops.en).toBe(SHOP_ROUTE_SEGMENTS.en);
-      expect(segments.shops.es).toBe(SHOP_ROUTE_SEGMENTS.es);
-    }
-  );
+  it("COLLECTION_ROUTE_SEGMENTS carries a `shops` segment in both locales", () => {
+    expect(
+      Object.hasOwn(segments, "shops"),
+      "no `shops` segment registered in COLLECTION_ROUTE_SEGMENTS (routes.ts)"
+    ).toBe(true);
+    expect(segments.shops.en).toBe(SHOP_ROUTE_SEGMENTS.en);
+    expect(segments.shops.es).toBe(SHOP_ROUTE_SEGMENTS.es);
+  });
 
-  it.fails(
-    "the shop route emits a symmetric hreflang set with x-default",
-    () => {
-      expect(Object.hasOwn(segments, "shops")).toBe(true);
-      const routes = routePathsFor(segments.shops);
-      const alternates = localizedAlternateLinks(routes);
-      expect(alternates.map((l) => l.hreflang).sort()).toEqual(
-        ["en", "es", "x-default"].sort()
-      );
-      for (const locale of LOCALES) {
-        const link = alternates.find((l) => l.hreflang === locale);
-        expect(link?.href).toBe(localeHref(locale, routes[locale]));
-      }
-      const xDefault = alternates.find((l) => l.hreflang === "x-default");
-      expect(xDefault?.href).toBe(
-        localeHref(DEFAULT_LOCALE, routes[DEFAULT_LOCALE])
-      );
+  it("the shop route emits a symmetric hreflang set with x-default", () => {
+    expect(Object.hasOwn(segments, "shops")).toBe(true);
+    const routes = routePathsFor(segments.shops);
+    const alternates = localizedAlternateLinks(routes);
+    expect(alternates.map((l) => l.hreflang).sort()).toEqual(
+      ["en", "es", "x-default"].sort()
+    );
+    for (const locale of LOCALES) {
+      const link = alternates.find((l) => l.hreflang === locale);
+      expect(link?.href).toBe(localeHref(locale, routes[locale]));
     }
-  );
+    const xDefault = alternates.find((l) => l.hreflang === "x-default");
+    expect(xDefault?.href).toBe(
+      localeHref(DEFAULT_LOCALE, routes[DEFAULT_LOCALE])
+    );
+  });
 
-  it.fails(
-    "both shop segments are reserved handles (no owner may claim them)",
-    () => {
-      // `handles.ts`' compile-time `SITE_NAMESPACE_IS_RESERVED` will *force* the
-      // implementer to reserve them when they register the segment; this pins the
-      // requirement from the grader side too. Both, because `/es/{handle}/` and a
-      // handle equal to the ES segment collide at the same URL position.
-      expect(reserved).toContain(SHOP_ROUTE_SEGMENTS.en);
-      expect(reserved).toContain(SHOP_ROUTE_SEGMENTS.es);
-    }
-  );
+  it("both shop segments are reserved handles (no owner may claim them)", () => {
+    // `handles.ts`' compile-time `SITE_NAMESPACE_IS_RESERVED` will *force* the
+    // implementer to reserve them when they register the segment; this pins the
+    // requirement from the grader side too. Both, because `/es/{handle}/` and a
+    // handle equal to the ES segment collide at the same URL position.
+    expect(reserved).toContain(SHOP_ROUTE_SEGMENTS.en);
+    expect(reserved).toContain(SHOP_ROUTE_SEGMENTS.es);
+  });
 
   it("POSITIVE CONTROL: the garage segments are already reserved", () => {
     expect(reserved).toContain("garage");
@@ -858,7 +849,7 @@ describe("the shop page's strings exist in both locales via ui.ts (ACC-02, I18N-
 // activation discipline the rest of the file uses.
 describe("required shop ui.ts keys (one activation marker each)", () => {
   for (const key of SHOP_UI_STRING_KEYS) {
-    it.fails(`ui.${key} exists in both locales`, () => {
+    it(`ui.${key} exists in both locales`, () => {
       for (const locale of LOCALES) {
         const value = strings[locale][key];
         expect(typeof value, `${locale}.${key}`).toBe("string");
@@ -867,20 +858,17 @@ describe("required shop ui.ts keys (one activation marker each)", () => {
     });
   }
 
-  it.fails(
-    "no shop string diverges in its numbers between locales (numbers are shared)",
-    () => {
-      for (const key of SHOP_UI_STRING_KEYS) {
-        const en = strings.en[key];
-        const es = strings.es[key];
-        expect(typeof en, `en.${key}`).toBe("string");
-        expect(typeof es, `es.${key}`).toBe("string");
-        expect(digitRuns(en as string), `numbers diverge in ${key}`).toEqual(
-          digitRuns(es as string)
-        );
-      }
+  it("no shop string diverges in its numbers between locales (numbers are shared)", () => {
+    for (const key of SHOP_UI_STRING_KEYS) {
+      const en = strings.en[key];
+      const es = strings.es[key];
+      expect(typeof en, `en.${key}`).toBe("string");
+      expect(typeof es, `es.${key}`).toBe("string");
+      expect(digitRuns(en as string), `numbers diverge in ${key}`).toEqual(
+        digitRuns(es as string)
+      );
     }
-  );
+  });
 });
 
 /* =========================================================================
@@ -888,75 +876,66 @@ describe("required shop ui.ts keys (one activation marker each)", () => {
  * ====================================================================== */
 
 describe("the shop page is account-gated (SHP-01: an account is what makes a mechanic addressable)", () => {
-  it.fails(
-    "renders a signed-out gate and hides the app until a session resolves",
-    () => {
-      const page = SHOP_PAGE();
-      expect(
-        page,
-        `shop page not built yet at ${SHOP_PAGE_SOURCE_PATH}`
-      ).not.toBeNull();
-      if (page === null) return;
-      expect(page).toContain(SHOP_PAGE_HOOKS.gate);
-      expect(page).toContain(SHOP_PAGE_HOOKS.app);
-      // The app is private by default — hidden in the markup, revealed by script
-      // only once a session is confirmed (the garage page's own posture).
-      // Anchored to the element's own opening tag (elementCarriesHiddenAttribute),
-      // not a bare "hidden somewhere before the next >" scan — the latter is
-      // satisfied by `app.hidden = false` in the page's own <script>, which is
-      // exactly backwards: it passes when the server-rendered element carries
-      // no `hidden` attribute at all (T3-202b code review, fix 1).
-      expect(
-        elementCarriesHiddenAttribute(page, SHOP_PAGE_HOOKS.app),
-        `<... ${SHOP_PAGE_HOOKS.app} ...> does not carry a literal hidden attribute`
-      ).toBe(true);
-    }
-  );
+  it("renders a signed-out gate and hides the app until a session resolves", () => {
+    const page = SHOP_PAGE();
+    expect(
+      page,
+      `shop page not built yet at ${SHOP_PAGE_SOURCE_PATH}`
+    ).not.toBeNull();
+    if (page === null) return;
+    expect(page).toContain(SHOP_PAGE_HOOKS.gate);
+    expect(page).toContain(SHOP_PAGE_HOOKS.app);
+    // The app is private by default — hidden in the markup, revealed by script
+    // only once a session is confirmed (the garage page's own posture).
+    // Anchored to the element's own opening tag (elementCarriesHiddenAttribute),
+    // not a bare "hidden somewhere before the next >" scan — the latter is
+    // satisfied by `app.hidden = false` in the page's own <script>, which is
+    // exactly backwards: it passes when the server-rendered element carries
+    // no `hidden` attribute at all (T3-202b code review, fix 1).
+    expect(
+      elementCarriesHiddenAttribute(page, SHOP_PAGE_HOOKS.app),
+      `<... ${SHOP_PAGE_HOOKS.app} ...> does not carry a literal hidden attribute`
+    ).toBe(true);
+  });
 
-  it.fails(
-    "keeps a <noscript> fallback (the data is JS-loaded, like the garage)",
-    () => {
-      const page = SHOP_PAGE();
-      expect(
-        page,
-        `shop page not built yet at ${SHOP_PAGE_SOURCE_PATH}`
-      ).not.toBeNull();
-      if (page === null) return;
-      expect(page).toMatch(/<noscript/);
-    }
-  );
+  it("keeps a <noscript> fallback (the data is JS-loaded, like the garage)", () => {
+    const page = SHOP_PAGE();
+    expect(
+      page,
+      `shop page not built yet at ${SHOP_PAGE_SOURCE_PATH}`
+    ).not.toBeNull();
+    if (page === null) return;
+    expect(page).toMatch(/<noscript/);
+  });
 
-  it.fails(
-    "reveals the app only after checking the session (not client-trusted markup)",
-    () => {
-      const page = SHOP_PAGE();
-      expect(
-        page,
-        `shop page not built yet at ${SHOP_PAGE_SOURCE_PATH}`
-      ).not.toBeNull();
-      if (page === null) return;
-      // A session/auth read must exist somewhere in the page's wiring — an
-      // *actual call*, not merely importing the browser config, which every
-      // RPC-calling page does whether or not it ever checks who is signed in.
-      // A bare import was enough to satisfy the old regex — the gate is
-      // meaningless if nothing ever calls `getSession()`/`onAuthStateChange()`
-      // to decide whether to reveal the app (T3-202b code review, fix 3).
-      //
-      // The call may live in the page itself, or — the shipped garage
-      // precedent (the page delegates to `currentUserIdIfAny` in
-      // `garage.ts`, never calling `.getSession()` inline) — in the shop
-      // client module. Either satisfies "a session was actually checked
-      // before the app was revealed"; only "neither" is the real defect this
-      // grader exists to catch (T3-202b code review round 2).
-      const client = SHOP_CLIENT();
-      expect(
-        checksSessionBeforeReveal(page, client),
-        "neither the page nor the shop client module ever calls " +
-          "getSession()/onAuthStateChange() — importing the browser config " +
-          "alone says nothing about whether a session was checked"
-      ).toBe(true);
-    }
-  );
+  it("reveals the app only after checking the session (not client-trusted markup)", () => {
+    const page = SHOP_PAGE();
+    expect(
+      page,
+      `shop page not built yet at ${SHOP_PAGE_SOURCE_PATH}`
+    ).not.toBeNull();
+    if (page === null) return;
+    // A session/auth read must exist somewhere in the page's wiring — an
+    // *actual call*, not merely importing the browser config, which every
+    // RPC-calling page does whether or not it ever checks who is signed in.
+    // A bare import was enough to satisfy the old regex — the gate is
+    // meaningless if nothing ever calls `getSession()`/`onAuthStateChange()`
+    // to decide whether to reveal the app (T3-202b code review, fix 3).
+    //
+    // The call may live in the page itself, or — the shipped garage
+    // precedent (the page delegates to `currentUserIdIfAny` in
+    // `garage.ts`, never calling `.getSession()` inline) — in the shop
+    // client module. Either satisfies "a session was actually checked
+    // before the app was revealed"; only "neither" is the real defect this
+    // grader exists to catch (T3-202b code review round 2).
+    const client = SHOP_CLIENT();
+    expect(
+      checksSessionBeforeReveal(page, client),
+      "neither the page nor the shop client module ever calls " +
+        "getSession()/onAuthStateChange() — importing the browser config " +
+        "alone says nothing about whether a session was checked"
+    ).toBe(true);
+  });
 });
 
 /* =========================================================================
@@ -964,7 +943,7 @@ describe("the shop page is account-gated (SHP-01: an account is what makes a mec
  * ====================================================================== */
 
 describe("the shop page carries a create control, an email invite control, and a roster (SHP-01, SHP-03)", () => {
-  it.fails("has a create-shop control with a shop-name input", () => {
+  it("has a create-shop control with a shop-name input", () => {
     const page = SHOP_PAGE();
     expect(
       page,
@@ -975,32 +954,29 @@ describe("the shop page carries a create control, an email invite control, and a
     expect(page).toContain(SHOP_PAGE_HOOKS.nameInput);
   });
 
-  it.fails(
-    'has an invite control whose email field is an <input type="email">',
-    () => {
-      const page = SHOP_PAGE();
-      expect(
-        page,
-        `shop page not built yet at ${SHOP_PAGE_SOURCE_PATH}`
-      ).not.toBeNull();
-      if (page === null) return;
-      expect(page).toContain(SHOP_PAGE_HOOKS.inviteControl);
-      expect(page).toContain(SHOP_PAGE_HOOKS.inviteEmailInput);
-      // The invite is addressed by email (invite_to_shop's p_invitee_email); the
-      // field must declare that type so the browser validates it and the intent is
-      // unambiguous in the markup.
-      const emailInput = new RegExp(
-        `<input[^>]*${SHOP_PAGE_HOOKS.inviteEmailInput}[^>]*>`
-      ).exec(page)?.[0];
-      expect(
-        emailInput,
-        `no <input> carries ${SHOP_PAGE_HOOKS.inviteEmailInput}`
-      ).toBeDefined();
-      expect(emailInput ?? "").toMatch(/type=["']email["']/);
-    }
-  );
+  it('has an invite control whose email field is an <input type="email">', () => {
+    const page = SHOP_PAGE();
+    expect(
+      page,
+      `shop page not built yet at ${SHOP_PAGE_SOURCE_PATH}`
+    ).not.toBeNull();
+    if (page === null) return;
+    expect(page).toContain(SHOP_PAGE_HOOKS.inviteControl);
+    expect(page).toContain(SHOP_PAGE_HOOKS.inviteEmailInput);
+    // The invite is addressed by email (invite_to_shop's p_invitee_email); the
+    // field must declare that type so the browser validates it and the intent is
+    // unambiguous in the markup.
+    const emailInput = new RegExp(
+      `<input[^>]*${SHOP_PAGE_HOOKS.inviteEmailInput}[^>]*>`
+    ).exec(page)?.[0];
+    expect(
+      emailInput,
+      `no <input> carries ${SHOP_PAGE_HOOKS.inviteEmailInput}`
+    ).toBeDefined();
+    expect(emailInput ?? "").toMatch(/type=["']email["']/);
+  });
 
-  it.fails("has a roster display", () => {
+  it("has a roster display", () => {
     const page = SHOP_PAGE();
     expect(
       page,
@@ -1010,27 +986,24 @@ describe("the shop page carries a create control, an email invite control, and a
     expect(page).toContain(SHOP_PAGE_HOOKS.roster);
   });
 
-  it.fails(
-    "renders the shop strings from ui.ts rather than hardcoding them",
-    () => {
-      // A proxy for "no hardcoded user-facing text": the page must reference the
-      // typed strings for its roster states (the ones most tempting to inline).
-      // Full hardcoded-text detection is the code-reviewer's + ui.test.ts's job.
-      const page = SHOP_PAGE();
-      expect(
-        page,
-        `shop page not built yet at ${SHOP_PAGE_SOURCE_PATH}`
-      ).not.toBeNull();
-      if (page === null) return;
-      for (const key of [
-        "shopHeading",
-        "shopRosterUnavailable",
-        "shopRosterEmpty",
-      ]) {
-        expect(page, `page never references strings.${key}`).toContain(key);
-      }
+  it("renders the shop strings from ui.ts rather than hardcoding them", () => {
+    // A proxy for "no hardcoded user-facing text": the page must reference the
+    // typed strings for its roster states (the ones most tempting to inline).
+    // Full hardcoded-text detection is the code-reviewer's + ui.test.ts's job.
+    const page = SHOP_PAGE();
+    expect(
+      page,
+      `shop page not built yet at ${SHOP_PAGE_SOURCE_PATH}`
+    ).not.toBeNull();
+    if (page === null) return;
+    for (const key of [
+      "shopHeading",
+      "shopRosterUnavailable",
+      "shopRosterEmpty",
+    ]) {
+      expect(page, `page never references strings.${key}`).toContain(key);
     }
-  );
+  });
 });
 
 /* =========================================================================
@@ -1038,43 +1011,37 @@ describe("the shop page carries a create control, an email invite control, and a
  * ====================================================================== */
 
 describe("the shop page wires the real RPCs and writes nothing directly (SHP-01)", () => {
-  it.fails(
-    "a client module wraps create_shop / invite_to_shop / shop_roster",
-    () => {
-      const client = SHOP_CLIENT();
-      expect(
-        client,
-        `shop client module not built yet at ${SHOP_CLIENT_MODULE_PATH}`
-      ).not.toBeNull();
-      if (client === null) return;
-      expect(callsRpc(client, SHOP_UI_RPCS.create)).toBe(true);
-      expect(callsRpc(client, SHOP_UI_RPCS.invite)).toBe(true);
-      expect(callsRpc(client, SHOP_UI_RPCS.roster)).toBe(true);
-    }
-  );
+  it("a client module wraps create_shop / invite_to_shop / shop_roster", () => {
+    const client = SHOP_CLIENT();
+    expect(
+      client,
+      `shop client module not built yet at ${SHOP_CLIENT_MODULE_PATH}`
+    ).not.toBeNull();
+    if (client === null) return;
+    expect(callsRpc(client, SHOP_UI_RPCS.create)).toBe(true);
+    expect(callsRpc(client, SHOP_UI_RPCS.invite)).toBe(true);
+    expect(callsRpc(client, SHOP_UI_RPCS.roster)).toBe(true);
+  });
 
-  it.fails(
-    "neither the client module nor the page writes to a shop table directly",
-    () => {
-      const client = SHOP_CLIENT();
-      expect(
-        client,
-        `shop client module not built yet at ${SHOP_CLIENT_MODULE_PATH}`
-      ).not.toBeNull();
-      if (client === null) return;
-      const page = SHOP_PAGE() ?? "";
-      // Every membership write is a `security definer` RPC; the migration grants
-      // `authenticated` no direct insert/update/delete on any shop table, so a
-      // `.from(table).insert(...)` in the browser is both a dead call and a smell.
-      expect(
-        directTableWrites(client),
-        "direct write in the shop client module"
-      ).toEqual([]);
-      expect(directTableWrites(page), "direct write in the shop page").toEqual(
-        []
-      );
-    }
-  );
+  it("neither the client module nor the page writes to a shop table directly", () => {
+    const client = SHOP_CLIENT();
+    expect(
+      client,
+      `shop client module not built yet at ${SHOP_CLIENT_MODULE_PATH}`
+    ).not.toBeNull();
+    if (client === null) return;
+    const page = SHOP_PAGE() ?? "";
+    // Every membership write is a `security definer` RPC; the migration grants
+    // `authenticated` no direct insert/update/delete on any shop table, so a
+    // `.from(table).insert(...)` in the browser is both a dead call and a smell.
+    expect(
+      directTableWrites(client),
+      "direct write in the shop client module"
+    ).toEqual([]);
+    expect(directTableWrites(page), "direct write in the shop page").toEqual(
+      []
+    );
+  });
 });
 
 /* =========================================================================
@@ -1082,82 +1049,73 @@ describe("the shop page wires the real RPCs and writes nothing directly (SHP-01)
  * ====================================================================== */
 
 describe("a failed shop_roster read is not rendered as an empty roster (a failure is not a zero)", () => {
-  it.fails(
-    "the roster markup keeps loading / failed / empty / list as four distinct states",
-    () => {
-      const page = SHOP_PAGE();
-      expect(
-        page,
-        `shop page not built yet at ${SHOP_PAGE_SOURCE_PATH}`
-      ).not.toBeNull();
-      if (page === null) return;
-      for (const hook of [
-        SHOP_PAGE_HOOKS.rosterLoading,
-        SHOP_PAGE_HOOKS.rosterMessage,
-        SHOP_PAGE_HOOKS.rosterEmpty,
-        SHOP_PAGE_HOOKS.roster,
-      ]) {
-        expect(page, `roster state hook ${hook} is missing`).toContain(hook);
-      }
+  it("the roster markup keeps loading / failed / empty / list as four distinct states", () => {
+    const page = SHOP_PAGE();
+    expect(
+      page,
+      `shop page not built yet at ${SHOP_PAGE_SOURCE_PATH}`
+    ).not.toBeNull();
+    if (page === null) return;
+    for (const hook of [
+      SHOP_PAGE_HOOKS.rosterLoading,
+      SHOP_PAGE_HOOKS.rosterMessage,
+      SHOP_PAGE_HOOKS.rosterEmpty,
+      SHOP_PAGE_HOOKS.roster,
+    ]) {
+      expect(page, `roster state hook ${hook} is missing`).toContain(hook);
     }
-  );
+  });
 
-  it.fails(
-    "the page script drives the failed state apart from the empty state",
-    () => {
-      const page = SHOP_PAGE();
-      expect(
-        page,
-        `shop page not built yet at ${SHOP_PAGE_SOURCE_PATH}`
-      ).not.toBeNull();
-      if (page === null) return;
-      expect(
-        distinguishesFailureFromEmpty(page, SHOP_PAGE_HOOKS),
-        "the roster script does not keep a failed read distinct from an empty one"
-      ).toBe(true);
-    }
-  );
+  it("the page script drives the failed state apart from the empty state", () => {
+    const page = SHOP_PAGE();
+    expect(
+      page,
+      `shop page not built yet at ${SHOP_PAGE_SOURCE_PATH}`
+    ).not.toBeNull();
+    if (page === null) return;
+    expect(
+      distinguishesFailureFromEmpty(page, SHOP_PAGE_HOOKS),
+      "the roster script does not keep a failed read distinct from an empty one"
+    ).toBe(true);
+  });
 
-  it.fails(
-    "the client module returns a discriminated failure, never a bare empty list",
-    () => {
-      const client = SHOP_CLIENT();
-      expect(
-        client,
-        `shop client module not built yet at ${SHOP_CLIENT_MODULE_PATH}`
-      ).not.toBeNull();
-      if (client === null) return;
-      // Scoped to the roster-reading function's *own* body — the one function
-      // whose body calls `.rpc(SHOP_UI_RPCS.roster, ...)`, found by behaviour
-      // (mirroring how `directTableWrites` scopes to `.from(...)` chains
-      // rather than scanning the whole file). A module that handles
-      // create_shop/invite_to_shop errors correctly but silently drops a
-      // shop_roster failure to `{ ok: true, value: [] }` used to pass this
-      // grader because the *other two* functions' `ok: false` satisfied a
-      // whole-file scan regardless of what the roster function did
-      // (T3-202b code review, fix 2).
-      const rosterBody = functionBodyCallingRpc(client, SHOP_UI_RPCS.roster);
-      expect(
-        rosterBody,
-        `no function body calls .rpc("${SHOP_UI_RPCS.roster}", ...)`
-      ).not.toBe("");
-      // The `shares.ts` shape: a `{ ok: false; reason }` result — or an
-      // equivalent failure-helper call, the `readMechanicRoster` idiom this
-      // module is expected to copy — and an `if (error)` branch that reaches
-      // it, so a dropped request reaches the page as `failed`, not as `[]`
-      // (which would read as "this shop holds no trucks").
-      expect(
-        rosterBody,
-        "the roster function has no discriminated `ok: false` result (or " +
-          "equivalent failure-helper call) anywhere in its own body"
-      ).toMatch(/ok:\s*false|failed\s*\(|refused\s*\(/);
-      expect(
-        rosterBody,
-        "the roster function's `if (error)` branch never reaches a " +
-          "discriminated failure"
-      ).toMatch(
-        /if\s*\(\s*error\s*\)[\s\S]{0,80}(?:ok:\s*false|failed\s*\(|refused\s*\()/
-      );
-    }
-  );
+  it("the client module returns a discriminated failure, never a bare empty list", () => {
+    const client = SHOP_CLIENT();
+    expect(
+      client,
+      `shop client module not built yet at ${SHOP_CLIENT_MODULE_PATH}`
+    ).not.toBeNull();
+    if (client === null) return;
+    // Scoped to the roster-reading function's *own* body — the one function
+    // whose body calls `.rpc(SHOP_UI_RPCS.roster, ...)`, found by behaviour
+    // (mirroring how `directTableWrites` scopes to `.from(...)` chains
+    // rather than scanning the whole file). A module that handles
+    // create_shop/invite_to_shop errors correctly but silently drops a
+    // shop_roster failure to `{ ok: true, value: [] }` used to pass this
+    // grader because the *other two* functions' `ok: false` satisfied a
+    // whole-file scan regardless of what the roster function did
+    // (T3-202b code review, fix 2).
+    const rosterBody = functionBodyCallingRpc(client, SHOP_UI_RPCS.roster);
+    expect(
+      rosterBody,
+      `no function body calls .rpc("${SHOP_UI_RPCS.roster}", ...)`
+    ).not.toBe("");
+    // The `shares.ts` shape: a `{ ok: false; reason }` result — or an
+    // equivalent failure-helper call, the `readMechanicRoster` idiom this
+    // module is expected to copy — and an `if (error)` branch that reaches
+    // it, so a dropped request reaches the page as `failed`, not as `[]`
+    // (which would read as "this shop holds no trucks").
+    expect(
+      rosterBody,
+      "the roster function has no discriminated `ok: false` result (or " +
+        "equivalent failure-helper call) anywhere in its own body"
+    ).toMatch(/ok:\s*false|failed\s*\(|refused\s*\(/);
+    expect(
+      rosterBody,
+      "the roster function's `if (error)` branch never reaches a " +
+        "discriminated failure"
+    ).toMatch(
+      /if\s*\(\s*error\s*\)[\s\S]{0,80}(?:ok:\s*false|failed\s*\(|refused\s*\()/
+    );
+  });
 });

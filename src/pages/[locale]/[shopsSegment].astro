@@ -1,0 +1,616 @@
+---
+/**
+ * The shop-management page — create a shop, invite an account into it by email,
+ * and read a shop's roster (T3-202c, 003 SHP-01/SHP-03).
+ *
+ * The account surface for a *business*, the sibling of the garage
+ * (`[garageSegment].astro`) and built to the same shape and rules:
+ *
+ *  - **Account-gated.** The app is `hidden` in the server-rendered shell and
+ *    revealed only after a session read via the client library
+ *    (`src/lib/supabase/shops.ts`, the garage's `currentUserIdIfAny`
+ *    precedent). A scriptless visitor never leaves the sign-in prompt and gets
+ *    a `<noscript>` note.
+ *  - **No client-trusted writes.** Every membership write — create, invite — is
+ *    a `security definer` RPC (the migration grants `authenticated` no direct
+ *    insert on any shop table). This page spells no table name; it delegates to
+ *    the client module, which returns discriminated results and never throws.
+ *  - **A failure is not a zero.** The roster keeps four distinct states —
+ *    loading, a failed-read message, a genuine empty, and the list — so a
+ *    dropped `shop_roster` read is never rendered as "this shop holds no
+ *    trucks" (AGENTS.md).
+ *  - **Bilingual.** Every user-facing string comes from `src/i18n/ui.ts` in
+ *    both locales (I18N-08, ACC-02); the route segment is per-locale
+ *    (`/en/shops/` ↔ `/es/talleres/`, I18N-01) with a symmetric hreflang set
+ *    emitted by `BaseLayout`.
+ *
+ * refs specs/003-shop-tools (SHP-01, SHP-03), specs/002-montero-garage (ACC-02,
+ * SHR-01), specs/001-foundation (I18N-01, I18N-04, I18N-05, I18N-08)
+ */
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { isLocale, localeHref, type Locale } from "../../i18n/routing";
+import {
+  collectionRouteParams,
+  collectionRoutePath,
+  collectionRoutePaths,
+} from "../../i18n/routes";
+import { t } from "../../i18n/ui";
+import { SITE_NAME } from "../../site";
+import { SUPABASE_BROWSER_CONFIG } from "../../lib/supabase/config";
+
+export function getStaticPaths() {
+  return collectionRouteParams("shops", "shopsSegment");
+}
+
+const { locale: param } = Astro.params;
+if (!isLocale(param)) {
+  throw new Error(`Unknown locale segment: ${String(param)}`);
+}
+const locale: Locale = param;
+const strings = t(locale);
+const routes = collectionRoutePaths("shops");
+const configured = SUPABASE_BROWSER_CONFIG !== null;
+const signInHref = localeHref(locale, collectionRoutePath("signIn", locale));
+---
+
+<BaseLayout
+  locale={locale}
+  routePathByLocale={routes}
+  title={`${strings.shopHeading} — ${SITE_NAME}`}
+  description={strings.shopSignedOutBody}
+>
+  <section
+    class="shop"
+    data-shop
+    data-shop-state="boot"
+    data-string-saving={strings.garageSaving}
+    data-string-saved={strings.garageSaved}
+    data-string-error={strings.garageError}
+    data-string-roster-unavailable={strings.shopRosterUnavailable}
+  >
+    <div class="shop__intro">
+      <h1>{strings.shopHeading}</h1>
+      <p>{strings.shopSignedOutBody}</p>
+    </div>
+
+    {
+      configured ? (
+        <Fragment>
+          {/*
+           * Present from the first paint when scripting is available, so the
+           * signed-out prompt below is never shown to a reader who does in
+           * fact have a session (the garage page's own posture).
+           */}
+          <p class="shop__boot" data-shop-boot role="status" aria-live="polite">
+            {strings.garageLoading}
+          </p>
+
+          <div class="shop__gate" data-shop-gate>
+            <h2>{strings.shopSignedOutHeading}</h2>
+            <p>{strings.shopSignedOutBody}</p>
+            <p>
+              <a class="shop__cta" href={signInHref}>
+                {strings.garageSignInLink}
+              </a>
+            </p>
+            <noscript>
+              <p class="shop__notice">{strings.shopScriptRequired}</p>
+            </noscript>
+          </div>
+
+          <div class="shop__app" data-shop-app hidden>
+            {/* ---------------------------------------------------------- */}
+            {/* Create a shop (SHP-01) — the caller becomes its first member */}
+            {/* ---------------------------------------------------------- */}
+            <form class="shop__panel" data-shop-create>
+              <p class="shop__field">
+                <label class="shop__label" for="shop-name">
+                  {strings.shopCreateNameLabel}
+                </label>
+                <input
+                  class="shop__input"
+                  id="shop-name"
+                  type="text"
+                  autocomplete="off"
+                  maxlength="120"
+                  required
+                  data-shop-name-input
+                />
+              </p>
+              <div class="shop__actions">
+                <button
+                  class="shop__button"
+                  type="submit"
+                  data-shop-create-submit
+                  data-idle={strings.shopCreateButton}
+                >
+                  {strings.shopCreateButton}
+                </button>
+              </div>
+              <p class="shop__message" data-shop-create-message role="alert" />
+            </form>
+
+            {/* The shops the account belongs to; selecting one loads its   */}
+            {/* roster and points the invite control at it.                 */}
+            <ul class="shop__list" data-shop-list />
+
+            {/* ---------------------------------------------------------- */}
+            {/* Invite an account by email (SHP-01) and the shop roster     */}
+            {/* (SHP-03). Hidden until a shop is selected — the hooks still  */}
+            {/* exist in the shell so the surface is always structurally    */}
+            {/* whole.                                                      */}
+            {/* ---------------------------------------------------------- */}
+            <div class="shop__selected" data-shop-selected hidden>
+              <form class="shop__panel" data-shop-invite>
+                <p class="shop__field">
+                  <label class="shop__label" for="shop-invite-email">
+                    {strings.shopInviteEmailLabel}
+                  </label>
+                  <input
+                    class="shop__input"
+                    id="shop-invite-email"
+                    type="email"
+                    autocomplete="off"
+                    autocapitalize="none"
+                    spellcheck="false"
+                    required
+                    data-shop-invite-email
+                  />
+                </p>
+                <div class="shop__actions">
+                  <button
+                    class="shop__button"
+                    type="submit"
+                    data-shop-invite-submit
+                    data-idle={strings.shopInviteButton}
+                  >
+                    {strings.shopInviteButton}
+                  </button>
+                </div>
+                <p
+                  class="shop__message"
+                  data-shop-invite-message
+                  role="alert"
+                />
+              </form>
+
+              <section class="shop__roster">
+                <h2>{strings.shopRosterHeading}</h2>
+
+                <p
+                  class="shop__empty-note"
+                  data-shop-roster-loading
+                  role="status"
+                  aria-live="polite"
+                >
+                  {strings.shopRosterLoading}
+                </p>
+                <p
+                  class="shop__message"
+                  data-shop-roster-message
+                  role="status"
+                  aria-live="polite"
+                />
+                <p class="shop__empty-note" data-shop-roster-empty hidden>
+                  {strings.shopRosterEmpty}
+                </p>
+
+                <ul class="shop__roster-list" data-shop-roster />
+              </section>
+            </div>
+          </div>
+        </Fragment>
+      ) : (
+        <p class="shop__notice">{strings.shopUnavailable}</p>
+      )
+    }
+  </section>
+</BaseLayout>
+
+<script>
+  import { SUPABASE_BROWSER_CONFIG } from "../../lib/supabase/config";
+  import {
+    createShop,
+    currentUserIdIfAny,
+    inviteToShop,
+    listMyShops,
+    readShopRoster,
+    type ShopRow,
+  } from "../../lib/supabase/shops";
+
+  function enhance(root: HTMLElement): void {
+    const text = root.dataset;
+
+    const query = <T extends Element>(selector: string): T | null =>
+      root.querySelector<T>(selector);
+
+    const gate = query<HTMLElement>("[data-shop-gate]");
+    const app = query<HTMLElement>("[data-shop-app]");
+    const createForm = query<HTMLFormElement>("[data-shop-create]");
+    const nameInput = query<HTMLInputElement>("[data-shop-name-input]");
+    const createSubmit = query<HTMLButtonElement>("[data-shop-create-submit]");
+    const createMessage = query<HTMLElement>("[data-shop-create-message]");
+    const shopList = query<HTMLUListElement>("[data-shop-list]");
+    const selected = query<HTMLElement>("[data-shop-selected]");
+    const inviteForm = query<HTMLFormElement>("[data-shop-invite]");
+    const emailInput = query<HTMLInputElement>("[data-shop-invite-email]");
+    const inviteSubmit = query<HTMLButtonElement>("[data-shop-invite-submit]");
+    const inviteMessage = query<HTMLElement>("[data-shop-invite-message]");
+    const roster = query<HTMLUListElement>("[data-shop-roster]");
+    const rosterLoading = query<HTMLElement>("[data-shop-roster-loading]");
+    const rosterMessage = query<HTMLElement>("[data-shop-roster-message]");
+    const rosterEmpty = query<HTMLElement>("[data-shop-roster-empty]");
+
+    if (
+      !gate ||
+      !app ||
+      !createForm ||
+      !nameInput ||
+      !createSubmit ||
+      !shopList ||
+      !selected ||
+      !inviteForm ||
+      !emailInput ||
+      !inviteSubmit ||
+      !roster ||
+      !rosterLoading ||
+      !rosterMessage ||
+      !rosterEmpty
+    ) {
+      return;
+    }
+
+    const els = {
+      gate,
+      app,
+      createForm,
+      nameInput,
+      createSubmit,
+      createMessage,
+      shopList,
+      selected,
+      inviteForm,
+      emailInput,
+      inviteSubmit,
+      inviteMessage,
+      roster,
+      rosterLoading,
+      rosterMessage,
+      rosterEmpty,
+    };
+
+    let activeShopId: string | null = null;
+
+    function say(node: HTMLElement | null, value: string): void {
+      if (node) node.textContent = value;
+    }
+
+    /** Leave the boot state; after this the gate is an ordinary `hidden` block. */
+    function settle(gateVisible: boolean): void {
+      root.dataset.shopState = gateVisible ? "signed-out" : "signed-in";
+      els.gate.hidden = !gateVisible;
+    }
+
+    function shopItem(shop: ShopRow): HTMLLIElement {
+      const item = document.createElement("li");
+      item.className = "shop__list-item";
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "shop__list-button";
+      button.textContent = shop.name;
+      button.dataset.shopId = shop.id;
+      button.addEventListener("click", () => void selectShop(shop.id));
+      item.append(button);
+      return item;
+    }
+
+    function rosterItem(displayName: string): HTMLLIElement {
+      const item = document.createElement("li");
+      item.className = "shop__roster-item";
+      item.textContent = displayName;
+      return item;
+    }
+
+    /**
+     * The roster's four states, kept apart (AGENTS.md — a failure is not a
+     * zero): loading while the request is out, the failed-read message on
+     * `!ok`, the empty note only on a genuine zero-length result, and the list
+     * otherwise. A dropped read clears the list and shows the message — never
+     * the empty note.
+     */
+    async function loadRoster(shopId: string): Promise<void> {
+      els.rosterLoading.hidden = false;
+      els.rosterEmpty.hidden = true;
+      say(els.rosterMessage, "");
+      const outcome = await readShopRoster(shopId);
+      els.rosterLoading.hidden = true;
+      if (!outcome.ok) {
+        els.roster.replaceChildren();
+        say(els.rosterMessage, text.stringRosterUnavailable ?? "");
+        return;
+      }
+      if (outcome.value.length === 0) {
+        els.roster.replaceChildren();
+        els.rosterEmpty.hidden = false;
+        return;
+      }
+      els.roster.replaceChildren(
+        ...outcome.value.map((entry) => rosterItem(entry.display_name))
+      );
+    }
+
+    async function selectShop(shopId: string): Promise<void> {
+      activeShopId = shopId;
+      els.selected.hidden = false;
+      say(els.inviteMessage, "");
+      for (const button of els.shopList.querySelectorAll<HTMLButtonElement>(
+        "[data-shop-id]"
+      )) {
+        button.setAttribute(
+          "aria-current",
+          button.dataset.shopId === shopId ? "true" : "false"
+        );
+      }
+      await loadRoster(shopId);
+    }
+
+    async function loadShops(select?: string): Promise<void> {
+      const outcome = await listMyShops();
+      if (!outcome.ok) {
+        say(els.createMessage, text.stringError ?? "");
+        return;
+      }
+      els.shopList.replaceChildren(...outcome.value.map(shopItem));
+      const next =
+        select ??
+        (activeShopId && outcome.value.some((shop) => shop.id === activeShopId)
+          ? activeShopId
+          : outcome.value[0]?.id);
+      if (next) {
+        await selectShop(next);
+      } else {
+        activeShopId = null;
+        els.selected.hidden = true;
+      }
+    }
+
+    els.createForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const name = els.nameInput.value.trim();
+      if (name === "") return;
+      els.createSubmit.disabled = true;
+      els.createSubmit.textContent = text.stringSaving ?? "";
+      say(els.createMessage, "");
+      void createShop(name)
+        .then((outcome) => {
+          if (!outcome.ok) {
+            say(els.createMessage, text.stringError ?? "");
+            return;
+          }
+          els.nameInput.value = "";
+          say(els.createMessage, text.stringSaved ?? "");
+          return loadShops(outcome.value.shopId);
+        })
+        .catch(() => say(els.createMessage, text.stringError ?? ""))
+        .finally(() => {
+          els.createSubmit.disabled = false;
+          els.createSubmit.textContent = els.createSubmit.dataset.idle ?? "";
+        });
+    });
+
+    els.inviteForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const email = els.emailInput.value.trim();
+      if (email === "" || activeShopId === null) return;
+      const shopId = activeShopId;
+      els.inviteSubmit.disabled = true;
+      els.inviteSubmit.textContent = text.stringSaving ?? "";
+      say(els.inviteMessage, "");
+      void inviteToShop({ shopId, email })
+        .then((outcome) => {
+          if (!outcome.ok) {
+            say(els.inviteMessage, text.stringError ?? "");
+            return;
+          }
+          els.emailInput.value = "";
+          say(els.inviteMessage, text.stringSaved ?? "");
+        })
+        .catch(() => say(els.inviteMessage, text.stringError ?? ""))
+        .finally(() => {
+          els.inviteSubmit.disabled = false;
+          els.inviteSubmit.textContent = els.inviteSubmit.dataset.idle ?? "";
+        });
+    });
+
+    /* --------------------------------------------------------------- boot */
+
+    void currentUserIdIfAny(window)
+      .then((userId) => {
+        if (userId === null) {
+          settle(true);
+          return;
+        }
+        settle(false);
+        els.app.hidden = false;
+        return loadShops();
+      })
+      .catch(() => settle(true));
+  }
+
+  const root = document.querySelector<HTMLElement>("[data-shop]");
+  if (root && SUPABASE_BROWSER_CONFIG) enhance(root);
+</script>
+
+<style>
+  .shop {
+    --paper: #f7f4ee;
+    --panel: #ffffff;
+    --ink: #2b2620;
+    --muted-strong: #55493c;
+    --line: #e4ddd1;
+    --rust: #b0532a;
+
+    font-family: Archivo, "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-width: 52rem;
+  }
+
+  /*
+   * One rule for the whole subtree, so no descendant of `.shop` — present or
+   * future — can compute a display other than `none` while it carries
+   * `hidden`, whatever layout rule targets it (the garage page's F10 fix,
+   * applied here from the start).
+   */
+  .shop [hidden] {
+    display: none !important;
+  }
+
+  .shop__intro {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .shop__intro h1 {
+    margin: 0;
+    font-size: 1.875rem;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+  }
+
+  .shop__intro p {
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--muted-strong);
+  }
+
+  /*
+   * The boot line exists only where scripting does, and the sign-in prompt is
+   * what a scriptless visitor gets — so the swap happens in CSS, before first
+   * paint, rather than by revealing a block after hydration.
+   */
+  .shop__boot {
+    display: none;
+    margin: 0;
+    font-size: 0.9375rem;
+    color: var(--muted-strong);
+  }
+
+  :global(html.js) .shop[data-shop-state="boot"] .shop__boot {
+    display: block;
+  }
+
+  :global(html.js) .shop[data-shop-state="boot"] .shop__gate {
+    display: none;
+  }
+
+  .shop__gate,
+  .shop__panel,
+  .shop__roster {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+
+  .shop__app,
+  .shop__selected {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .shop__gate h2,
+  .shop__roster h2 {
+    margin: 0;
+    font-size: 1.25rem;
+  }
+
+  .shop__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    margin: 0;
+  }
+
+  .shop__label {
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .shop__input {
+    font: inherit;
+    padding: 0.5rem 0.625rem;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+  }
+
+  .shop__actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .shop__button,
+  .shop__cta {
+    font: inherit;
+    font-weight: 600;
+    padding: 0.5rem 0.875rem;
+    border: 1px solid var(--rust);
+    border-radius: 6px;
+    background: var(--rust);
+    color: #fff;
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  .shop__list,
+  .shop__roster-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .shop__list-button {
+    font: inherit;
+    width: 100%;
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--panel);
+    cursor: pointer;
+  }
+
+  .shop__list-button[aria-current="true"] {
+    border-color: var(--rust);
+    font-weight: 700;
+  }
+
+  .shop__roster-item {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+  }
+
+  .shop__message,
+  .shop__empty-note,
+  .shop__notice {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--muted-strong);
+  }
+
+  .shop__message:empty {
+    display: none;
+  }
+</style>
