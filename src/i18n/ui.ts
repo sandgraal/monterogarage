@@ -302,6 +302,14 @@ export interface UiStrings
   readonly communityGoodForLabel: string;
   readonly communityVisitLabel: string;
   readonly communityAlsoOnLabel: string;
+  /**
+   * The SHP-02 claimed badge, shown on a directory entry a shop has claimed
+   * **and** the platform has verified. Display-only: it never changes the
+   * directory's ordering or inclusion (SHP-05), and an unverified claim shows
+   * nothing at all. A short label, not a sentence addressing the reader, so no
+   * `usted` verb form arises.
+   */
+  readonly communityClaimedBadge: string;
   /** `{shown}` / `{total}`, computed and interpolated — see `glossaryCountTemplate`. */
   readonly communityCountTemplate: string;
   /** `{date}` is `activityAssessed`, shared data interpolated in, never retyped. */
@@ -1264,6 +1272,7 @@ const en: UiStrings = {
   communityGoodForLabel: "Good for",
   communityVisitLabel: "Visit",
   communityAlsoOnLabel: "Also on",
+  communityClaimedBadge: "Claimed by the business",
   communityCountTemplate: "{shown} of {total} communities",
   communityActivityAssessedTemplate: "Checked {date}",
   "communityType.forum": "Forum",
@@ -1989,6 +1998,7 @@ const es: UiStrings = {
   communityGoodForLabel: "Bueno para",
   communityVisitLabel: "Visitar",
   communityAlsoOnLabel: "También en",
+  communityClaimedBadge: "Reclamado por el negocio",
   communityCountTemplate: "{shown} de {total} comunidades",
   communityActivityAssessedTemplate: "Revisado el {date}",
   "communityType.forum": "Foro",

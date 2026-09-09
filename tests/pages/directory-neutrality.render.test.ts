@@ -457,22 +457,19 @@ function directoryPageSource(): string {
 }
 
 describe("the community directory page routes ordering through the neutral module (SHP-05)", () => {
-  it.fails("imports directoryListing from the neutral-order module", () => {
+  it("imports directoryListing from the neutral-order module", () => {
     expect(importsNeutralOrder(directoryPageSource())).toBe(true);
   });
 
-  it.fails("calls directoryListing(...) in its frontmatter", () => {
+  it("calls directoryListing(...) in its frontmatter", () => {
     expect(callsDirectoryListing(frontmatter(directoryPageSource()))).toBe(
       true
     );
   });
 
-  it.fails(
-    "does not order the community entries with an inline .sort()",
-    () => {
-      expect(
-        inlineCommunitySortRoots(frontmatter(directoryPageSource()))
-      ).toEqual([]);
-    }
-  );
+  it("does not order the community entries with an inline .sort()", () => {
+    expect(
+      inlineCommunitySortRoots(frontmatter(directoryPageSource()))
+    ).toEqual([]);
+  });
 });

@@ -863,7 +863,7 @@ describe("community_entry_id must stay a text pointer, never a database FK (SHP-
  * ---------------------------------------------------------------------- */
 
 describe("the shipped migration honours directory_claims' parent-cascade model (SHP-02)", () => {
-  it.fails("directory_claims.shop_id is `on delete cascade` to shops", () => {
+  it("directory_claims.shop_id is `on delete cascade` to shops", () => {
     const action = foreignKeyOnDeleteFor(
       migrationSql(),
       "directory_claims",
@@ -878,12 +878,9 @@ describe("the shipped migration honours directory_claims' parent-cascade model (
     expect(fk?.target === "shops" || fk?.target === "public.shops").toBe(true);
   });
 
-  it.fails(
-    "the directory_claims parent-cascade model holds via the shared rule",
-    () => {
-      expect(
-        sharedTableCascadeIssues(migrationSql(), [DIRECTORY_CLAIMS_CONTRACT])
-      ).toEqual([]);
-    }
-  );
+  it("the directory_claims parent-cascade model holds via the shared rule", () => {
+    expect(
+      sharedTableCascadeIssues(migrationSql(), [DIRECTORY_CLAIMS_CONTRACT])
+    ).toEqual([]);
+  });
 });
