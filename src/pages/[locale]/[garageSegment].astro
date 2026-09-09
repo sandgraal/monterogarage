@@ -755,6 +755,42 @@ const hasReferences = Object.values(referenceCatalogue).some(
                   </span>
                 </p>
 
+                {/* ---------------------------------------------------- */}
+                {/* SHP-04, the reactive half (T3-202).                  */}
+                {/*                                                      */}
+                {/* Shown by the client only when the owner turns        */}
+                {/* shop-visibility on for a named account — the one     */}
+                {/* combination that puts a grant on a shop roster       */}
+                {/* (a bearer link with no addressee can never bind, so  */}
+                {/* it never reaches a shop). It states the consequence  */}
+                {/* the static hint above only implies, and offers a     */}
+                {/* one-tap way back to the individual. Whether the      */}
+                {/* named account is actually a shop member is never      */}
+                {/* probed here: that lookup would be an account/shop     */}
+                {/* enumeration oracle (the SHR-08 existence-oracle       */}
+                {/* discipline), so the callout is framed conditionally  */}
+                {/* and the database's private-by-default is what keeps   */}
+                {/* an unconsented grant off every shop roster.          */}
+                {/* ---------------------------------------------------- */}
+                <div
+                  class="garage__notice garage__consent"
+                  role="status"
+                  aria-live="polite"
+                  data-garage-share-shop-consent
+                  hidden
+                >
+                  <p class="garage__consent-body">
+                    {strings.shareShopVisibleConsent}
+                  </p>
+                  <button
+                    class="garage__button garage__button--alt"
+                    type="button"
+                    data-garage-share-shop-individual
+                  >
+                    {strings.shareShopVisibleUseIndividual}
+                  </button>
+                </div>
+
                 <p class="garage__check">
                   <input
                     class="garage__checkbox"
@@ -2469,6 +2505,10 @@ const hasReferences = Object.values(referenceCatalogue).some(
       shareEmail: query<HTMLInputElement>("[data-garage-share-email]"),
       shareShopVisible: query<HTMLInputElement>(
         "[data-garage-share-shop-visible]"
+      ),
+      shareShopConsent: query<HTMLElement>("[data-garage-share-shop-consent]"),
+      shareShopIndividual: query<HTMLButtonElement>(
+        "[data-garage-share-shop-individual]"
       ),
       shareCosts: query<HTMLInputElement>("[data-garage-share-costs]"),
       shareReceipts: query<HTMLInputElement>("[data-garage-share-receipts]"),
@@ -4380,7 +4420,29 @@ const hasReferences = Object.values(referenceCatalogue).some(
       if (els.shareLink) els.shareLink.textContent = "";
       if (els.shareList) els.shareList.replaceChildren();
       say(els.shareMessage, "");
+      refreshShopConsent();
       void loadShareGrants(row).catch(() => unreachable(els.shareMessage));
+    }
+
+    /**
+     * SHP-04, reactive (T3-202): show the consent callout only when the owner
+     * has turned shop-visibility on *and* named an account.
+     *
+     * That pairing is the only state where the choice has teeth: a grant with
+     * no addressee can never bind, so it never lands on a shop roster no matter
+     * how the switch is set, and warning about it would be noise. When both are
+     * present the callout names the consequence the static hint only implies,
+     * and the "keep it to this person" control below unticks the switch. No
+     * server call is made — asking "does this email belong to a shop member"
+     * would be an account/shop enumeration oracle (the SHR-08 discipline), so
+     * the callout is framed conditionally and the data layer's private-by-
+     * default (`is_shop_visible`, T3-101) is what actually withholds the grant.
+     */
+    function refreshShopConsent(): void {
+      if (!els.shareShopConsent) return;
+      const wantsShop = els.shareShopVisible?.checked ?? false;
+      const named = (els.shareEmail?.value ?? "").trim() !== "";
+      els.shareShopConsent.hidden = !(wantsShop && named);
     }
 
     /**
@@ -4707,6 +4769,19 @@ const hasReferences = Object.values(referenceCatalogue).some(
     els.shareCreate?.addEventListener("click", () => {
       if (opened === null) return;
       void issueShareGrant(opened).catch(() => unreachable(els.shareMessage));
+    });
+
+    // SHP-04 reactive (T3-202): the consent callout tracks the two inputs that
+    // decide whether a grant can reach a shop — the shop-visibility switch and
+    // whether an account was named — and the control that unticks the switch.
+    els.shareShopVisible?.addEventListener("change", () =>
+      refreshShopConsent()
+    );
+    els.shareEmail?.addEventListener("input", () => refreshShopConsent());
+    els.shareShopIndividual?.addEventListener("click", () => {
+      if (els.shareShopVisible) els.shareShopVisible.checked = false;
+      refreshShopConsent();
+      els.shareShopVisible?.focus();
     });
 
     els.shareCopy?.addEventListener("click", () => {
@@ -6213,6 +6288,24 @@ const hasReferences = Object.values(referenceCatalogue).some(
     background: var(--rust-tint);
     border: 1px solid var(--rust-tint-border);
     border-radius: 8px;
+  }
+
+  /* SHP-04's reactive consent callout (T3-202): the notice styling plus a
+     stacked action, sitting between the shop-visibility switch and the rest
+     of the grant form. `hidden` is honoured because it is not overridden. */
+  .garage__consent {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    align-items: flex-start;
+  }
+
+  .garage__consent[hidden] {
+    display: none;
+  }
+
+  .garage__consent-body {
+    margin: 0;
   }
 
   @media (max-width: 40rem) {

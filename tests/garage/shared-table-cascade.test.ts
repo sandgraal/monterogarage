@@ -467,16 +467,16 @@ describe("the SHARED user-table class is internally coherent", () => {
 });
 
 /* =========================================================================
- * The graders — RED today, activated by T3-202
+ * The graders — activated by T3-202, green against the shipped migration
  *
- * `it.fails` is the marker. Each reads the shipped migration, which does not
- * create the shop tables yet, so each fails today with a named absence. T3-202
- * activates each by deleting exactly its one `.fails` line; only a correct
- * shared-cascade migration turns it green.
+ * Each reads the shipped migration, which now creates the shop tables. T3-202
+ * activated each by deleting its one `.fails` marker; they stay green only while
+ * a correct shared-cascade migration remains in place — a regression turns them
+ * red with a named absence.
  * ====================================================================== */
 
-describe("the shipped migration creates the shop tables with RLS forced — pending T3-202", () => {
-  it.fails.each(SHARED_USER_TABLE_NAMES)(
+describe("the shipped migration creates the shop tables with RLS forced", () => {
+  it.each(SHARED_USER_TABLE_NAMES)(
     "public.%s exists and forces row level security",
     (table) => {
       const created = createdTables(migrationSql()).map((t) => t.name);
@@ -487,24 +487,21 @@ describe("the shipped migration creates the shop tables with RLS forced — pend
   );
 });
 
-describe("the shipped migration honours the shared account-deletion model — pending T3-202 (ACC-03)", () => {
-  it.fails(
-    "shop_members.account_id is `on delete cascade` to auth.users",
-    () => {
-      const action = foreignKeyOnDeleteFor(
-        migrationSql(),
-        "shop_members",
-        "account_id"
-      );
-      expect(
-        action,
-        "shop_members.account_id carries no auth.users foreign key to grade"
-      ).not.toBeNull();
-      expect(action).toBe("cascade");
-    }
-  );
+describe("the shipped migration honours the shared account-deletion model (ACC-03)", () => {
+  it("shop_members.account_id is `on delete cascade` to auth.users", () => {
+    const action = foreignKeyOnDeleteFor(
+      migrationSql(),
+      "shop_members",
+      "account_id"
+    );
+    expect(
+      action,
+      "shop_members.account_id carries no auth.users foreign key to grade"
+    ).not.toBeNull();
+    expect(action).toBe("cascade");
+  });
 
-  it.fails("shops.created_by is `on delete set null` to auth.users", () => {
+  it("shops.created_by is `on delete set null` to auth.users", () => {
     const action = foreignKeyOnDeleteFor(migrationSql(), "shops", "created_by");
     expect(
       action,
@@ -513,39 +510,32 @@ describe("the shipped migration honours the shared account-deletion model — pe
     expect(action).toBe("set null");
   });
 
-  it.fails(
-    "shop_invites.invited_by is `on delete set null` to auth.users",
-    () => {
-      const action = foreignKeyOnDeleteFor(
-        migrationSql(),
-        "shop_invites",
-        "invited_by"
-      );
-      expect(
-        action,
-        "shop_invites.invited_by carries no auth.users foreign key to grade"
-      ).not.toBeNull();
-      expect(action).toBe("set null");
-    }
-  );
+  it("shop_invites.invited_by is `on delete set null` to auth.users", () => {
+    const action = foreignKeyOnDeleteFor(
+      migrationSql(),
+      "shop_invites",
+      "invited_by"
+    );
+    expect(
+      action,
+      "shop_invites.invited_by carries no auth.users foreign key to grade"
+    ).not.toBeNull();
+    expect(action).toBe("set null");
+  });
 
-  it.fails("the whole shared-cascade model holds — no findings", () => {
+  it("the whole shared-cascade model holds — no findings", () => {
     expect(sharedTableCascadeIssues(migrationSql())).toEqual([]);
   });
 
-  it.fails(
-    "the shop tables are accepted by the ungraded-table sweep, RLS and all",
-    () => {
-      // The other side of the accommodation, against the real migration: once
-      // T3-202 ships the tables, `ungradedTableIssues` must find them known AND
-      // RLS-forced. Red today because they do not exist (createdTables is empty
-      // of them, so this returns [] — which is why the assertion below, that the
-      // sweep has *seen and cleared* all three, cannot yet hold).
-      const created = createdTables(migrationSql()).map((t) => t.name);
-      for (const table of SHARED_USER_TABLE_NAMES) {
-        expect(created, `public.${table} not created yet`).toContain(table);
-      }
-      expect(ungradedTableIssues(migrationSql())).toEqual([]);
+  it("the shop tables are accepted by the ungraded-table sweep, RLS and all", () => {
+    // The other side of the accommodation, against the real migration: now that
+    // T3-202 ships the tables, `ungradedTableIssues` must find them known AND
+    // RLS-forced. createdTables now lists all three, so the assertion below —
+    // that the sweep has *seen and cleared* all three — holds.
+    const created = createdTables(migrationSql()).map((t) => t.name);
+    for (const table of SHARED_USER_TABLE_NAMES) {
+      expect(created, `public.${table} not created yet`).toContain(table);
     }
-  );
+    expect(ungradedTableIssues(migrationSql())).toEqual([]);
+  });
 });

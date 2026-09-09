@@ -73,7 +73,7 @@ entitlements are hard-Opus. The billing webhook is `secrets-or-deploy`.
   deleting its `.fails` line), with synthetic-DDL boundary tables and positive
   controls proving each clause bites. Depends: T3-201 merged. Blocks: T3-202.
   *(SHP-01; 002 ACC-03)*
-- [ ] **T3-202 [PLATFORM]** Shops: create, invite, membership, roster sharing
+- [x] **T3-202 [PLATFORM]** Shops: create, invite, membership, roster sharing
   subject to SHP-04's consent prompt. Activates T3-201's membership graders (SHP-01/03/04). Depends: T3-201 merged. *(SHP-01, SHP-03, SHP-04)*
 - [ ] **T3-203 [PLATFORM]** Directory claim: claim flow against the 001
   community collection's `shop` entries, verification, claimed badge. The
