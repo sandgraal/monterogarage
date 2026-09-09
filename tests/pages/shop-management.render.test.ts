@@ -146,6 +146,7 @@ const SHOP_CLIENT = () => readOptionalSource(SHOP_CLIENT_MODULE_PATH);
 
 /** The shipped garage page / share client — the positive-control corpus. */
 const GARAGE_PAGE_PATH = "src/pages/[locale]/[garageSegment].astro";
+const GARAGE_CLIENT_PATH = "src/lib/supabase/garage.ts";
 const SHARES_CLIENT_PATH = "src/lib/supabase/shares.ts";
 
 /* =========================================================================
@@ -243,9 +244,9 @@ function elementCarriesHiddenAttribute(
 }
 
 /**
- * Does `source` actually **call** a session read — `.getSession(` or
- * `.onAuthStateChange(` — as opposed to merely mentioning something
- * session-adjacent, such as importing a name it never calls?
+ * Does an actual session read — `.getSession(` or `.onAuthStateChange(`
+ * **called**, not merely mentioned — appear in `pageSource`, or in
+ * `clientSource` if the page delegates to a client module?
  *
  * This is the fix for the code-review finding that
  * `/getSession|onAuthStateChange|SUPABASE_BROWSER_CONFIG/` was satisfied by
@@ -253,9 +254,29 @@ function elementCarriesHiddenAttribute(
  * RPC-calling page carries, whether or not it ever checks who is signed in —
  * so a page that reveals its app unconditionally still passed as long as it
  * imported the config for an unrelated reason (T3-202b code review, fix 3).
+ *
+ * `clientSource` was added in a second review round: the *shipped* garage
+ * page never calls `.getSession()`/`.onAuthStateChange()` itself — it
+ * delegates to `currentUserIdIfAny` in `src/lib/supabase/garage.ts`, and the
+ * real session read lives there. A page-only scan reported that shipped,
+ * correct pattern as "no session check", which would have forced a correct
+ * T3-202c that copied the garage precedent (session read in `shops.ts`) into
+ * a spec-inconsistent inline check in the `.astro` page just to satisfy this
+ * grader. Checking **either** source fixes the false negative without
+ * reopening the bare-import bypass in the new source: each source is tested
+ * for an actual *call*, exactly as before, not merely mentioned or imported
+ * (T3-202b code review round 2).
  */
-function checksSessionBeforeReveal(source: string): boolean {
-  return /\.getSession\s*\(|\.onAuthStateChange\s*\(/.test(source);
+function checksSessionBeforeReveal(
+  pageSource: string,
+  clientSource: string | null
+): boolean {
+  const callsSession = (source: string): boolean =>
+    /\.getSession\s*\(|\.onAuthStateChange\s*\(/.test(source);
+  return (
+    callsSession(pageSource) ||
+    (clientSource !== null && callsSession(clientSource))
+  );
 }
 
 /**
@@ -507,26 +528,61 @@ describe("elementCarriesHiddenAttribute — helper self-test", () => {
 });
 
 describe("checksSessionBeforeReveal — helper self-test", () => {
-  it("recognises an actual getSession()/onAuthStateChange() call — POSITIVE CONTROL", () => {
+  it("recognises an actual getSession()/onAuthStateChange() call in the page source — POSITIVE CONTROL", () => {
     expect(
       checksSessionBeforeReveal(
-        `const { data } = await client.auth.getSession();`
+        `const { data } = await client.auth.getSession();`,
+        null
       )
     ).toBe(true);
     expect(
       checksSessionBeforeReveal(
-        `client.auth.onAuthStateChange((event, session) => {});`
+        `client.auth.onAuthStateChange((event, session) => {});`,
+        null
       )
     ).toBe(true);
   });
 
-  it("does NOT match a bare, unused import of the browser config — NEGATIVE CONTROL", () => {
+  it("recognises the session read when it lives only in the client module — POSITIVE CONTROL (garage delegation pattern)", () => {
+    // The shape a correct T3-202c may legitimately ship: the page has no
+    // inline session check at all — it delegates to a
+    // `currentUserIdIfAny`-shaped wrapper in `shops.ts`, and the real
+    // `.getSession()` call lives there. This is the exact false negative the
+    // union across both sources exists to remove.
+    const page =
+      "<div data-shop-app hidden></div>\n" +
+      "<script>\n" +
+      '  import { currentUserIdIfAny } from "../../lib/supabase/shops.ts";\n' +
+      "  void currentUserIdIfAny(window);\n" +
+      "</script>";
+    const client =
+      "export async function currentUserIdIfAny(win) {\n" +
+      "  const { data } = await client.auth.getSession();\n" +
+      "  return data.session?.user.id ?? null;\n" +
+      "}";
+    expect(checksSessionBeforeReveal(page, client)).toBe(true);
+  });
+
+  it("does NOT match a bare, unused import of the browser config in either source — NEGATIVE CONTROL", () => {
     // The exact bypass code review found: importing SUPABASE_BROWSER_CONFIG
-    // satisfied the old regex whether or not the page ever checked a session.
-    const bypass =
+    // satisfied the old regex whether or not the page ever checked a
+    // session. Extending the check to a second source must not reopen that
+    // bypass there: a client module that only imports the config, never
+    // calling getSession()/onAuthStateChange(), must not satisfy the union.
+    const bypassPage =
       'import { SUPABASE_BROWSER_CONFIG } from "../../lib/supabase/config";\n' +
       "const configured = SUPABASE_BROWSER_CONFIG !== null;";
-    expect(checksSessionBeforeReveal(bypass)).toBe(false);
+    const bypassClient =
+      'import { SUPABASE_BROWSER_CONFIG } from "./config.ts";\n' +
+      "export const configured = SUPABASE_BROWSER_CONFIG !== null;";
+    expect(checksSessionBeforeReveal(bypassPage, null)).toBe(false);
+    expect(checksSessionBeforeReveal(bypassPage, bypassClient)).toBe(false);
+  });
+
+  it("does NOT pass when neither the page nor a (not-yet-built) client module calls it — NEGATIVE CONTROL", () => {
+    expect(
+      checksSessionBeforeReveal("<div data-shop-app hidden></div>", null)
+    ).toBe(false);
   });
 });
 
@@ -633,7 +689,24 @@ describe("shipped-code positive controls (the probes are not vacuous)", () => {
 
   it("checksSessionBeforeReveal finds shares.ts's real getSession() call", () => {
     const shares = readShippedSource(SHARES_CLIENT_PATH);
-    expect(checksSessionBeforeReveal(shares)).toBe(true);
+    expect(checksSessionBeforeReveal(shares, null)).toBe(true);
+  });
+
+  it("checksSessionBeforeReveal finds the session check in garage.ts even though the garage page itself never calls it — the exact delegation shape a correct T3-202c may copy", () => {
+    // The garage page does NOT call .getSession()/.onAuthStateChange() itself
+    // — it delegates to `currentUserIdIfAny`, whose real session read lives in
+    // garage.ts. A page-only scan reports this shipped, correct pattern as
+    // "no session check" (a false negative); checking the union of both
+    // sources reports it correctly.
+    const garagePage = readShippedSource(GARAGE_PAGE_PATH);
+    const garageClient = readShippedSource(GARAGE_CLIENT_PATH);
+    expect(
+      checksSessionBeforeReveal(garagePage, null),
+      "the garage page itself was expected to carry no getSession()/" +
+        "onAuthStateChange() call — if this now fails, the shipped page " +
+        "changed and this positive control needs updating"
+    ).toBe(false);
+    expect(checksSessionBeforeReveal(garagePage, garageClient)).toBe(true);
   });
 
   it("functionBodyCallingRpc finds shares.ts's real readMechanicRoster body, and it discriminates its failure", () => {
@@ -868,10 +941,19 @@ describe("the shop page is account-gated (SHP-01: an account is what makes a mec
       // A bare import was enough to satisfy the old regex — the gate is
       // meaningless if nothing ever calls `getSession()`/`onAuthStateChange()`
       // to decide whether to reveal the app (T3-202b code review, fix 3).
+      //
+      // The call may live in the page itself, or — the shipped garage
+      // precedent (the page delegates to `currentUserIdIfAny` in
+      // `garage.ts`, never calling `.getSession()` inline) — in the shop
+      // client module. Either satisfies "a session was actually checked
+      // before the app was revealed"; only "neither" is the real defect this
+      // grader exists to catch (T3-202b code review round 2).
+      const client = SHOP_CLIENT();
       expect(
-        checksSessionBeforeReveal(page),
-        "page never calls getSession()/onAuthStateChange() — importing the " +
-          "browser config alone says nothing about whether a session was checked"
+        checksSessionBeforeReveal(page, client),
+        "neither the page nor the shop client module ever calls " +
+          "getSession()/onAuthStateChange() — importing the browser config " +
+          "alone says nothing about whether a session was checked"
       ).toBe(true);
     }
   );
