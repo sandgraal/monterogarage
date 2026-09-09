@@ -110,7 +110,7 @@ entitlements are hard-Opus. The billing webhook is `secrets-or-deploy`.
   the SHP-05 coverage gap T3-201's review flagged (the module is proven neutral;
   nothing proved the page uses it). Depends: T3-202, T3-201 merged. Blocks:
   T3-203. *(SHP-02, SHP-05; 002 ACC-03)*
-- [ ] **T3-203 [PLATFORM]** Directory claim: claim flow against the 001
+- [x] **T3-203 [PLATFORM]** Directory claim: claim flow against the 001
   community collection's `shop` entries, verification, claimed badge. The
   community collection stays git-owned and read-only — a claim is a database
   row pointing at a content id, never an edit to the entry. Extract

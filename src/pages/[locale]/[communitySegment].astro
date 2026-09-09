@@ -114,6 +114,7 @@ import {
   t,
 } from "../../i18n/ui";
 import { formatCount } from "../../lib/glossary-filter";
+import { directoryListing } from "../../lib/directory/neutral-order";
 import { needsConfidenceCaveat } from "../../lib/confidence";
 import { buildTaxonomy, expandGenerations } from "../../lib/fitment";
 import { buildFitmentTable } from "../../lib/vehicle-listing";
@@ -204,62 +205,88 @@ function formatAssessed(iso: string): string {
 
 const entries = await getCollection("community");
 
-const communities = entries
-  .map((entry) => {
-    const {
-      communityType,
-      regions,
-      languages,
-      activity,
-      activityAssessed,
-      url,
-      links,
-      confidence,
-      fitment,
-      prose,
-    } = entry.data;
-    const local = prose[locale];
-    const gens = fitment.gens;
-    const linkList: CommunityLink[] = links ?? [];
+const communities = entries.map((entry) => {
+  const {
+    communityType,
+    regions,
+    languages,
+    activity,
+    activityAssessed,
+    url,
+    links,
+    confidence,
+    fitment,
+    prose,
+  } = entry.data;
+  const local = prose[locale];
+  const gens = fitment.gens;
+  const linkList: CommunityLink[] = links ?? [];
 
-    return {
-      id: entry.id,
-      domId: `community-${entry.id.replace(/\//g, "--")}`,
-      typeLabel: communityTypeLabel(strings, communityType),
-      regions,
-      regionLabels: regions.map(regionLabelFor),
-      languages,
-      languageLabels: languages.map((tag) => languageNames.of(tag) ?? tag),
-      gens,
-      /**
-       * The generations this entry's fitment *covers*, engine-expanded — a
-       * club scoped to `["gen2"]` covers the `gen2-5` facelift too. Rendered
-       * as the tags, and read by the client filter, so the page and the
-       * filter cannot disagree about what an entry is for.
-       */
-      coveredGens: expandGenerations(gens, taxonomy),
-      genLabels: expandGenerations(gens, taxonomy).map((id) =>
-        isKnownGeneration(id) ? generationLabel(strings, id) : id
-      ),
-      fitment,
-      activity: activity as ActivityLevel,
-      activityLabel: communityActivityLabel(strings, activity as ActivityLevel),
-      activityAssessed,
-      url,
-      links: linkList.map((link) => ({
-        ...link,
-        label: communityLinkKindLabel(strings, link.kind),
-      })),
-      showCaveat: needsConfidenceCaveat(confidence),
-      caveatByLocale: Object.fromEntries(
-        readingOrder.map((each) => [each, caveatSentence(each, confidence)])
-      ) as Record<Locale, string>,
-      title: local.title,
-      summary: local.summary,
-      goodFor: local.goodFor,
-    };
-  })
-  .sort((a, b) => collator.compare(a.title, b.title));
+  return {
+    id: entry.id,
+    domId: `community-${entry.id.replace(/\//g, "--")}`,
+    typeLabel: communityTypeLabel(strings, communityType),
+    regions,
+    regionLabels: regions.map(regionLabelFor),
+    languages,
+    languageLabels: languages.map((tag) => languageNames.of(tag) ?? tag),
+    gens,
+    /**
+     * The generations this entry's fitment *covers*, engine-expanded — a
+     * club scoped to `["gen2"]` covers the `gen2-5` facelift too. Rendered
+     * as the tags, and read by the client filter, so the page and the
+     * filter cannot disagree about what an entry is for.
+     */
+    coveredGens: expandGenerations(gens, taxonomy),
+    genLabels: expandGenerations(gens, taxonomy).map((id) =>
+      isKnownGeneration(id) ? generationLabel(strings, id) : id
+    ),
+    fitment,
+    activity: activity as ActivityLevel,
+    activityLabel: communityActivityLabel(strings, activity as ActivityLevel),
+    activityAssessed,
+    url,
+    links: linkList.map((link) => ({
+      ...link,
+      label: communityLinkKindLabel(strings, link.kind),
+    })),
+    showCaveat: needsConfidenceCaveat(confidence),
+    caveatByLocale: Object.fromEntries(
+      readingOrder.map((each) => [each, caveatSentence(each, confidence)])
+    ) as Record<Locale, string>,
+    title: local.title,
+    summary: local.summary,
+    goodFor: local.goodFor,
+  };
+});
+
+/**
+ * SHP-05 — the directory's order and inclusion are delegated to the neutral
+ * orderer (`src/lib/directory/neutral-order.ts`), never computed inline here.
+ * `directoryListing` is a pure function of the git-owned community content, so
+ * the order and the set of entries shown are provably independent of whether any
+ * shop has a claim, an account, or a plan (graded by
+ * `tests/shop/directory.test.ts` and `tests/pages/directory-neutrality.render.test.ts`;
+ * MON-05 restates it as a money rule for the day a plan exists). The locale
+ * collator is the one neutral presentation facet — it only ever sees two title
+ * strings, so it cannot make the order depend on anything but the content — and
+ * it is what keeps `/es/comunidad/` collating in Spanish and `/en/community/` in
+ * English, exactly as the inline sort did before the extraction.
+ */
+const byId = new Map(communities.map((community) => [community.id, community]));
+const orderedCommunities = directoryListing(
+  communities.map((community) => ({
+    id: community.id,
+    title: community.title,
+  })),
+  {},
+  (a, b) => collator.compare(a, b)
+)
+  .map((id) => byId.get(id))
+  .filter(
+    (community): community is (typeof communities)[number] =>
+      community !== undefined
+  );
 
 /** Sorted-by-label option list for a facet, built only from codes in use. */
 function labeledOptions(
@@ -468,7 +495,7 @@ const activityOptions = ACTIVITY_LEVELS.filter((level) =>
           <VehicleFitSummary locale={locale} fitments={fitmentTable.table} />
 
           <ul class="community__list" data-community-list>
-            {communities.map((community) => (
+            {orderedCommunities.map((community) => (
               <li
                 class="entry"
                 id={community.domId}
@@ -480,7 +507,28 @@ const activityOptions = ACTIVITY_LEVELS.filter((level) =>
               >
                 <div class="entry__head">
                   <h2 class="entry__title">{community.title}</h2>
-                  <span class="entry__type">{community.typeLabel}</span>
+                  <div class="entry__head-meta">
+                    {/*
+                     * SHP-02 claimed badge — display-only, hidden at build and
+                     * revealed by the client script only for an entry that
+                     * carries a VERIFIED claim (the database filters on
+                     * `verified_at is not null`, the same rule the graded
+                     * `resolveClaimBadges` applies). An unverified claim, and a
+                     * fortiori an unconfigured or unreachable stack, leaves the
+                     * badge hidden — so an unverified claim changes nothing a
+                     * reader sees, and the badge never affects order or
+                     * inclusion (SHP-05).
+                     */}
+                    <span
+                      class="entry__claimed"
+                      data-community-claimed
+                      data-entry-id={community.id}
+                      hidden
+                    >
+                      {strings.communityClaimedBadge}
+                    </span>
+                    <span class="entry__type">{community.typeLabel}</span>
+                  </div>
                 </div>
 
                 <p class="entry__summary">{community.summary}</p>
@@ -618,6 +666,7 @@ const activityOptions = ACTIVITY_LEVELS.filter((level) =>
     readVehicleSelection,
     type StoredVehicleSelection,
   } from "../../lib/vehicle-selection";
+  import { readVerifiedClaimEntryIds } from "../../lib/supabase/directory";
 
   /**
    * Client-side filtering (T703a) and vehicle fitment (T204). Enhancement
@@ -723,10 +772,36 @@ const activityOptions = ACTIVITY_LEVELS.filter((level) =>
     apply();
   }
 
+  /**
+   * SHP-02 claimed badges. Reveal, for each entry that carries a VERIFIED
+   * claim, the badge the server rendered hidden. The verified-entry set comes
+   * from the `directory_verified_claims()` RPC, which returns only the
+   * `community_entry_id` of claims where `verified_at is not null` — so an
+   * unverified claim contributes nothing, and an unconfigured or unreachable
+   * stack (including an anonymous visitor, since the RPC is authenticated-only —
+   * see `src/lib/supabase/directory.ts`) yields the empty set
+   * (`readVerifiedClaimEntryIds` fails to no badge: absent is the safe, neutral
+   * state for a display-only affordance). This never reorders or hides a card —
+   * it only toggles a badge's visibility — so SHP-05 neutrality holds regardless
+   * of what it finds.
+   */
+  async function revealClaimedBadges(root: HTMLElement): Promise<void> {
+    const badges = [
+      ...root.querySelectorAll<HTMLElement>("[data-community-claimed]"),
+    ];
+    if (badges.length === 0) return;
+    const verified = await readVerifiedClaimEntryIds();
+    for (const badge of badges) {
+      const entryId = badge.dataset.entryId ?? "";
+      if (entryId !== "" && verified.has(entryId)) badge.hidden = false;
+    }
+  }
+
   for (const root of document.querySelectorAll<HTMLElement>(
     "[data-community]"
   )) {
     enhance(root);
+    void revealClaimedBadges(root);
   }
 </script>
 
@@ -917,6 +992,13 @@ const activityOptions = ACTIVITY_LEVELS.filter((level) =>
     font-weight: 700;
   }
 
+  .entry__head-meta {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
   .entry__type {
     flex: 0 0 auto;
     font-size: 0.6875rem;
@@ -927,6 +1009,33 @@ const activityOptions = ACTIVITY_LEVELS.filter((level) =>
     background: var(--green-tint);
     border-radius: 4px;
     padding: 0.1875rem 0.5rem;
+  }
+
+  /*
+   * SHP-02 claimed badge — a verified claim's display-only marker. Rendered
+   * hidden and revealed by the client script only for a verified claim; the
+   * `[hidden]` rule beats the author `display: flex`/`inline-flex` for the same
+   * reason the toolbar's does. Uses the rust accent (not the green type chip) so
+   * it reads as a distinct, earned mark rather than another taxonomy tag.
+   */
+  .entry__claimed {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--rust-deep);
+    background: #f3e0d6;
+    border: 1px solid #e4c4b4;
+    border-radius: 4px;
+    padding: 0.1875rem 0.5rem;
+  }
+
+  .entry__claimed[hidden] {
+    display: none;
   }
 
   .entry__summary {

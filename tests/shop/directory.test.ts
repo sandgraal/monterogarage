@@ -305,53 +305,50 @@ describe("the directory_claims table is a pointer at content, behind RLS (SHP-02
     }
   }
 
-  it.fails("directory_claims enables AND forces row level security", () => {
+  it("directory_claims enables AND forces row level security", () => {
     requireClaimsTable();
     const sql = migrationSql();
     expect(enablesRls(sql, DIRECTORY_CLAIMS_TABLE)).toBe(true);
     expect(forcesRls(sql, DIRECTORY_CLAIMS_TABLE)).toBe(true);
   });
 
-  it.fails("no anonymous role reaches directory_claims", () => {
+  it("no anonymous role reaches directory_claims", () => {
     requireClaimsTable();
     expect(tableGrantIssues(migrationSql(), [DIRECTORY_CLAIMS_TABLE])).toEqual(
       []
     );
   });
 
-  it.fails(
-    "community_entry_id is a text pointer at a content id, not a table FK",
-    () => {
-      // The claim points at a git-owned community entry by its *content id* — a
-      // `text` value like `veinsa-motors-mitsubishi-costa-rica`. It is not a
-      // foreign key into any user table, because the community collection lives in
-      // git and not in the database. A FK here would mean a claim edits/relates to
-      // a DB copy of the entry — exactly what "the collection stays read-only"
-      // forbids.
-      requireClaimsTable();
-      const sql = migrationSql();
-      const def = columnDefinitionFor(
-        sql,
-        DIRECTORY_CLAIMS_TABLE,
-        CLAIM_ENTRY_ID_COLUMN
-      );
-      expect(
-        def,
-        `${DIRECTORY_CLAIMS_TABLE}.${CLAIM_ENTRY_ID_COLUMN} is not declared`
-      ).not.toBeNull();
-      expect(def?.definition).toMatch(/text/);
-      const fk =
-        foreignKey(def?.definition ?? "") ??
-        foreignKeyFor(sql, DIRECTORY_CLAIMS_TABLE, CLAIM_ENTRY_ID_COLUMN);
-      expect(
-        fk,
-        `${CLAIM_ENTRY_ID_COLUMN} carries a foreign key — a claim must point at a ` +
-          `git content id, not a database relation`
-      ).toBeNull();
-    }
-  );
+  it("community_entry_id is a text pointer at a content id, not a table FK", () => {
+    // The claim points at a git-owned community entry by its *content id* — a
+    // `text` value like `veinsa-motors-mitsubishi-costa-rica`. It is not a
+    // foreign key into any user table, because the community collection lives in
+    // git and not in the database. A FK here would mean a claim edits/relates to
+    // a DB copy of the entry — exactly what "the collection stays read-only"
+    // forbids.
+    requireClaimsTable();
+    const sql = migrationSql();
+    const def = columnDefinitionFor(
+      sql,
+      DIRECTORY_CLAIMS_TABLE,
+      CLAIM_ENTRY_ID_COLUMN
+    );
+    expect(
+      def,
+      `${DIRECTORY_CLAIMS_TABLE}.${CLAIM_ENTRY_ID_COLUMN} is not declared`
+    ).not.toBeNull();
+    expect(def?.definition).toMatch(/text/);
+    const fk =
+      foreignKey(def?.definition ?? "") ??
+      foreignKeyFor(sql, DIRECTORY_CLAIMS_TABLE, CLAIM_ENTRY_ID_COLUMN);
+    expect(
+      fk,
+      `${CLAIM_ENTRY_ID_COLUMN} carries a foreign key — a claim must point at a ` +
+        `git content id, not a database relation`
+    ).toBeNull();
+  });
 
-  it.fails("verified_at is nullable — null is the unverified state", () => {
+  it("verified_at is nullable — null is the unverified state", () => {
     // SHP-02's single decisive fact: `verified_at is null` ⇒ unverified ⇒ no
     // badge. If the column were `not null` there would be no way to represent an
     // unverified claim, and "an unverified claim changes nothing" would be
@@ -372,7 +369,7 @@ describe("the directory_claims table is a pointer at content, behind RLS (SHP-02
     ).toBe(false);
   });
 
-  it.fails("shop_id records the claiming shop", () => {
+  it("shop_id records the claiming shop", () => {
     requireClaimsTable();
     const def = columnDefinitionFor(
       migrationSql(),
@@ -447,7 +444,7 @@ describe("the community content schema cannot carry claim/verification state (SH
  * ====================================================================== */
 
 describe("an unverified directory claim renders nothing (SHP-02)", () => {
-  it.fails.each([
+  it.each([
     ["an unverified claim shows no badge", null, false],
     ["a verified claim shows a badge", "2026-09-08T00:00:00Z", true],
   ] as const)("%s", async (_label, verifiedAt, shows) => {
@@ -461,7 +458,7 @@ describe("an unverified directory claim renders nothing (SHP-02)", () => {
     expect(badges.has("TEST-shop-zzz")).toBe(shows);
   });
 
-  it.fails("no claim at all shows no badge", async () => {
+  it("no claim at all shows no badge", async () => {
     const resolveClaimBadges = await loadResolveClaimBadges();
     expect(resolveClaimBadges([]).has("TEST-shop-zzz")).toBe(false);
   });
@@ -472,7 +469,7 @@ describe("an unverified directory claim renders nothing (SHP-02)", () => {
  * ====================================================================== */
 
 describe("directory ordering and inclusion are neutral (SHP-05, MON-05)", () => {
-  it.fails.each(NON_NEUTRAL_CONTEXTS)(
+  it.each(NON_NEUTRAL_CONTEXTS)(
     "order and inclusion are identical under %s",
     async (_label, context) => {
       // The load-bearing SHP-05 assertion: the directory's output is byte-for-
@@ -488,30 +485,24 @@ describe("directory ordering and inclusion are neutral (SHP-05, MON-05)", () => 
     }
   );
 
-  it.fails(
-    "inclusion is every entry, exactly once — nothing added or hidden",
-    async () => {
-      // Inclusion is content-only too: a claim, a membership, or a plan can
-      // neither add an entry nor drop one.
-      const directoryListing = await loadDirectoryListing();
-      const listed = directoryListing(ENTRIES, EMPTY_CONTEXT);
-      expect([...listed].sort()).toEqual([...ENTRIES.map((e) => e.id)].sort());
-    }
-  );
+  it("inclusion is every entry, exactly once — nothing added or hidden", async () => {
+    // Inclusion is content-only too: a claim, a membership, or a plan can
+    // neither add an entry nor drop one.
+    const directoryListing = await loadDirectoryListing();
+    const listed = directoryListing(ENTRIES, EMPTY_CONTEXT);
+    expect([...listed].sort()).toEqual([...ENTRIES.map((e) => e.id)].sort());
+  });
 
-  it.fails(
-    "the listing is a real function of the content, not a constant",
-    async () => {
-      // Guards the invariance assertions above against a degenerate `() => []`
-      // implementation that would satisfy every "identical" check vacuously:
-      // dropping an entry from the *content* must change the output.
-      const directoryListing = await loadDirectoryListing();
-      const full = directoryListing(ENTRIES, EMPTY_CONTEXT);
-      const fewer = directoryListing(ENTRIES.slice(0, 2), EMPTY_CONTEXT);
-      expect(fewer).not.toEqual(full);
-      expect(fewer).toHaveLength(2);
-    }
-  );
+  it("the listing is a real function of the content, not a constant", async () => {
+    // Guards the invariance assertions above against a degenerate `() => []`
+    // implementation that would satisfy every "identical" check vacuously:
+    // dropping an entry from the *content* must change the output.
+    const directoryListing = await loadDirectoryListing();
+    const full = directoryListing(ENTRIES, EMPTY_CONTEXT);
+    const fewer = directoryListing(ENTRIES.slice(0, 2), EMPTY_CONTEXT);
+    expect(fewer).not.toEqual(full);
+    expect(fewer).toHaveLength(2);
+  });
 });
 
 describe("the SHP-05 neutrality assertion can actually fail (mutation-test the corpus)", () => {
