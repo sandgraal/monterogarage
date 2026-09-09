@@ -356,11 +356,11 @@ function forgingInsertPolicies(
  * ====================================================================== */
 
 describe("the proposals table ships behind row-level security (PRO-03, PRO-04)", () => {
-  it.fails(`${CONTRACT_SCHEMA}.${PROPOSALS_TABLE} is a created table`, () => {
+  it(`${CONTRACT_SCHEMA}.${PROPOSALS_TABLE} is a created table`, () => {
     requireProposalsTable();
   });
 
-  it.fails.each(PROPOSAL_COLUMNS)("proposals.%s is a column", (column) => {
+  it.each(PROPOSAL_COLUMNS)("proposals.%s is a column", (column) => {
     requireProposalsTable();
     expect(
       columnDefinitionFor(migrationSql(), PROPOSALS_TABLE, column),
@@ -368,7 +368,7 @@ describe("the proposals table ships behind row-level security (PRO-03, PRO-04)",
     ).not.toBeNull();
   });
 
-  it.fails("proposals enables AND forces row level security", () => {
+  it("proposals enables AND forces row level security", () => {
     // `enable` alone exempts the table owner (which migrations run as); `force`
     // closes it. Both required, graded separately because `force` is the one
     // most often missed. AGENTS.md: "every user table ships with RLS."
@@ -378,7 +378,7 @@ describe("the proposals table ships behind row-level security (PRO-03, PRO-04)",
     expect(forcesRls(sql, PROPOSALS_TABLE), "does not force RLS").toBe(true);
   });
 
-  it.fails("no anonymous role reaches the proposals table", () => {
+  it("no anonymous role reaches the proposals table", () => {
     // A proposal is an authenticated flow (spec §1: "the accountless path is
     // read-only because it has no auth.uid()"). `tableGrantIssues` flags anon
     // holding anything AND — the unknown-is-not-zero hazard — a table whose
@@ -388,7 +388,7 @@ describe("the proposals table ships behind row-level security (PRO-03, PRO-04)",
     expect(tableGrantIssues(migrationSql(), [PROPOSALS_TABLE])).toEqual([]);
   });
 
-  it.fails("owner_id is on delete cascade to auth.users (ACC-03)", () => {
+  it("owner_id is on delete cascade to auth.users (ACC-03)", () => {
     requireProposalsTable();
     const fk = foreignKeyFor(
       migrationSql(),
@@ -406,7 +406,7 @@ describe("the proposals table ships behind row-level security (PRO-03, PRO-04)",
     ).toBe("cascade");
   });
 
-  it.fails(
+  it(
     "proposed_by is on delete cascade to auth.users — a draft dies with its author (ACC-03)",
     () => {
       requireProposalsTable();
@@ -427,7 +427,7 @@ describe("the proposals table ships behind row-level security (PRO-03, PRO-04)",
     }
   );
 
-  it.fails(
+  it(
     "vehicle_id is on delete cascade to vehicles — a proposal on a gone vehicle is meaningless",
     () => {
       requireProposalsTable();
@@ -448,7 +448,7 @@ describe("the proposals table ships behind row-level security (PRO-03, PRO-04)",
     }
   );
 
-  it.fails(
+  it(
     "the shared account-deletion model holds for proposals (both accounts cascade)",
     () => {
       // The same `sharedTableCascadeIssues` the 002 suite runs, aimed at just
@@ -486,7 +486,7 @@ describe("proposals is registered as a pending SHARED user table (contract wirin
 });
 
 describe("only the author and the owner can see a proposal (PRO-04)", () => {
-  it.fails(
+  it(
     "every proposals policy is owner-scoped, non-anon, and has a `to` clause",
     () => {
       // The generic single-owner sweep, aimed at proposals by an explicit list
@@ -500,7 +500,7 @@ describe("only the author and the owner can see a proposal (PRO-04)", () => {
     }
   );
 
-  it.fails("an owner policy keys the row to owner_id = auth.uid()", () => {
+  it("an owner policy keys the row to owner_id = auth.uid()", () => {
     requireProposalsTable();
     expect(
       policyKeyedOn(PROPOSAL_OWNER_COLUMN),
@@ -508,7 +508,7 @@ describe("only the author and the owner can see a proposal (PRO-04)", () => {
     ).toBeDefined();
   });
 
-  it.fails("a proposer policy keys the row to proposed_by = auth.uid()", () => {
+  it("a proposer policy keys the row to proposed_by = auth.uid()", () => {
     requireProposalsTable();
     expect(
       policyKeyedOn(PROPOSAL_PROPOSED_BY_COLUMN),
@@ -554,7 +554,7 @@ describe("only the author and the owner can see a proposal (PRO-04)", () => {
 });
 
 describe("the proposal write path requires a live can_propose grant (PRO-01, PRO-06)", () => {
-  it.fails(
+  it(
     `${SHARES_TABLE}.${CAN_PROPOSE_COLUMN} is a boolean, not-null, default false capability`,
     () => {
       // SHR-05: a grant's powers are explicit capability columns, never a
@@ -581,7 +581,7 @@ describe("the proposal write path requires a live can_propose grant (PRO-01, PRO
     }
   );
 
-  it.fails(
+  it(
     `${SHARE_CREATE_FUNCTION} takes ${SHARE_CAN_PROPOSE_ARGUMENT}, and stays one routine`,
     () => {
       // Adding a defaulted argument changes the routine's identity, so T3-302
@@ -595,7 +595,7 @@ describe("the proposal write path requires a live can_propose grant (PRO-01, PRO
     }
   );
 
-  it.fails(
+  it(
     "the proposer policy consults a live can_propose grant — inline, or via a helper it calls",
     () => {
       // PRO-01 + PRO-06's structural floor, corrected by the 2026-09-09 ruling:
@@ -842,7 +842,7 @@ describe("the owner cannot forge a proposal (PRO-01, §7.1 provenance integrity)
 });
 
 describe("acceptance is the owner's own action, and the one write into records (PRO-02)", () => {
-  it.fails(
+  it(
     `ships ${CONTRACT_SCHEMA}.${ACCEPT_PROPOSAL_FUNCTION}, taking the proposal id`,
     () => {
       const accept = requireProposalRoutine(ACCEPT_PROPOSAL_FUNCTION);
@@ -852,7 +852,7 @@ describe("acceptance is the owner's own action, and the one write into records (
     }
   );
 
-  it.fails(
+  it(
     "accept_proposal is security definer and pins search_path = ''",
     () => {
       const accept = requireProposalRoutine(ACCEPT_PROPOSAL_FUNCTION);
@@ -866,7 +866,7 @@ describe("acceptance is the owner's own action, and the one write into records (
     }
   );
 
-  it.fails(
+  it(
     "accept_proposal ties auth.uid() to the proposal's owner — the owner's own action",
     () => {
       // "Acceptance is the owner's own action, keyed to auth.uid()." A definer
@@ -881,7 +881,7 @@ describe("acceptance is the owner's own action, and the one write into records (
     }
   );
 
-  it.fails(
+  it(
     "accept_proposal reads the proposal and writes exactly records",
     () => {
       const accept = requireProposalRoutine(ACCEPT_PROPOSAL_FUNCTION);
@@ -894,7 +894,7 @@ describe("acceptance is the owner's own action, and the one write into records (
     }
   );
 
-  it.fails.each(RECORD_PROVENANCE_COLUMNS)(
+  it.each(RECORD_PROVENANCE_COLUMNS)(
     "accept_proposal carries %s onto the created record (PRO-02 provenance)",
     (column) => {
       const accept = requireProposalRoutine(ACCEPT_PROPOSAL_FUNCTION);
@@ -902,7 +902,7 @@ describe("acceptance is the owner's own action, and the one write into records (
     }
   );
 
-  it.fails.each(RECORD_PROVENANCE_COLUMNS)(
+  it.each(RECORD_PROVENANCE_COLUMNS)(
     "records.%s exists — provenance the accepted record carries (PRO-02, PRO-05)",
     (column) => {
       expect(
@@ -912,7 +912,7 @@ describe("acceptance is the owner's own action, and the one write into records (
     }
   );
 
-  it.fails(
+  it(
     "records.accepted_at is a timestamp; the share/author refs are uuid",
     () => {
       const acceptedAt = columnDefinitionFor(
@@ -936,7 +936,7 @@ describe("acceptance is the owner's own action, and the one write into records (
     }
   );
 
-  it.fails(
+  it(
     "records.proposed_by is on delete set null — an accepted record survives its author (PRO-06)",
     () => {
       // The mirror image of proposals.proposed_by (cascade). An accepted
@@ -961,7 +961,7 @@ describe("acceptance is the owner's own action, and the one write into records (
 });
 
 describe("acceptance is account-only, and reachable by an account (spec §1)", () => {
-  it.fails("accept_proposal is not reachable without an account", () => {
+  it("accept_proposal is not reachable without an account", () => {
     // §1: "the accountless path is read-only because it has no auth.uid()."
     // Accepting is the write; an anon/public caller holds no execute on it. An
     // "unknown" verdict counts as reachable (Postgres grants execute to PUBLIC
@@ -973,7 +973,7 @@ describe("acceptance is account-only, and reachable by an account (spec §1)", (
     expect(reachable).toEqual([]);
   });
 
-  it.fails("accept_proposal is reachable by an authenticated caller", () => {
+  it("accept_proposal is reachable by an authenticated caller", () => {
     // The other direction — a closed door nobody can open is as broken as one
     // that will not shut.
     const state = grants(migrationSql());
@@ -1099,7 +1099,7 @@ async function ownedVehicleId(scenario: Scenario, slot = "1"): Promise<string> {
 describe.skipIf(!live.available)(
   liveTitle("PRO-01 — only a live can_propose grant admits a proposal", live),
   () => {
-    it.fails.each([
+    it.each([
       ["opens can_propose", true, true],
       ["withholds can_propose", false, false],
     ] as const)(
@@ -1135,7 +1135,7 @@ describe.skipIf(!live.available)(
       }
     );
 
-    it.fails(
+    it(
       "a mechanic with no grant cannot submit; the same mechanic, once granted, can",
       async () => {
         const scenario = await provisionScenario(stackOf(live));
@@ -1182,7 +1182,7 @@ describe.skipIf(!live.available)(
     live
   ),
   () => {
-    it.fails(
+    it(
       "the author and the owner see the proposal; a third mechanic does not",
       async () => {
         const scenario = await provisionScenario(stackOf(live));
@@ -1238,7 +1238,7 @@ describe.skipIf(!live.available)(
     live
   ),
   () => {
-    it.fails(
+    it(
       "acceptance creates exactly one record carrying the proposal's provenance",
       async () => {
         const scenario = await provisionScenario(stackOf(live));
@@ -1305,7 +1305,7 @@ describe.skipIf(!live.available)(
       }
     );
 
-    it.fails("rejection creates no record", async () => {
+    it("rejection creates no record", async () => {
       const scenario = await provisionScenario(stackOf(live));
       const mechanic = await makeAuthedActor(scenario, "m");
       try {
@@ -1358,7 +1358,7 @@ describe.skipIf(!live.available)(
 describe.skipIf(!live.available)(
   liveTitle("PRO-02/PRO-03 — a mechanic cannot forge an accepted record", live),
   () => {
-    it.fails(
+    it(
       "a mechanic cannot write a record directly, nor accept their own proposal; the owner can",
       async () => {
         const scenario = await provisionScenario(stackOf(live));
@@ -1427,7 +1427,7 @@ describe.skipIf(!live.available)(
     live
   ),
   () => {
-    it.fails(
+    it(
       "after revocation the mechanic cannot submit or withdraw, but the owner can reject",
       async () => {
         const scenario = await provisionScenario(stackOf(live));
@@ -1502,7 +1502,7 @@ describe.skipIf(!live.available)(
       }
     );
 
-    it.fails(
+    it(
       "an accepted record is unaffected when the grant is later revoked",
       async () => {
         const scenario = await provisionScenario(stackOf(live));
