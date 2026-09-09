@@ -195,7 +195,16 @@ export function readProposals(
   return selectRows(scenario, actor, PROPOSALS_TABLE, "select=*");
 }
 
-/** `true` when `proposalId` appears in a proposals read. Caller asserts `ok` first. */
+/**
+ * `true` when `proposalId` appears in a proposals read. Safe to call without
+ * asserting `ok` first: a failed/refused response's `body` is not an array,
+ * so it falls through the `Array.isArray` guard below to `rows = []` and
+ * this returns `false` — which is exactly what a negative caller wants (e.g.
+ * asserting a stranger's refused-or-empty read never contains the row,
+ * `proposals.test.ts`'s "third mechanic does not" case). Callers proving a
+ * *positive* read should still assert `ok` themselves first, since `false`
+ * here is ambiguous between "refused" and "empty but permitted."
+ */
 export function proposalsInclude(
   response: ApiResponse,
   proposalId: string

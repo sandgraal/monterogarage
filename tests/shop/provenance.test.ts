@@ -57,6 +57,30 @@ const SAMPLE: ProvenanceInput = {
 const LOCALES = ["en", "es"] as const;
 
 /**
+ * Unicode-aware `tú` boundary — mirrors `src/lib/procedures/figures.ts`'s
+ * `END` and the tokenizer in `scripts/check-es-register.mjs`. `/\btú\b/`
+ * would be wrong, not just imprecise: JS's `\b` is ASCII/`\w`-based and `ú`
+ * is not a word character, so there is **no** word boundary immediately
+ * after "tú" — `/\btú\b/.test("tú tenés el vehículo")` is always `false`,
+ * silently. A negative lookaround for a letter or digit on both sides is
+ * the property actually wanted ("tú" as its own token, not a substring).
+ */
+const TU_PATTERN = /(?<![\p{L}\p{N}])tú(?![\p{L}\p{N}])/u;
+/** `vos` is plain ASCII on every character, so `\bvos\b` is not the same bug. */
+const VOS_PATTERN = /\bvos\b/;
+
+/**
+ * The informal-register predicate the usted-register grader below applies —
+ * pulled out so the "mutation-test the corpus" suite exercises the exact
+ * same check on synthetic strings instead of a second, possibly-diverging
+ * copy of it.
+ */
+function usesInformalRegister(es: string): { tu: boolean; vos: boolean } {
+  const lower = es.toLowerCase();
+  return { tu: TU_PATTERN.test(lower), vos: VOS_PATTERN.test(lower) };
+}
+
+/**
  * Load the label function from the T3-303 module by variable-path dynamic
  * import — a literal specifier would make `tsc`/`astro check` fail with ts(2307)
  * while T3-303 has not written it (an error, not the expected failure the
@@ -125,9 +149,10 @@ describe("provenance is a first-hand claim, never a site-verified fact (PRO-05)"
       // Kept separate from the bilingual sweep above so its marker names exactly
       // what it waits for. `usted` register: no `tú`, no `vos`.
       const label = await loadLabel();
-      const es = label(SAMPLE, "es").toLowerCase();
-      expect(/\btú\b/.test(es), "ES label uses tú").toBe(false);
-      expect(/\bvos\b/.test(es), "ES label uses vos").toBe(false);
+      const es = label(SAMPLE, "es");
+      const { tu, vos } = usesInformalRegister(es);
+      expect(tu, "ES label uses tú").toBe(false);
+      expect(vos, "ES label uses vos").toBe(false);
     }
   );
 });
@@ -156,5 +181,33 @@ describe("the PRO-05 negative can actually fail (mutation-test the corpus)", () 
       "Propuesto por TEST-MECHANIC-Alonso; el propietario lo aceptó el 2026-09-08.";
     expect(tripsFor(cleanEn, "en")).toBe(false);
     expect(tripsFor(cleanEs, "es")).toBe(false);
+  });
+
+  it("the usted-register check actually catches tú and vos, not just their absence", () => {
+    // Proof the Unicode-aware `tú` boundary bites. This is the exact defect
+    // this test was fixed for: `/\btú\b/.test("tú tenés…")` is always `false`
+    // because JS's `\b` never matches immediately after a non-ASCII letter
+    // like `ú` — so the old check was inert and would have waved through a
+    // Spanish label that wrongly used `tú`.
+    expect(
+      usesInformalRegister("Tú aceptaste el trabajo el 2026-09-08.").tu,
+      "a tú-register label must be caught"
+    ).toBe(true);
+    expect(
+      usesInformalRegister("Vos aceptaste el trabajo el 2026-09-08.").vos,
+      "a vos-register label must be caught"
+    ).toBe(true);
+
+    // … and a genuine usted-register label trips neither half.
+    const cleanUsted =
+      "Propuesto por TEST-MECHANIC-Alonso; el propietario lo aceptó el 2026-09-08.";
+    const { tu, vos } = usesInformalRegister(cleanUsted);
+    expect(tu, "a clean usted-register label must not trip the tú check").toBe(
+      false
+    );
+    expect(
+      vos,
+      "a clean usted-register label must not trip the vos check"
+    ).toBe(false);
   });
 });
