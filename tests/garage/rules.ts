@@ -74,8 +74,8 @@ import {
   PLAINTEXT_TOKEN_COLUMNS,
   PUBLIC_VISIBILITY_FLAG_COLUMNS,
   SHARED_TABLE_ACCOUNT_TARGET,
-  SHARED_USER_TABLES,
   SHARED_USER_TABLE_NAMES,
+  SHIPPED_SHARED_USER_TABLES,
   SHARE_GRANT_KINDS,
   SHARE_READER_TOKEN_ARGUMENT,
   SHARE_TOKEN_HASH_COLUMN,
@@ -1650,14 +1650,31 @@ export function ungradedTableIssues(
  *   `set null`: the shared row outlives the departing account (`cascade` would
  *   destroy it; `restrict`/`no action` would BLOCK the deletion ACC-03 forbids
  *   gating).
+ * - {@link SharedUserTableContract.parentCascadeColumns} (T3-203a) — the row
+ *   belongs to a PARENT shared table rather than to an account, so its FK MUST
+ *   be `on delete cascade` to that parent (not to `auth.users`): the row goes
+ *   when its parent goes, and account deletion reaches it only transitively
+ *   through the parent's own lifecycle. `directory_claims.shop_id → shops` is
+ *   the case — a claim is the shop's, so it dies with the shop (SHP-02) and
+ *   survives an account deletion the shop itself survives.
  *
  * `null` from {@link foreignKeyOnDeleteFor} (no FK at all) is reported as a
  * distinct, honest absence rather than folded into a wrong action — the
  * unknown-is-not-zero discipline this repo has paid for.
+ *
+ * ## The default is the SHIPPED set, not every shared table
+ *
+ * `shared` defaults to {@link SHIPPED_SHARED_USER_TABLES} so a caller sweeping
+ * a real migration never grades a `pending` table no migration creates yet (it
+ * would report a spurious "no foreign key" for every one of its columns). The
+ * `it.fails` grader for a pending table passes {@link
+ * UNSHIPPED_SHARED_USER_TABLES} explicitly — red today, green when the
+ * migration lands. Same shipped/unshipped partition the `USER_TABLES` sweeps
+ * use one class over.
  */
 export function sharedTableCascadeIssues(
   normalized: string,
-  shared: readonly SharedUserTableContract[] = SHARED_USER_TABLES
+  shared: readonly SharedUserTableContract[] = SHIPPED_SHARED_USER_TABLES
 ): string[] {
   const issues: string[] = [];
   for (const table of shared) {
@@ -1670,6 +1687,9 @@ export function sharedTableCascadeIssues(
       issues.push(
         ...accountHopIssues(normalized, table.name, column, "set null")
       );
+    }
+    for (const { column, parent } of table.parentCascadeColumns ?? []) {
+      issues.push(...parentHopIssues(normalized, table.name, column, parent));
     }
   }
   return issues;
@@ -1722,6 +1742,50 @@ function accountHopIssues(
   return [
     `${table}.${column}: on delete ${action}, not ${expected} — ${because}`,
   ];
+}
+
+/**
+ * One parent-hop column's finding, or none (T3-203a). The mirror of
+ * {@link accountHopIssues} for a row that belongs to a PARENT shared table
+ * rather than to an account: checks the FK exists, targets exactly that parent
+ * (bare or `public.`-qualified, never another schema — a `private.shops` is a
+ * different object with the same name and must not pass), and is `on delete
+ * cascade` so the row dies with its parent (SHP-02). `null` (no FK) is a named
+ * absence, never silence — the unknown-is-not-zero discipline again.
+ */
+function parentHopIssues(
+  normalized: string,
+  table: string,
+  column: string,
+  parent: string
+): string[] {
+  const fk = foreignKeyFor(normalized, table, column);
+  const action = foreignKeyOnDeleteFor(normalized, table, column);
+  if (fk === null || action === null) {
+    return [
+      `${table}.${column}: no foreign key to ${parent} — a claim belongs to ` +
+        `its ${parent}, so this column must bind to it \`on delete cascade\` ` +
+        `(SHP-02: delete the ${parent}, its rows go)`,
+    ];
+  }
+  const acceptedTargets = [parent, `${CONTRACT_SCHEMA}.${parent}`];
+  if (!acceptedTargets.includes(fk.target)) {
+    return [
+      `${table}.${column}: references ${fk.target}, not ${parent} ` +
+        `(or ${CONTRACT_SCHEMA}.${parent}) — the parent-lifecycle grader needs ` +
+        `the ${parent} hop, and a same-name-different-schema target is a ` +
+        `different object`,
+    ];
+  }
+  if (action === "cascade") return [];
+
+  const because =
+    action === "set null"
+      ? `set null would leave a claim pointing at a ${parent} that no longer ` +
+        `exists — a claim is the ${parent}'s and must go with it (SHP-02)`
+      : `it would BLOCK deleting the ${parent} while any claim references it; ` +
+        `a ${parent}'s claims are its own and must cascade away with it (SHP-02)`;
+  return [`${table}.${column}: on delete ${action}, not cascade — ${because}`];
 }
 
 /**

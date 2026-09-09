@@ -54,6 +54,8 @@ import {
   EXEMPT_PUBLIC_TABLES,
   SHARED_USER_TABLES,
   SHARED_USER_TABLE_NAMES,
+  SHIPPED_SHARED_USER_TABLE_NAMES,
+  type SharedUserTableContract,
 } from "./contract.ts";
 import {
   sharedTableCascadeIssues,
@@ -63,6 +65,7 @@ import {
 import {
   createdTables,
   enablesRls,
+  foreignKeyFor,
   forcesRls,
   foreignKeyOnDeleteFor,
   migrationSql,
@@ -451,15 +454,20 @@ describe("the SHARED user-table class is internally coherent", () => {
   // `harness-contract.test.ts` beside `USER_TABLE_NAMES`, so the contract's
   // table sets have one source of truth. This file owns only the guard the
   // cascade rule depends on.
-  it("every shared table declares at least one auth.users lifecycle column", () => {
-    // The completeness guard: a shared table with no cascade/set-null column
-    // would be swept by `sharedTableCascadeIssues` and produce nothing — a rule
-    // that cannot fail. Each entry must bind at least one column to the account,
-    // so a fourth shared table cannot join the class without a cascade grader.
+  it("every shared table declares at least one lifecycle column (direct or via a parent)", () => {
+    // The completeness guard: a shared table with no cascade/set-null/parent
+    // column would be swept by `sharedTableCascadeIssues` and produce nothing —
+    // a rule that cannot fail. Each entry must bind at least one column to the
+    // account (directly) or to a parent shared table (transitively), so a
+    // fourth shared table cannot join the class without a cascade grader.
+    // `directory_claims` (T3-203a) is the parent-hop case: it declares no
+    // `auth.users` column, only `shop_id → shops`, so this guard now counts
+    // {@link SharedUserTableContract.parentCascadeColumns} too.
     for (const table of SHARED_USER_TABLES) {
       const columns = [
         ...table.accountCascadeColumns,
         ...table.founderSetNullColumns,
+        ...(table.parentCascadeColumns ?? []).map((hop) => hop.column),
       ];
       expect(columns.length, table.name).toBeGreaterThan(0);
     }
@@ -476,7 +484,12 @@ describe("the SHARED user-table class is internally coherent", () => {
  * ====================================================================== */
 
 describe("the shipped migration creates the shop tables with RLS forced", () => {
-  it.each(SHARED_USER_TABLE_NAMES)(
+  // Iterates the SHIPPED set, not every shared table: `directory_claims`
+  // (T3-203a, `pending`) has no migration yet, so it gets its own `it.fails`
+  // graders in the "directory_claims (T3-203a)" section below rather than an
+  // unmarked red line here. When T3-203 deletes its `pending` marker,
+  // `directory_claims` joins SHIPPED and is swept here automatically.
+  it.each(SHIPPED_SHARED_USER_TABLE_NAMES)(
     "public.%s exists and forces row level security",
     (table) => {
       const created = createdTables(migrationSql()).map((t) => t.name);
@@ -531,11 +544,346 @@ describe("the shipped migration honours the shared account-deletion model (ACC-0
     // The other side of the accommodation, against the real migration: now that
     // T3-202 ships the tables, `ungradedTableIssues` must find them known AND
     // RLS-forced. createdTables now lists all three, so the assertion below —
-    // that the sweep has *seen and cleared* all three — holds.
+    // that the sweep has *seen and cleared* all three — holds. Iterates SHIPPED,
+    // not every shared table: `directory_claims` is not created yet, so its
+    // presence is asserted by its own `it.fails` below, not here.
     const created = createdTables(migrationSql()).map((t) => t.name);
-    for (const table of SHARED_USER_TABLE_NAMES) {
+    for (const table of SHIPPED_SHARED_USER_TABLE_NAMES) {
       expect(created, `public.${table} not created yet`).toContain(table);
     }
     expect(ungradedTableIssues(migrationSql())).toEqual([]);
   });
+});
+
+/* =========================================================================
+ * directory_claims (T3-203a) — the SHARED table with a PARENT-hop lifecycle
+ *
+ * A claim belongs to a shop, not to a person, so unlike the three shop tables
+ * it binds NO `auth.users` column: its whole account-lifecycle is the parent
+ * hop `shop_id → shops on delete cascade` (SHP-02 — delete the shop, its claims
+ * go; delete an account, the shop and its claims survive via
+ * `shops.created_by set null`). Declared ahead of T3-203's migration and
+ * carried `pending` in {@link SHARED_USER_TABLES}, so:
+ *
+ *  - the mutation-corpus tests below (plain `it`, green today) feed synthetic
+ *    directory_claims DDL to the rules and pin that a correct schema passes and
+ *    every wrong shape is caught, for the exact reason SHP-02 gives — the
+ *    GRADER-PRINCIPLES "mutation-test the probe corpus" guard;
+ *  - the graders (`it.fails`, red today) assert the shipped migration, which
+ *    has no directory_claims yet. T3-203 activates each by deleting exactly its
+ *    one `.fails` line AND the `pending` marker on the contract entry, and only
+ *    a correct parent-cascade migration turns it green.
+ *
+ * The RLS-enable/force, no-anon, `community_entry_id`-is-a-text-pointer and
+ * `verified_at`-nullable graders are T3-201's and live in
+ * `tests/shop/directory.test.ts` — this file does not duplicate their `it.fails`
+ * markers; it grades only the parent-cascade hop and the shared-class
+ * membership (`ungradedTableIssues`) that `tests/shop/directory.test.ts` leaves
+ * to this class.
+ * ====================================================================== */
+
+/**
+ * The pending contract entry, resolved by name so the rule-level graders keep
+ * grading directory_claims through the `pending → shipped` promotion (the entry
+ * survives; only its `pending` marker is deleted). Never `[]` — an empty list
+ * would make `sharedTableCascadeIssues` grade nothing and pass vacuously.
+ */
+const DIRECTORY_CLAIMS_CONTRACT: SharedUserTableContract = (() => {
+  const entry = SHARED_USER_TABLES.find(
+    (table) => table.name === "directory_claims"
+  );
+  if (!entry) {
+    throw new Error(
+      "SHARED_USER_TABLES no longer enumerates directory_claims — T3-203a's " +
+        "parent-hop grader has nothing to grade"
+    );
+  }
+  return entry;
+})();
+
+interface DirectoryClaimsOptions {
+  /** `on delete …` clause on `directory_claims.shop_id` (default correct). */
+  readonly shopIdClause?: string;
+  /** The FK target of `shop_id` (default `public.shops`). */
+  readonly shopIdTarget?: string;
+  /** Drop the FK on `shop_id` entirely, to prove a bare column is caught. */
+  readonly shopIdNoFk?: boolean;
+  /** Add an (illegal) FK on `community_entry_id`, to prove T3-201's rule bites. */
+  readonly entryIdReferences?: string;
+  /** Drop `force row level security` from directory_claims. */
+  readonly unforced?: boolean;
+  /** Add a leaking `grant select … to anon` on directory_claims. */
+  readonly leakAnon?: boolean;
+}
+
+/**
+ * A correct synthetic `directory_claims` schema (plus the `shops` it points at),
+ * mutable one clause at a time. Never written to `supabase/migrations`; only
+ * ever fed to a rule as a string. `test_`-free on purpose — the real table
+ * names, so "the correct schema passes" is a claim about the shape T3-203 ships.
+ */
+function directoryClaimsSchema(options: DirectoryClaimsOptions = {}): string {
+  const {
+    shopIdClause = "on delete cascade",
+    shopIdTarget = "public.shops",
+    shopIdNoFk = false,
+    entryIdReferences,
+    unforced = false,
+    leakAnon = false,
+  } = options;
+
+  const shopId = shopIdNoFk
+    ? "shop_id uuid not null"
+    : `shop_id uuid not null references ${shopIdTarget} ${shopIdClause}`;
+  const entryId = entryIdReferences
+    ? `community_entry_id text not null references ${entryIdReferences}`
+    : "community_entry_id text not null";
+
+  return sql(`
+    create table public.shops (
+      id uuid primary key,
+      name text not null,
+      created_by uuid references auth.users on delete set null
+    );
+    alter table public.shops enable row level security;
+    alter table public.shops force row level security;
+
+    create table public.directory_claims (
+      id uuid primary key,
+      ${shopId},
+      ${entryId},
+      verified_at timestamptz
+    );
+    alter table public.directory_claims enable row level security;
+    ${
+      unforced
+        ? ""
+        : "alter table public.directory_claims force row level security;"
+    }
+
+    revoke all on public.shops from anon, authenticated, public;
+    revoke all on public.directory_claims from anon, authenticated, public;
+    grant select on public.shops to authenticated;
+    grant select on public.directory_claims to authenticated;
+    ${leakAnon ? "grant select on public.directory_claims to anon;" : ""}
+  `);
+}
+
+const DIRECTORY_CLAIMS_TABLES = ["shops", "directory_claims"] as const;
+
+describe("the directory_claims contract entry is a pending parent-hop shared table", () => {
+  it("declares shop_id → shops as its only lifecycle column (no auth.users hop)", () => {
+    expect(DIRECTORY_CLAIMS_CONTRACT.accountCascadeColumns).toEqual([]);
+    expect(DIRECTORY_CLAIMS_CONTRACT.founderSetNullColumns).toEqual([]);
+    expect(DIRECTORY_CLAIMS_CONTRACT.parentCascadeColumns).toEqual([
+      { column: "shop_id", parent: "shops" },
+    ]);
+  });
+
+  it("is carried `pending` until T3-203 ships the migration", () => {
+    expect(DIRECTORY_CLAIMS_CONTRACT.pending).toBe("T3-203");
+  });
+});
+
+describe("a correct directory_claims schema passes every garage-taxonomy sweep", () => {
+  const correct = directoryClaimsSchema();
+
+  it("directory_claims and shops are accepted, not flagged as ungraded", () => {
+    // The whole accommodation: without directory_claims in SHARED_USER_TABLES it
+    // would be "created but not enumerated … no grader knows it exists".
+    expect(ungradedTableIssues(correct)).toEqual([]);
+  });
+
+  it("its parent-cascade lifecycle model holds (no cascade findings)", () => {
+    expect(
+      sharedTableCascadeIssues(correct, [DIRECTORY_CLAIMS_CONTRACT])
+    ).toEqual([]);
+  });
+
+  it("its deny-by-default grants pass tableGrantIssues", () => {
+    expect(tableGrantIssues(correct, [...DIRECTORY_CLAIMS_TABLES])).toEqual([]);
+  });
+});
+
+/* -------------------------------------------------------------------------
+ * Boundary table — shop_id MUST cascade to shops (proof the rule bites)
+ * ---------------------------------------------------------------------- */
+
+const SHOP_ID_CASCADE_CASES = [
+  {
+    label: "on delete cascade → accepted",
+    clause: "on delete cascade",
+    accepted: true,
+  },
+  {
+    label: "on delete set null → rejected",
+    clause: "on delete set null",
+    accepted: false,
+  },
+  {
+    label: "on delete restrict → rejected",
+    clause: "on delete restrict",
+    accepted: false,
+  },
+  {
+    label: "on delete no action → rejected",
+    clause: "on delete no action",
+    accepted: false,
+  },
+  { label: "no on-delete clause → rejected", clause: "", accepted: false },
+] as const;
+
+describe("directory_claims.shop_id must be `on delete cascade` to shops (SHP-02)", () => {
+  it.each(SHOP_ID_CASCADE_CASES)("$label", ({ clause, accepted }) => {
+    const named = sharedTableCascadeIssues(
+      directoryClaimsSchema({ shopIdClause: clause }),
+      [DIRECTORY_CLAIMS_CONTRACT]
+    ).filter((issue) => issue.startsWith("directory_claims.shop_id:"));
+    if (accepted) {
+      expect(named).toEqual([]);
+    } else {
+      expect(named.length, named.join(" | ")).toBe(1);
+    }
+  });
+
+  it("a set-null shop_id (a claim outliving its shop) is rejected by name", () => {
+    const issues = sharedTableCascadeIssues(
+      directoryClaimsSchema({ shopIdClause: "on delete set null" }),
+      [DIRECTORY_CLAIMS_CONTRACT]
+    ).join(" | ");
+    expect(issues).toContain(
+      "directory_claims.shop_id: on delete set null, not cascade"
+    );
+  });
+
+  it("a shop_id with NO foreign key at all is a named absence, not silence", () => {
+    const issues = sharedTableCascadeIssues(
+      directoryClaimsSchema({ shopIdNoFk: true }),
+      [DIRECTORY_CLAIMS_CONTRACT]
+    ).join(" | ");
+    expect(issues).toContain(
+      "directory_claims.shop_id: no foreign key to shops"
+    );
+  });
+
+  it("a shop_id cascading to the WRONG table (auth.users) is rejected", () => {
+    // `cascade` is the right *action*, but a claim belongs to its shop, not to
+    // a person — a cascade to auth.users would delete the claim when the shop's
+    // founder leaves, destroying a claim the shop still holds.
+    const issues = sharedTableCascadeIssues(
+      directoryClaimsSchema({ shopIdTarget: "auth.users" }),
+      [DIRECTORY_CLAIMS_CONTRACT]
+    ).join(" | ");
+    expect(issues).toContain(
+      "directory_claims.shop_id: references auth.users, not shops"
+    );
+  });
+
+  it("a shop_id cascading to public.shops (qualified) is accepted — POSITIVE CONTROL", () => {
+    const named = sharedTableCascadeIssues(
+      directoryClaimsSchema({ shopIdTarget: "public.shops" }),
+      [DIRECTORY_CLAIMS_CONTRACT]
+    ).filter((issue) => issue.startsWith("directory_claims.shop_id:"));
+    expect(named).toEqual([]);
+  });
+
+  it("a shop_id cascading to a bare `shops` (unqualified) is accepted too", () => {
+    const named = sharedTableCascadeIssues(
+      directoryClaimsSchema({ shopIdTarget: "shops" }),
+      [DIRECTORY_CLAIMS_CONTRACT]
+    ).filter((issue) => issue.startsWith("directory_claims.shop_id:"));
+    expect(named).toEqual([]);
+  });
+
+  it("a shop_id cascading to a same-name-different-schema `private.shops` is rejected", () => {
+    // Namespace-identity discipline (GRADER-PRINCIPLES): `private.shops` and
+    // `public.shops` are different objects with the same name; only the real
+    // parent may pass. Mutation check: loosening the target test to a substring
+    // `includes("shops")` makes this case go green when it must be red.
+    const issues = sharedTableCascadeIssues(
+      directoryClaimsSchema({ shopIdTarget: "private.shops" }),
+      [DIRECTORY_CLAIMS_CONTRACT]
+    ).join(" | ");
+    expect(issues).toContain(
+      "directory_claims.shop_id: references private.shops, not shops"
+    );
+  });
+});
+
+describe("the directory_claims class is RLS-graded, not exempt (SHP-02)", () => {
+  it("a directory_claims missing `force row level security` still FAILS", () => {
+    const issues = ungradedTableIssues(
+      directoryClaimsSchema({ unforced: true })
+    ).join(" | ");
+    expect(issues).toContain("public.directory_claims");
+    expect(issues).toContain("not FORCED");
+  });
+
+  it("a directory_claims leaking `select` to anon still FAILS the deny-by-default sweep", () => {
+    const issues = tableGrantIssues(directoryClaimsSchema({ leakAnon: true }), [
+      ...DIRECTORY_CLAIMS_TABLES,
+    ]).join(" | ");
+    expect(issues).toContain("public.directory_claims");
+    expect(issues).toContain("anon");
+  });
+
+  it("directory_claims is not exempted (a claim is private user data)", () => {
+    expect(EXEMPT_PUBLIC_TABLES.has("directory_claims")).toBe(false);
+  });
+});
+
+describe("community_entry_id must stay a text pointer, never a database FK (SHP-02)", () => {
+  // The authoritative `it.fails` grader is T3-201's in
+  // `tests/shop/directory.test.ts`; this corpus test only proves the helper it
+  // relies on discriminates — an FK on community_entry_id is detectable, so
+  // that grader can actually fail. A claim edits nothing in the git-owned
+  // community collection; a FK here would make it a database relation.
+  it("foreignKeyFor detects an (illegal) FK on community_entry_id — proving T3-201's no-FK rule bites", () => {
+    const fk = foreignKeyFor(
+      directoryClaimsSchema({ entryIdReferences: "public.community_entries" }),
+      "directory_claims",
+      "community_entry_id"
+    );
+    expect(fk).not.toBeNull();
+    expect(fk?.target).toBe("public.community_entries");
+  });
+
+  it("a text-pointer community_entry_id carries no FK — POSITIVE CONTROL", () => {
+    const fk = foreignKeyFor(
+      directoryClaimsSchema(),
+      "directory_claims",
+      "community_entry_id"
+    );
+    expect(fk).toBeNull();
+  });
+});
+
+/* -------------------------------------------------------------------------
+ * The graders — red today, activated by T3-203 (migration + `pending` deletion)
+ * ---------------------------------------------------------------------- */
+
+describe("the shipped migration honours directory_claims' parent-cascade model (SHP-02)", () => {
+  it.fails("directory_claims.shop_id is `on delete cascade` to shops", () => {
+    const action = foreignKeyOnDeleteFor(
+      migrationSql(),
+      "directory_claims",
+      "shop_id"
+    );
+    expect(
+      action,
+      "directory_claims.shop_id carries no shops foreign key to grade"
+    ).not.toBeNull();
+    expect(action).toBe("cascade");
+    const fk = foreignKeyFor(migrationSql(), "directory_claims", "shop_id");
+    expect(fk?.target === "shops" || fk?.target === "public.shops").toBe(true);
+  });
+
+  it.fails(
+    "the directory_claims parent-cascade model holds via the shared rule",
+    () => {
+      expect(
+        sharedTableCascadeIssues(migrationSql(), [DIRECTORY_CLAIMS_CONTRACT])
+      ).toEqual([]);
+    }
+  );
 });
