@@ -20,29 +20,53 @@
 -- one write into `records`. A proposal is NEVER written into `records` in a
 -- pending state — it lives in its own table until acceptance copies it (PRO-03).
 --
--- ## Two ordinary policies, no RPC for submit/withdraw/reject (PRO-04, PRO-06)
+-- ## Three ordinary policies, no RPC for submit/withdraw/reject (PRO-04, PRO-06)
 --
 -- `proposals` is a two-principal row: `owner_id` (the vehicle owner, who accepts
 -- or rejects) and `proposed_by` (the mechanic, who drafts, reads, and withdraws).
--- Each principal gets one ordinary RLS policy:
 --
---   * the OWNER policy keys the row to `owner_id = auth.uid()` — the owner reads
---     their proposal inbox (SELECT) and rejects a pending proposal (DELETE), and
---     — crucially for PRO-06 — that DELETE is gated on ownership and NOTHING else,
---     so a pending proposal stays rejectable even after the mechanic's grant is
---     revoked;
+--   * the OWNER gets TWO policies, split on purpose (2026-09-09 review, finding
+--     #3): a `for select` policy (the owner reads their proposal inbox) and a
+--     `for delete` policy (the owner rejects a pending proposal), each keyed to
+--     `owner_id = auth.uid()` and NOTHING else — so a pending proposal stays
+--     rejectable even after the mechanic's grant is revoked (PRO-06). There is
+--     deliberately no owner INSERT/UPDATE path: permissive INSERT policies OR
+--     together, so a single owner `for all` whose `with check` tests only
+--     `owner_id` would let the owner INSERT a proposal with an arbitrary
+--     `proposed_by`, forging a mechanic's authorship (and, on acceptance,
+--     fabricating the provenance §7.1 / PRO-05 exist to keep honest). Splitting
+--     removes that INSERT path entirely; acceptance is the `accept_proposal`
+--     definer RPC, which needs no table-level owner write.
 --   * the PROPOSER policy keys the row to `proposed_by = auth.uid()` AND a live
---     `can_propose` grant the mechanic holds on the vehicle. That live-grant
+--     `can_propose` grant the mechanic holds on the vehicle, checked via the
+--     `security definer` helper `has_live_can_propose_grant` (see below). That
 --     conjunct rides on BOTH `using` (SELECT/DELETE) and `with check` (INSERT), so
 --     revocation or expiry kills submit AND withdraw on the next request (PRO-06),
---     while the owner's own reject path is untouched.
+--     while the owner's own reject path is untouched. The policy stays `for all`:
+--     its INSERT is tied to `proposed_by = auth.uid()`, so the forgery guard does
+--     not flag it.
 --
--- Both policies pass `rules.ts` unchanged (T3-301's task note): `authUidComparands`
--- tests the *shape* — an `auth.uid()` equality against a row term — not the column
--- name, and a top-level `and` (the live-grant conjunct) is not an `or`, so the
--- predicate stays owner-scoped. Submit is a direct INSERT, withdraw and reject are
--- direct DELETEs, all governed by these policies — no RPC, no `records` write.
--- That is exactly what PRO-03 buys: the only path into `records` is the owner's.
+-- All three policies pass `rules.ts` unchanged (T3-301's task note):
+-- `authUidComparands` tests the *shape* — an `auth.uid()` equality against a row
+-- term — not the column name, and a top-level `and` (the live-grant conjunct) is
+-- not an `or`, so the predicate stays owner-scoped. Submit is a direct INSERT,
+-- withdraw and reject are direct DELETEs, all governed by these policies — no RPC,
+-- no `records` write. That is exactly what PRO-03 buys: the only path into
+-- `records` is the owner's.
+--
+-- ## Why the proposer check is a `security definer` helper, not an inline exists
+--    (2026-09-09 owner ruling, finding #1)
+--
+-- The live-grant check reads `shares` and `vehicles`. Both are `force row level
+-- security`, owner-scoped: a mechanic caller can see NEITHER their own bound
+-- grant row (shares is owner-only) nor the owner's vehicle. So an inline
+-- `exists (select … from shares join vehicles …)` in the proposer policy runs
+-- under the *caller's* RLS and can never be satisfied by the very mechanic PRO-01
+-- authorizes — the granted mechanic's submit is refused. The fix is a
+-- `security definer` helper (`has_live_can_propose_grant`) that runs as owner,
+-- bypassing shares/vehicles RLS, and returns the boolean the policy consults.
+-- It is the same definer-bypass discipline `accept_proposal` and T3-102's
+-- mechanic RPCs use.
 --
 -- ## `accept_proposal` — `security definer`, the owner's action, the one records
 --    write (PRO-02)
@@ -52,10 +76,13 @@
 -- supplies. So acceptance is a `security definer` routine, pinning `set search_path
 -- = ''` (the 002 hygiene rule), that gates on `auth.uid()` = the proposal's
 -- `owner_id` — a definer routine bypasses RLS, so the ownership check lives IN the
--- body — reads the proposal server-side, resolves the grant it was proposed under,
--- inserts exactly ONE `records` row carrying the provenance, and removes the
--- proposal. A definer routine precisely so a mechanic cannot write `records` at all
--- and the owner cannot forge a mechanic's provenance by hand.
+-- body — locks the proposal row (`for update`), reads it server-side, resolves the
+-- grant it was proposed under, inserts exactly ONE `records` row carrying the
+-- provenance, and removes the proposal. A definer routine precisely so a mechanic
+-- cannot write `records` at all and the owner cannot forge a mechanic's provenance
+-- by hand. The `for update` lock makes acceptance idempotent under a concurrent
+-- double-accept (finding #c): the second caller blocks, then finds the row already
+-- gone and creates nothing — exactly one record, never two.
 
 -- ---------------------------------------------------------------------------
 -- can_propose (PRO-01) — a capability column on 002's `shares`
@@ -305,56 +332,98 @@ revoke all on public.proposals from anon, authenticated, public;
 grant select, insert, delete on public.proposals to authenticated;
 
 -- ---------------------------------------------------------------------------
--- Policies (PRO-04, PRO-06) — owner-scoped and proposer-scoped, both to
--- authenticated, both pass rules.ts unchanged
+-- has_live_can_propose_grant (PRO-01, PRO-06) — the proposer policy's live-grant
+-- check, as a `security definer` helper (2026-09-09 owner ruling, finding #1)
 -- ---------------------------------------------------------------------------
--- The OWNER sees and rejects their proposal inbox, gated on ownership alone so a
--- pending proposal stays rejectable after the mechanic's grant is revoked
--- (PRO-06). `(select auth.uid())` is Supabase's own hoisting recommendation.
+-- Answers "does this caller hold a LIVE can_propose grant on `p_vehicle_id`, and
+-- is `p_owner_id` the vehicle's real owner?" — the exact correlation the proposer
+-- policy needs. It is `security definer` because it reads `shares` and `vehicles`,
+-- both `force row level security` and owner-scoped: run under the mechanic
+-- caller's RLS (an inline `exists`), the check can never see the mechanic's own
+-- bound grant nor the owner's vehicle, and so a granted mechanic's submit is
+-- refused — the live-confirmed PRO-01 defect this ruling fixes. As definer it
+-- runs as owner and bypasses that RLS, while `(select auth.uid())` still reads the
+-- CALLER's identity from the request JWT (definer context does not change it), so
+-- the grant is matched to the mechanic actually calling, not to the definer.
+--
+-- `set search_path = ''` + fully-qualified names is the 002 hygiene rule. It is
+-- `stable` (reads only) and reachable to `authenticated` alone (the RLS predicate
+-- calls it as the authenticated caller); revoked from public and anon so the
+-- accountless path cannot reach it. Body carries all four liveness facts — the
+-- `shares` grant, its `can_propose` capability, `revoked_at is null`, and
+-- `expires_at > now()` — plus the vehicle-owner correlation the policy asserts.
 
-create policy "proposals owner all" on public.proposals
-  for all to authenticated
-  using ((select auth.uid()) = owner_id)
-  with check ((select auth.uid()) = owner_id);
+create function public.has_live_can_propose_grant(
+  p_vehicle_id uuid,
+  p_owner_id uuid
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+      from public.shares s
+      join public.vehicles v on v.id = s.vehicle_id
+     where s.vehicle_id = p_vehicle_id
+       and v.owner_id = p_owner_id
+       and s.bound_account_id = (select auth.uid())
+       and s.can_propose
+       and s.revoked_at is null
+       and s.expires_at > now()
+  );
+$$;
+
+revoke all on function public.has_live_can_propose_grant(uuid, uuid) from public;
+revoke all on function public.has_live_can_propose_grant(uuid, uuid) from anon;
+grant execute on function public.has_live_can_propose_grant(uuid, uuid) to authenticated;
+
+comment on function public.has_live_can_propose_grant(uuid, uuid) is
+  'PRO-01/PRO-06: security-definer predicate for the proposals proposer policy — true iff the CALLER holds a live can_propose grant (not revoked, not expired) on p_vehicle_id whose owner is p_owner_id. Definer because shares/vehicles are owner-scoped force-RLS and an inline check under the caller''s RLS can never see the mechanic''s grant (2026-09-09 ruling, finding #1).';
+
+-- ---------------------------------------------------------------------------
+-- Policies (PRO-04, PRO-06) — owner-scoped and proposer-scoped, all to
+-- authenticated, all pass rules.ts unchanged
+-- ---------------------------------------------------------------------------
+-- The OWNER gets TWO policies (2026-09-09 review, finding #3): a `for select`
+-- read of their proposal inbox and a `for delete` reject, each gated on ownership
+-- alone so a pending proposal stays rejectable after the mechanic's grant is
+-- revoked (PRO-06). There is no owner INSERT/UPDATE policy — a single owner
+-- `for all` whose `with check` tested only `owner_id` would OR into an INSERT path
+-- letting the owner forge a mechanic's `proposed_by`; splitting removes it, and
+-- acceptance is `accept_proposal` (which needs no table-level owner write).
+-- `(select auth.uid())` is Supabase's own hoisting recommendation.
+
+create policy "proposals owner select" on public.proposals
+  for select to authenticated
+  using ((select auth.uid()) = owner_id);
+
+create policy "proposals owner delete" on public.proposals
+  for delete to authenticated
+  using ((select auth.uid()) = owner_id);
 
 -- The PROPOSER submits, reads, and withdraws their own draft — but only while
 -- they hold a LIVE `can_propose` grant on the vehicle, bound to their account.
--- The live-grant conjunct correlates back to the row under test
--- (`proposals.vehicle_id`, `proposals.owner_id`) and checks BOTH liveness columns
--- (`revoked_at is null`, `expires_at > now()`), so a revoked or expired grant
--- closes submit AND withdraw on the next request (PRO-06). It rides on `using`
--- (SELECT/DELETE) and `with check` (INSERT) alike. The vehicles join ties
--- `owner_id` to the vehicle's real owner, so the proposer cannot forge it.
+-- The live-grant conjunct is the `has_live_can_propose_grant` helper above, called
+-- with the row under test (`vehicle_id`, `owner_id`); it checks BOTH liveness
+-- columns (`revoked_at is null`, `expires_at > now()`), so a revoked or expired
+-- grant closes submit AND withdraw on the next request (PRO-06). It rides on
+-- `using` (SELECT/DELETE) and `with check` (INSERT) alike. The helper's
+-- vehicle-owner correlation ties `owner_id` to the vehicle's real owner, so the
+-- proposer cannot forge it. The policy stays `for all`: its INSERT is tied to
+-- `proposed_by = auth.uid()`, so it is not a forgery path.
 
 create policy "proposals proposer all" on public.proposals
   for all to authenticated
   using (
     proposed_by = (select auth.uid())
-    and exists (
-      select 1
-        from public.shares s
-        join public.vehicles v on v.id = s.vehicle_id
-       where s.vehicle_id = proposals.vehicle_id
-         and v.owner_id = proposals.owner_id
-         and s.bound_account_id = (select auth.uid())
-         and s.can_propose
-         and s.revoked_at is null
-         and s.expires_at > now()
-    )
+    and public.has_live_can_propose_grant(vehicle_id, owner_id)
   )
   with check (
     proposed_by = (select auth.uid())
-    and exists (
-      select 1
-        from public.shares s
-        join public.vehicles v on v.id = s.vehicle_id
-       where s.vehicle_id = proposals.vehicle_id
-         and v.owner_id = proposals.owner_id
-         and s.bound_account_id = (select auth.uid())
-         and s.can_propose
-         and s.revoked_at is null
-         and s.expires_at > now()
-    )
+    and public.has_live_can_propose_grant(vehicle_id, owner_id)
   );
 
 -- ---------------------------------------------------------------------------
@@ -387,11 +456,15 @@ begin
 
   -- Acceptance is the OWNER's own action, keyed to auth.uid(). A proposal the
   -- caller does not own matches no row and is refused — one refusal, so the
-  -- surface is not an oracle about whether the proposal exists.
+  -- surface is not an oracle about whether the proposal exists. `for update`
+  -- locks the row so a concurrent double-accept (finding #c) is idempotent: the
+  -- second caller blocks here, then — the first having deleted the row on commit
+  -- — re-reads under READ COMMITTED, finds no row, and creates nothing.
   select p.* into v_proposal
     from public.proposals p
    where p.id = p_proposal_id
-     and owner_id = (select auth.uid());
+     and owner_id = (select auth.uid())
+   for update;
 
   if not found then
     raise insufficient_privilege using message = 'proposal acceptance refused';
@@ -400,6 +473,13 @@ begin
   -- The grant the proposal was made under — the "under which grant" of PRO-02's
   -- provenance. The proposer policy guaranteed a live can_propose grant existed
   -- at submit; resolve it (preferring one still live) for the record's testimony.
+  -- Known limitation (finding #d, accepted per §7.1 "keep the writable surface
+  -- narrow"): the proposal does not pin its share at submit, so where a mechanic
+  -- holds MORE THAN ONE can_propose grant on the same vehicle this picks the
+  -- most-live one rather than the exact grant the draft was authored under.
+  -- Pinning at submit would widen the mechanic-writable surface (a caller-supplied
+  -- share_id to validate), which the carve-out forbids; accept-time resolution
+  -- stays.
   select s.id into v_share_id
     from public.shares s
    where s.vehicle_id = v_proposal.vehicle_id
