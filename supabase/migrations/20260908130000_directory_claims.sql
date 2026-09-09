@@ -37,8 +37,9 @@
 -- ''` so no unqualified name resolves through a caller's search path (the 002
 -- hygiene rule). The write paths are revoked from `anon`/`public` and granted
 -- only to `authenticated` (create) or `service_role` (verify — see below); the
--- badge read is the one anon-facing routine, because a verified claim is public
--- information a reader is meant to see.
+-- badge read is `authenticated`-only too, NOT anon-facing — see the
+-- `directory_verified_claims` rationale below for why the badge stops at
+-- signed-in readers instead of widening 002's anon allow-list.
 
 -- ---------------------------------------------------------------------------
 -- directory_claims (SHP-02) — a DB row pointing at a git-owned community entry
@@ -72,10 +73,12 @@ comment on table public.directory_claims is
 -- migration runs, so a grant *adds* to an inherited ACL rather than replacing
 -- it. The table is emptied for all three roles first, then `authenticated` is
 -- given SELECT only (to read its own shops' claims through the member-scoped
--- policy below). No role holds a direct INSERT/UPDATE/DELETE: every write is a
--- definer RPC. `anon` holds nothing on the table — a public reader learns which
--- entries are verified-claimed only through the definer badge-read RPC, which
--- exposes nothing else.
+-- policy below). No *member-facing* role holds a direct INSERT/UPDATE/DELETE:
+-- every member/shop write is a definer RPC. `service_role` is the documented
+-- exception — the platform's own credential (what `verify_directory_claim`
+-- above is granted to run as), not a caller-facing role. `anon` holds nothing
+-- on the table — a public reader learns which entries are verified-claimed
+-- only through the definer badge-read RPC, which exposes nothing else.
 
 revoke all on public.directory_claims from anon, authenticated, public;
 
